@@ -1,0 +1,42 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "XkGamedevKit",
+	"Description": "A gamedev gameplay and runtime render tools.",
+	"Category": "Other",
+	"CreatedBy": "xu kai",
+	"CreatedByURL": "kevintsui1993.com",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "XkGamedevCore",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
+		}
+	],
+	"Plugins": [
+		{
+				"Name": "Niagara",
+				"Enabled": true
+		},
+		{
+				"Name": "EnhancedInput",
+				"Enabled": true
+		},
+		{
+				"Name": "ProceduralMeshComponent",
+				"Enabled": true
+		},
+		{
+				"Name": "LandscapePatch",
+				"Enabled": true
+		}
+	]
+}
