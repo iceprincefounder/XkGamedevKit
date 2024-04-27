@@ -1,9 +1,9 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright ©xukai. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "XkHexagonEditor.h"
+#include "XkHexagonComponents.h"
 #include "XkHexagonPathfinding.h"
 #include "XkHexagonActors.generated.h"
 

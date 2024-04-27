@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright ©xukai. All Rights Reserved.
 
 #include "XkCharacter.h"
 #include "UObject/ConstructorHelpers.h"
@@ -352,7 +352,7 @@ AXkCharacter::AXkCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	// Set size for player capsule
-	GetCapsuleComponent()->InitCapsuleSize(96.f, 42.f);
+	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.f);
 	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &AXkCharacter::OnHit);
 	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &AXkCharacter::OnBeginOverlap);
 	// Configure character movement

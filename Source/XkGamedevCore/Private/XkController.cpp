@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright ©xukai. All Rights Reserved.
 
 #include "XkController.h"
 #include "XkCamera.h"
@@ -17,7 +17,7 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
-
+#include "InputMappingContext.h"
 
 AXkGamepadCursor::AXkGamepadCursor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -135,6 +135,33 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	FollowTime = 0.f;
 	bIsCameraDraggingButtonPressing = false;
 	bIsCameraRotatingButtonPressing = false;
+
+	GamepadCursorMaterial = CastChecked<UMaterialInterface>(
+		StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_CursorFocus")));
+	DefaultMappingContext = CastChecked<UInputMappingContext>(
+		StaticLoadObject(UInputMappingContext::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/IMC_XkController")));
+	SetSelectionClickAction = CastChecked<UInputAction>(
+		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionClick")));
+	SetSelectionTouchAction = CastChecked<UInputAction>(
+		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionTouch")));
+	SetDeselectionClickAction = CastChecked<UInputAction>(
+		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionClick")));
+	SetDeselectionTouchAction = CastChecked<UInputAction>(
+		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionTouch")));
+	SetCameraDraggingAction = CastChecked<UInputAction>(
+		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDragging")));
+	SetCameraDraggingPressAction = CastChecked<UInputAction>(
+		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDraggingPress")));
+	SetCameraRotatingAction = CastChecked<UInputAction>(
+		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotating")));
+	SetCameraRotatingPressAction = CastChecked<UInputAction>(
+		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotatingPress")));
+	SetCameraZoomingAction = CastChecked<UInputAction>(
+		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraZooming")));
+	SetGamepadCursorMovementAction = CastChecked<UInputAction>(
+		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadCursorMovement")));
+	SetGamepadMenuSwitchAction = CastChecked<UInputAction>(
+		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadMenuSwitch")));
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;

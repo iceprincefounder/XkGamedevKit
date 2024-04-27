@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright ©xukai. All Rights Reserved.
 
 #include "XkGamedevCore.h"
 #include "Interfaces/IPluginManager.h"
@@ -10,7 +10,7 @@
 
 void FXkGamedevCoreModule::StartupModule()
 {
-	FString ShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("XkGamedevKit"))->GetBaseDir(), TEXT("Source/XkGamedevCore/Shaders"));
+	FString ShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("XkGamedevKit"))->GetBaseDir(), TEXT("Shaders"));
 	AddShaderSourceDirectoryMapping(TEXT("/XkGamedevCore"), ShaderDir);
 }
 
