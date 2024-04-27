@@ -1,0 +1,92 @@
+// Author @patriciogv - 2015
+// http://patriciogonzalezvivo.com
+
+struct FractalBrownianMotion
+{
+    float RandomNoise1 (in float2 st) 
+    {
+        return frac(sin(dot(st.xy, float2(12.9898,78.233))) * 43758.5453123);
+    }
+
+    // https://www.shadertoy.com/view/MdsGDN noise
+    float RandomNoise2(in float2 st)
+    {
+        return frac( sin( dot(st*0.001 ,float2(24.12357, 36.789) ) ) * 12345.123);  
+    }
+
+    float FbmRandom (in float2 st) 
+    {
+        return RandomNoise2(st);
+    }
+
+    // Based on Morgan McGuire @morgan3d
+    // https://www.shadertoy.com/view/4dS3Wd
+    float FbmNoise (in float2 st) 
+    {
+        float2 i = floor(st);
+        float2 f = frac(st);
+
+        // Four corners in 2D of a tile
+        float a = FbmRandom(i);
+        float b = FbmRandom(i + float2(1.0, 0.0));
+        float c = FbmRandom(i + float2(0.0, 1.0));
+        float d = FbmRandom(i + float2(1.0, 1.0));
+
+        float2 u = f * f * (3.0 - 2.0 * f);
+
+        return lerp(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+    }
+
+    #define OCTAVES 6
+    float FBMSimulate (in float2 st) 
+    {
+        // Initial values
+        float value = 0.0;
+        float amplitude = 0.5;
+        float frequency = 0.0;
+
+        // Loop of octaves
+        for (int i = 0; i < OCTAVES; i++) 
+        {
+            value += amplitude * FbmNoise(st);
+            st *= 2.0;
+            amplitude *= 0.5;
+        }
+        return value;
+    }
+
+    float RemapValue(float input, float input_min, float input_max, float output_min, float output_max)
+    {
+        return (input - input_min) / (input_max - input_min) * (output_max - output_min) + output_min;
+    }
+
+    float4 OutputFBM(in float2 st)
+    {
+        float3 color = 0;
+        color += FBMSimulate(st * 3.0);
+        return float4(color, 1.0);
+    }
+
+    float OutputFBM(in float3 world_pos, in float size)
+    {
+        float2 uv = (world_pos / size).xy;
+        float4 fbm = OutputFBM(uv);
+        return fbm.x;
+    }
+
+    float OutputFBM(in float3 world_pos, in float3 random, in float size, in float level)
+    {
+        const float to_center = 500.0;
+        float3 pos_to_uv = (world_pos + random) - to_center;
+        float2 uv = (pos_to_uv / size).xy;
+        uv = float2(floor(uv.x), floor(uv.y));
+        float4 fbm = OutputFBM(uv);
+        float output = RemapValue(fbm.x, 0.0, level, 0.0, 1.0);
+        output = saturate(output);
+        output = round(output);
+        return output;
+    }
+} FBM;
+
+return FBM.OutputFBM(WorldPos, Offset, Size, Level);
+//return FBM.OutputFBM(WorldPos, Size);
