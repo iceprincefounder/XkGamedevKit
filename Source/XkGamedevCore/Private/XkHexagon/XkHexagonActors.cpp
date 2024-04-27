@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright ©xukai. All Rights Reserved.
 
 #include "XkHexagon/XkHexagonActors.h"
 #include "XkHexagon/XkHexagonPathfinding.h"
@@ -363,6 +363,11 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 {
 	SceneRoot = CreateDefaultSubobject<UXkHexagonArrowComponent>(TEXT("SceneRoot"));
 	RootComponent = SceneRoot;
+
+	UObject* BaseMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonBase"));
+	BaseMaterial = CastChecked<UMaterialInterface>(BaseMaterialObject);
+	UObject* EdgeMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonEdge"));
+	EdgeMaterial = CastChecked<UMaterialInterface>(EdgeMaterialObject);
 
 	Radius = 100.0;
 	BaseInnerGap = 5.0;

@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright ©xukai. All Rights Reserved.
 
 #include "XkCamera.h"
 #include "UObject/ConstructorHelpers.h"
