@@ -11,7 +11,7 @@
 void FXkGamedevCoreModule::StartupModule()
 {
 	FString ShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("XkGamedevKit"))->GetBaseDir(), TEXT("Shaders"));
-	AddShaderSourceDirectoryMapping(TEXT("/XkGamedevCore"), ShaderDir);
+	AddShaderSourceDirectoryMapping(TEXT("/Plugin/XkGamedevKit"), ShaderDir);
 }
 
 void FXkGamedevCoreModule::ShutdownModule()
@@ -21,4 +21,3 @@ void FXkGamedevCoreModule::ShutdownModule()
 IMPLEMENT_GAME_MODULE(FXkGamedevCoreModule, XkGamedevCore);
 
 #undef LOCTEXT_NAMESPACE
- 

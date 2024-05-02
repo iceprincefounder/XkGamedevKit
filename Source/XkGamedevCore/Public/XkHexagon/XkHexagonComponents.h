@@ -6,7 +6,7 @@
 #include "UObject/ObjectMacros.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/ArrowComponent.h"
-#include "XkHexagonEditor.generated.h"
+#include "XkHexagonComponents.generated.h"
 
 
 UCLASS(ClassGroup = Utility, hidecategories = (Object, LOD, Physics, Lighting, TextureStreaming, Activation, "Components|Activation", Collision), editinlinenew, meta = (BlueprintSpawnableComponent))
