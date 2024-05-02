@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "XkHexagon/XkHexagonEditor.h"
+#include "XkHexagon/XkHexagonComponents.h"
 #include "Components/ArrowComponent.h"
 #include "PrimitiveViewRelevance.h"
 #include "PrimitiveSceneProxy.h"
@@ -15,7 +15,7 @@
 #include "UObject/UObjectIterator.h"
 #include "StaticMeshResources.h"
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(XkHexagonEditor)
+#include UE_INLINE_GENERATED_CPP_BY_NAME(XkHexagonComponents)
 
 #define DEFAULT_SCREEN_SIZE	(0.0025f)
 #define ARROW_SCALE			(80.0f)
