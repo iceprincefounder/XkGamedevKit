@@ -1,4 +1,4 @@
-// Copyright ©xukai. All Rights Reserved.
+// Copyright ©XUKAI. All Rights Reserved.
 
 #include "XkCamera.h"
 #include "UObject/ConstructorHelpers.h"
@@ -47,22 +47,27 @@ AXkTopDownCamera::AXkTopDownCamera(const FObjectInitializer& ObjectInitializer)
 	CameraBoom->SetRelativeRotation(FRotator(-75.f, 0.f, 0.f));
 	CameraBoom->bDoCollisionTest = false; // Don't want to pull camera in when it collides with level
 	CameraBoom->bEnableCameraLag = true;
-	CameraBoom->bEnableCameraLag = true;
 	CameraBoom->bEnableCameraRotationLag = true;
+	CameraBoom->CameraLagSpeed = 20.0;
+	CameraBoom->CameraRotationLagSpeed = 20.0;
 
 	// Create a camera...
 	TopDownCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("TopDownCamera"));
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	TopDownCameraComponent->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
-
+	TopDownCameraComponent->FieldOfView = 55.0f;
+	
 	// Don't rotate character to camera direction
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
+	bCameraInvisibleWall = false;
 	CameraInvisibleWall = FBox2D(FVector2D(-1000.0, -1000.0), FVector2D(1000.0, 1000.0));
+	bCameraRotationLock = false;
 	CameraRotationLock = FVector2D(-75.0, -55.0);
-	CameraZoomArmLength = 1200.0f;
+	CameraZoomArmLength = 1200.0;
+	CameraZoomArmRange = FVector2D(800.0, 2000.0);
 	MaxVelocity = 500.0;
 	MaxAcceleration = 2048.0;
 	// Activate ticking in order to update the cursor every frame.
@@ -131,7 +136,7 @@ void AXkTopDownCamera::AddMovement(const FVector& InputValue, const float Speed)
 	FVector MovementVectorRotated = Rotator.RotateVector(InputValue);
 	AddActorWorldOffset(MovementVectorRotated * Speed * DeltaSeconds);
 
-	if (CameraInvisibleWall.bIsValid)
+	if (bCameraInvisibleWall && CameraInvisibleWall.bIsValid)
 	{
 		FVector Location = GetActorLocation();
 		Location.X = FMath::Clamp(Location.X, CameraInvisibleWall.Min.X, CameraInvisibleWall.Max.X);
@@ -146,6 +151,23 @@ void AXkTopDownCamera::AddRotation(const FVector2D& InputValue, const float Spee
 	SCOPED_NAMED_EVENT(AXkTopDownCamera_AddRotation, FColor::Red);
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkTopDownCamera_AddRotation);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkTopDownCamera_AddRotation);
+	auto LimitViewPitch = [](FRotator& ViewRotation, float InViewPitchMin, float InViewPitchMax)
+	{
+		ViewRotation.Pitch = FMath::ClampAngle(ViewRotation.Pitch, InViewPitchMin, InViewPitchMax);
+		ViewRotation.Pitch = FRotator::ClampAxis(ViewRotation.Pitch);
+	};
+
+	auto LimitViewRoll = [](FRotator& ViewRotation, float InViewRollMin, float InViewRollMax)
+	{
+		ViewRotation.Roll = FMath::ClampAngle(ViewRotation.Roll, InViewRollMin, InViewRollMax);
+		ViewRotation.Roll = FRotator::ClampAxis(ViewRotation.Roll);
+	};
+
+	auto LimitViewYaw = [](FRotator& ViewRotation, float InViewYawMin, float InViewYawMax)
+	{
+		ViewRotation.Yaw = FMath::ClampAngle(ViewRotation.Yaw, InViewYawMin, InViewYawMax);
+		ViewRotation.Yaw = FRotator::ClampAxis(ViewRotation.Yaw);
+	};
 
 	if (!ensure(GetWorld()))
 	{
@@ -159,29 +181,51 @@ void AXkTopDownCamera::AddRotation(const FVector2D& InputValue, const float Spee
 		return;
 	}
 
+	float InputValueX = InputValue.X;
+	//if (InputValueX != 0.0 && FMath::Abs(InputValueX) > 0.25)
+	//{
+	//	InputValueX = InputValueX; // (InputValueX > 0.0) ? 1.0 : -1.0;
+	//}
+	float InputValueY = InputValue.Y;
+	//if (InputValueY != 0.0 && FMath::Abs(InputValueY) > 0.25)
+	//{
+	//	InputValueY = InputValueY; // (InputValueY > 0.0) ? 1.0 : -1.0;
+	//}
+
 	FRotator Rotator = CameraBoom->GetRelativeRotation();
-	float Patch = Rotator.Pitch;
+	float Pitch = Rotator.Pitch;
 	float Yaw = Rotator.Yaw;
 	float Roll = 0.0f;
-	if ((Rotator.Pitch < CameraRotationLock.Y && InputValue.Y > 0.0) || (Rotator.Pitch > CameraRotationLock.X && InputValue.Y < 0.0))
+
+	if (bCameraRotationLock)
 	{
-		Patch += InputValue.Y * Speed * DeltaSeconds;
-		Patch = FMath::Clamp(Patch, CameraRotationLock.X, CameraRotationLock.Y);
+		if ((Rotator.Pitch < CameraRotationLock.Y && InputValueY > 0.0) || (Rotator.Pitch > CameraRotationLock.X && InputValueY < 0.0))
+		{
+			Pitch += InputValueY * Speed * DeltaSeconds;
+			Pitch = FMath::ClampAngle(Pitch, CameraRotationLock.X, CameraRotationLock.Y);
+			Pitch = FRotator::ClampAxis(Pitch);
+		}
 	}
-	Yaw += InputValue.X * Speed * DeltaSeconds;
-	FRotator NewRotator = FRotator(Patch, Yaw, Roll);
+	else
+	{
+		Pitch += InputValueY * Speed * DeltaSeconds;
+		Pitch = FRotator::ClampAxis(Pitch);
+	}
+
+	Yaw += InputValueX * Speed * DeltaSeconds;
+	Yaw = FRotator::ClampAxis(Yaw);
+	FRotator NewRotator = FRotator(Pitch, Yaw, Roll);
 	CameraBoom->SetRelativeRotation(NewRotator);
 }
 
 
 void AXkTopDownCamera::ResetRotation()
 {
-	FRotator NewRotator = FRotator(CameraRotationLock.Y, 0.0, 0.0);
-	CameraBoom->SetRelativeRotation(NewRotator);
+	CameraBoom->SetRelativeRotation(FRotator(-75.f, 0.f, 0.f));
 }
 
 
-void AXkTopDownCamera::AddCameraZoom(const float InputValue, const FVector2D& Range, const float Speed)
+void AXkTopDownCamera::AddCameraZoom(const float InputValue, const float Speed)
 {
 	SCOPED_NAMED_EVENT(AXkTopDownCamera_AddCameraZoom, FColor::Red);
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkTopDownCamera_AddCameraZoom);
@@ -201,7 +245,7 @@ void AXkTopDownCamera::AddCameraZoom(const float InputValue, const FVector2D& Ra
 
 	float TargetArmLength = CameraBoom->TargetArmLength;
 	TargetArmLength += (InputValue * Speed * DeltaSeconds);
-	TargetArmLength = FMath::Clamp(TargetArmLength, Range.X, Range.Y);
+	TargetArmLength = FMath::Clamp(TargetArmLength, CameraZoomArmRange.X, CameraZoomArmRange.Y);
 	CameraBoom->TargetArmLength = TargetArmLength;
 }
 

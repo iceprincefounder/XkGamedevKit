@@ -1,4 +1,4 @@
-// Copyright ©xukai. All Rights Reserved.
+// Copyright ©XUKAI. All Rights Reserved.
 
 #include "XkController.h"
 #include "XkCamera.h"
@@ -123,10 +123,8 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	ShortPressThreshold = 0.1;
 	CameraScrollingSpeed = 1000.0;
 	CameraDraggingSpeed = 1500;
-	CameraRotatingSpeed = 150.0;
+	CameraRotatingSpeed = 120.0;
 	CameraZoomingSpeed = 2000.0;
-	CameraMinimalHeight = 800.0;
-	CameraMaximalHeight = 3000.0;
 	MouseDraggingSensibility = 1.5;
 	MouseRotatingSensibility = 1.0;
 	GamepadCursorMovingSpeed = 1000.0;
@@ -178,7 +176,7 @@ EXkControlsFlavor AXkController::SetControlsFlavor(const EXkControlsFlavor NewCo
 		{
 			CurrentMouseCursor = EMouseCursor::None;
 			FHitResult HitResult;
-			// we spawn game pad cursor at zero, when game pad cursor move, it would automaticly
+			// we spawn game pad cursor at zero, when game pad cursor move, it would automatically
 			// jump to the center of screen if it's not on screen
 			FVector HitPoint = FVector::ZeroVector;
 			if (ControllerSelect(HitResult, ECollisionChannel::ECC_WorldStatic))
@@ -234,6 +232,7 @@ void AXkController::SetMouseCursorType(const EMouseCursor::Type MouseCursor)
 	{
 		CurrentMouseCursor = MouseCursor;
 	}
+	SetShowMouseCursor(MouseCursor == EMouseCursor::Type::None ? false : true);
 }
 
 
@@ -332,6 +331,15 @@ void AXkController::BeginPlay()
 		Subsystem->AddMappingContext(DefaultMappingContext, 0);
 	}
 	ControlsFlavor = EXkControlsFlavor::None;
+
+	ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
+	if (LocalPlayer)
+	{
+		LocalPlayer->ViewportClient->SetMouseCaptureMode(EMouseCaptureMode::CaptureDuringMouseDown);
+		LocalPlayer->ViewportClient->SetMouseLockMode(EMouseLockMode::LockAlways);
+		// when SetHideCursorDuringCapture, mouse capture UseHighPrecisionMouseMovement(ViewportWidgetRef), and it got a smooth movement.
+		LocalPlayer->ViewportClient->SetHideCursorDuringCapture(true);
+	}
 }
 
 
@@ -393,20 +401,6 @@ void AXkController::TickActor(float DeltaTime, enum ELevelTick TickType, FActorT
 				ControlsCursorArea = EXkControlsCursorArea::SafeArea;
 			}
 
-			// Mouse hovered cursor
-			FHitResult Hit;
-			if (ControllerSelect(Hit, ECollisionChannel::ECC_Camera))
-			{
-				AActor* HitActor = Hit.GetActor();
-				if (HitActor->IsA(AXkCharacter::StaticClass()))
-				{
-					SetMouseCursorType(EMouseCursor::Hand);
-				}
-				else if (GetMouseCursorType() == EMouseCursor::Hand)
-				{
-					SetMouseCursorType(EMouseCursor::Default);
-				}
-			}
 			CachedMouseCursorLocation = MouseLocation;
 		}
 	}
@@ -587,8 +581,12 @@ void AXkController::OnSetCameraRotatingReleased()
 	//GEngine->AddOnScreenDebugMessage(-1, 1.0, FColor::Orange, *Message);
 
 	bIsCameraRotatingButtonPressing = false;
+
+	if (GetMouseCursor() == EMouseCursor::None)
+	{
+		SetMouseLocation(CachedMouseCursorLocation.X, CachedMouseCursorLocation.Y);
+	}
 	SetMouseCursorType(EMouseCursor::Default);
-	SetMouseLocation(CachedMouseCursorLocation.X, CachedMouseCursorLocation.Y);
 }
 
 
@@ -601,7 +599,7 @@ void AXkController::OnSetCameraZoomingTriggered(const FInputActionValue& Value)
 	float ZoomingValue = Value.Get<float>();
 	if (AXkTopDownCamera * TopDownCamera = GetTopDownCamera())
 	{
-		TopDownCamera->AddCameraZoom(ZoomingValue, FVector2D(CameraMinimalHeight, CameraMaximalHeight), CameraZoomingSpeed);
+		TopDownCamera->AddCameraZoom(ZoomingValue, CameraZoomingSpeed);
 	}
 }
 

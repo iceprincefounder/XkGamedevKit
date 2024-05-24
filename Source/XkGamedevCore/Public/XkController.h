@@ -1,4 +1,4 @@
-// Copyright ©xukai. All Rights Reserved.
+// Copyright ©XUKAI. All Rights Reserved.
 
 #pragma once
 
@@ -81,12 +81,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]")
 	float CameraZoomingSpeed;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]")
-	float CameraMinimalHeight;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]")
-	float CameraMaximalHeight;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]")
 	float MouseDraggingSensibility;

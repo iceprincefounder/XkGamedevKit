@@ -1,4 +1,4 @@
-﻿// Copyright ©xukai. All Rights Reserved.
+﻿// Copyright ©XUKAI. All Rights Reserved.
 
 #include "XkGameMode.h"
 #include "XkCamera.h"

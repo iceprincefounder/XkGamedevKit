@@ -1,4 +1,4 @@
-﻿// Copyright ©xukai. All Rights Reserved.
+﻿// Copyright ©XUKAI. All Rights Reserved.
 
 #include "XkGamedevCore.h"
 #include "Interfaces/IPluginManager.h"

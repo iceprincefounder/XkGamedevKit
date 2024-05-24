@@ -1,4 +1,4 @@
-// Copyright ©xukai. All Rights Reserved.
+// Copyright ©XUKAI. All Rights Reserved.
 
 #include "XkCharacter.h"
 #include "UObject/ConstructorHelpers.h"
@@ -223,12 +223,13 @@ void UXkTargetMovement::OnMoving()
 			// So, begin every moving, add one more MovementPoint to make up for
 			MovementPoint += 1;
 			CurrentMovementTarget = MovingActor->GetActorLocation();
+			bShouldMove = true;
 		}
 		if (PendingRotationTargets.Num() > 0)
 		{
 			CurrentRotationTarget = MovingActor->GetActorRotation();
+			bShouldMove = true;
 		}
-		bShouldMove = true;
 	}
 }
 

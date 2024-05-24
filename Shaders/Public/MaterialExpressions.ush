@@ -1,0 +1,18 @@
+// Copyright ©XUKAI. All Rights Reserved.
+// /Plugin/XkGamedevKit/Public/MaterialExpressions.ush
+#pragma once
+
+/**
+ * Bend world position component z to make a spherical world
+ */
+// return XkSphericalWorldBending(CameraPosition, WorldPosition);
+float3 XkSphericalWorldBending(float3 InCameraPosition, float3 InWorldPosition)
+{
+    float x = distance(InCameraPosition.xy, InWorldPosition.xy);
+    const float a = -0.00001f;
+    // min_quad_tree_size * 4.0f
+    const float b = 6400.0f;
+    // y = a * (x - b) ^ 2
+    float y = pow(max(x - b, 0.0f), 2.0f) * a;
+    return float3(0.0f, 0.0f, y);
+}

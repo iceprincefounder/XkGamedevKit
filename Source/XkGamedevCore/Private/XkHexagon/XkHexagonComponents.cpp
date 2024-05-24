@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright ©XUKAI. All Rights Reserved.
 
 
 #include "XkHexagon/XkHexagonComponents.h"
@@ -14,6 +14,7 @@
 #include "DynamicMeshBuilder.h"
 #include "UObject/UObjectIterator.h"
 #include "StaticMeshResources.h"
+#include "XkHexagon/XkHexagonSceneProxy.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(XkHexagonComponents)
 
@@ -436,4 +437,116 @@ FBoxSphereBounds UXkHexagonArrowComponent::CalcBounds(const FTransform& LocalToW
 {
 	return FBoxSphereBounds(FBox(FVector(-ArrowSize * ArrowLength, -ArrowSize * ArrowLength, 0),
 		FVector(ArrowSize * ArrowLength, ArrowSize * ArrowLength, ARROW_SCALE))).TransformBy(LocalToWorld);
+}
+
+
+UXkHexagonalWorldComponent::UXkHexagonalWorldComponent(const FObjectInitializer& ObjectInitializer) :
+	UPrimitiveComponent(ObjectInitializer)
+{
+	PrimaryComponentTick.bCanEverTick = true;
+	SetComponentTickEnabled(true);
+	bTickInEditor = true;
+
+	BaseMaterial = CastChecked<UMaterialInterface>(
+		StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/Engine/EngineMaterials/WorldGridMaterial")));
+
+	EdgeMaterial = CastChecked<UMaterialInterface>(
+		StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/Engine/EngineMaterials/WorldGridMaterial")));
+
+	Radius = 100.0;
+	Height = 10.0;
+	GapWidth = 0.0;
+	BaseInnerGap = 5.0;
+	BaseOuterGap = 0.0;
+	EdgeInnerGap = 9.0;
+	EdgeOuterGap = 1.0;
+
+	bShowBaseMesh = true;
+	bShowEdgeMesh = true;
+}
+
+
+void UXkHexagonalWorldComponent::PostLoad()
+{
+	Super::PostLoad();
+}
+
+
+FPrimitiveSceneProxy* UXkHexagonalWorldComponent::CreateSceneProxy()
+{
+	FPrimitiveSceneProxy* HexagonalWorldceneProxy = NULL;
+	if (BaseMaterial && EdgeMaterial)
+	{
+		BaseMaterialDyn = UMaterialInstanceDynamic::Create(BaseMaterial, GetWorld());
+		EdgeMaterialDyn = UMaterialInstanceDynamic::Create(EdgeMaterial, GetWorld());
+	}
+	if (BaseMaterialDyn && EdgeMaterialDyn)
+	{
+		FPrimitiveSceneProxy* Proxy = new FXkHexagonalWorldSceneProxy(
+			this, NAME_None, BaseMaterialDyn->GetRenderProxy(), EdgeMaterialDyn->GetRenderProxy());
+		HexagonalWorldceneProxy = Proxy;
+	}
+	return HexagonalWorldceneProxy;
+}
+
+
+FBoxSphereBounds UXkHexagonalWorldComponent::CalcBounds(const FTransform& LocalToWorld) const
+{
+	FVector2D Extent = GetHexagonalWorldExtent();
+	float BoxRadius = FMath::Max(Extent.X, Extent.Y);
+	FBoxSphereBounds BoxSphereBounds = FBoxSphereBounds(FVector::ZeroVector, FVector(BoxRadius, BoxRadius, BoxRadius), BoxRadius);
+	return FBoxSphereBounds(BoxSphereBounds).TransformBy(LocalToWorld);
+}
+
+
+void UXkHexagonalWorldComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
+
+
+FMaterialRelevance UXkHexagonalWorldComponent::GetMaterialRelevance(ERHIFeatureLevel::Type InFeatureLevel) const
+{
+	FMaterialRelevance Result;
+	Result |= BaseMaterial->GetRelevance_Concurrent(InFeatureLevel);
+	Result |= EdgeMaterial->GetRelevance_Concurrent(InFeatureLevel);
+	return Result;
+}
+
+
+void UXkHexagonalWorldComponent::GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials) const
+{
+	if (BaseMaterialDyn && EdgeMaterialDyn)
+	{
+		OutMaterials.Add(BaseMaterialDyn);
+		OutMaterials.Add(EdgeMaterialDyn);
+	}
+}
+
+
+void UXkHexagonalWorldComponent::FetchHexagonData(TArray<FVector4f>& OutVertices, TArray<uint32>& OutIndices)
+{
+	if (FXkHexagonalWorldSceneProxy* HexagonalWorldSceneProxy = static_cast<FXkHexagonalWorldSceneProxy*>(SceneProxy))
+	{
+		OutVertices = HexagonalWorldSceneProxy->HexagonData.BaseVertices;
+		OutIndices = HexagonalWorldSceneProxy->HexagonData.BaseIndices;
+	}
+}
+
+
+FVector2D UXkHexagonalWorldComponent::GetHexagonalWorldExtent() const
+{
+	float Distance = Radius + GapWidth;
+	float X = MaxManhattanDistance * Distance * 1.5 + Distance;
+	float Y = MaxManhattanDistance * Distance * 2.0 * XkCos30 + Distance * XkCos30;
+	return FVector2D(X, Y);
+}
+
+
+FVector2D UXkHexagonalWorldComponent::GetFullUnscaledWorldSize(const FVector2D& UnscaledPatchCoverage, const FVector2D& Resolution) const
+{
+	// UnscaledPatchCoverage is meant to represent the distance between the centers of the extremal pixels.
+	// That distance in pixels is Resolution-1.
+	FVector2D TargetPixelSize(UnscaledPatchCoverage / FVector2D::Max(Resolution - 1, FVector2D(1, 1)));
+	return TargetPixelSize * Resolution;
 }

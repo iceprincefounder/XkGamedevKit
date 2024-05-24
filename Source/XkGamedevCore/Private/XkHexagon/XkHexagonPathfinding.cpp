@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright ©XUKAI. All Rights Reserved.
 
 
 #include "XkHexagon/XkHexagonPathfinding.h"
@@ -6,6 +6,125 @@
 
 #include "Engine/World.h"
 #include "EngineUtils.h"
+
+
+template<typename T0, typename T1>
+void BuildHexagon(TArray<T0>& OutBaseVertices, TArray<T1>& OutBaseIndices, TArray<T0>& OutEdgeVertices, TArray<T1>& OutEdgeIndices,
+	float Radius, float Height, float BaseInnerGap, float BaseOuterGap, float EdgeInnerGap, float EdgeOuterGap)
+{
+	TArray<T0> TopBoundaryVertices;
+	TArray<T0> BtmBoundaryVertices;
+	{
+		//	x
+		//	|   1
+		//	| 2/ \6
+		//	| | 0 |
+		//	| 3\ /5
+		//	|   4
+		//	---------y
+
+		OutBaseVertices.Add(T0(0.0, 0.0, Height));
+		TopBoundaryVertices.Empty();
+		TopBoundaryVertices.Add(T0((Radius - BaseInnerGap), 0.0, Height));
+		TopBoundaryVertices.Add(T0((Radius - BaseInnerGap) * XkSin30, -XkCos30 * (Radius - BaseInnerGap), Height));
+		TopBoundaryVertices.Add(T0(-(Radius - BaseInnerGap) * XkSin30, -XkCos30 * (Radius - BaseInnerGap), Height));
+		TopBoundaryVertices.Add(T0(-(Radius - BaseInnerGap), 0.0, Height));
+		TopBoundaryVertices.Add(T0(-(Radius - BaseInnerGap) * XkSin30, XkCos30 * (Radius - BaseInnerGap), Height));
+		TopBoundaryVertices.Add(T0((Radius - BaseInnerGap) * XkSin30, XkCos30 * (Radius - BaseInnerGap), Height));
+		for (const T0& Vert : TopBoundaryVertices)
+		{
+			OutBaseVertices.Add(Vert);
+		}
+		OutBaseIndices = { 0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0 , 5, 6, 0, 6, 1 };
+		BtmBoundaryVertices.Empty();
+		BtmBoundaryVertices.Add(T0((Radius - BaseOuterGap), 0.0, 0.0));
+		BtmBoundaryVertices.Add(T0((Radius - BaseOuterGap) * XkSin30, -XkCos30 * Radius, 0.0));
+		BtmBoundaryVertices.Add(T0(-(Radius - BaseOuterGap) * XkSin30, -XkCos30 * Radius, 0.0));
+		BtmBoundaryVertices.Add(T0(-(Radius - BaseOuterGap), 0.0, 0.0));
+		BtmBoundaryVertices.Add(T0(-(Radius - BaseOuterGap) * XkSin30, XkCos30 * Radius, 0.0));
+		BtmBoundaryVertices.Add(T0((Radius - BaseOuterGap) * XkSin30, XkCos30 * Radius, 0.0));
+		for (int32 i = 0; i < TopBoundaryVertices.Num(); i++)
+		{
+			int32 IndexTopA = (i + 1) % TopBoundaryVertices.Num();
+			int32 IndexTopB = (i + 1 + 1) % TopBoundaryVertices.Num();
+			int32 IndexBtmA = (i + 1) % TopBoundaryVertices.Num();
+			int32 IndexBtmB = (i + 1 + 1) % TopBoundaryVertices.Num();
+
+			T0 VertTopA = TopBoundaryVertices[IndexTopA];
+			T0 VertTopB = TopBoundaryVertices[IndexTopB];
+			T0 VertBtmA = BtmBoundaryVertices[IndexBtmA];
+			T0 VertBtmB = BtmBoundaryVertices[IndexBtmB];
+
+			int32 CurrIndex = OutBaseVertices.Num();
+			OutBaseVertices.Add(VertTopA);
+			OutBaseVertices.Add(VertTopB);
+			OutBaseVertices.Add(VertBtmA);
+			OutBaseVertices.Add(VertBtmB);
+
+			OutBaseIndices.Add(CurrIndex);
+			OutBaseIndices.Add(CurrIndex + 2);
+			OutBaseIndices.Add(CurrIndex + 1);
+			OutBaseIndices.Add(CurrIndex + 1);
+			OutBaseIndices.Add(CurrIndex + 2);
+			OutBaseIndices.Add(CurrIndex + 3);
+		}
+		//TrianglesArray = {0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0 , 5, 6, 0, 6, 1,
+		//1, 7, 2, 2, 7, 8, 2, 8, 3, 3, 8, 9, 3, 9, 4, 4, 9, 10, 4, 10, 5, 5, 10, 11, 5, 11, 6, 6, 11, 12};
+	}
+
+	{
+		// XkHexagon Edge ->|-----------|------------|-------------|----------> XkHexagon Center
+		//		    BaseOuterGap EdgeOuterGap EdgeInnerGap BaseInnerGap
+		float EdgeHeight = Height + 1; // Fix Z-fighting
+		TopBoundaryVertices.Empty();
+		TopBoundaryVertices.Add(T0((Radius - EdgeInnerGap), 0.0, EdgeHeight));
+		TopBoundaryVertices.Add(T0((Radius - EdgeInnerGap) * XkSin30, -XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
+		TopBoundaryVertices.Add(T0(-(Radius - EdgeInnerGap) * XkSin30, -XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
+		TopBoundaryVertices.Add(T0(-(Radius - EdgeInnerGap), 0.0, EdgeHeight));
+		TopBoundaryVertices.Add(T0(-(Radius - EdgeInnerGap) * XkSin30, XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
+		TopBoundaryVertices.Add(T0((Radius - EdgeInnerGap) * XkSin30, XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
+		BtmBoundaryVertices.Empty();
+		BtmBoundaryVertices.Add(T0(Radius - EdgeOuterGap, 0.0, EdgeHeight));
+		BtmBoundaryVertices.Add(T0((Radius - EdgeOuterGap) * XkSin30, -XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
+		BtmBoundaryVertices.Add(T0(-(Radius - EdgeOuterGap) * XkSin30, -XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
+		BtmBoundaryVertices.Add(T0(-(Radius - EdgeOuterGap), 0.0, EdgeHeight));
+		BtmBoundaryVertices.Add(T0(-(Radius - EdgeOuterGap) * XkSin30, XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
+		BtmBoundaryVertices.Add(T0((Radius - EdgeOuterGap) * XkSin30, XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
+
+		for (int32 i = 0; i < TopBoundaryVertices.Num(); i++)
+		{
+			int32 IndexTopA = (i + 1) % TopBoundaryVertices.Num();
+			int32 IndexTopB = (i + 1 + 1) % TopBoundaryVertices.Num();
+			int32 IndexBtmA = (i + 1) % TopBoundaryVertices.Num();
+			int32 IndexBtmB = (i + 1 + 1) % TopBoundaryVertices.Num();
+
+			T0 VertTopA = TopBoundaryVertices[IndexTopA];
+			T0 VertTopB = TopBoundaryVertices[IndexTopB];
+			T0 VertBtmA = BtmBoundaryVertices[IndexBtmA];
+			VertBtmA.Z = VertTopA.Z;
+			T0 VertBtmB = BtmBoundaryVertices[IndexBtmB];
+			VertBtmB.Z = VertTopB.Z;
+
+			int32 CurrIndex = OutEdgeVertices.Num();
+			OutEdgeVertices.Add(VertTopA);
+			OutEdgeVertices.Add(VertTopB);
+			OutEdgeVertices.Add(VertBtmA);
+			OutEdgeVertices.Add(VertBtmB);
+
+			OutEdgeIndices.Add(CurrIndex);
+			OutEdgeIndices.Add(CurrIndex + 2);
+			OutEdgeIndices.Add(CurrIndex + 1);
+			OutEdgeIndices.Add(CurrIndex + 1);
+			OutEdgeIndices.Add(CurrIndex + 2);
+			OutEdgeIndices.Add(CurrIndex + 3);
+		}
+	}
+}
+
+
+void CullHexagonalWorld(TArray<FXkHexagonNode*> OutHexagonNodes, const TMap<FIntVector, FXkHexagonNode>& HexagonalWorldNodes, const FSceneView& View, const float Distance)
+{
+}
 
 static const TArray<FIntVector> GXkHexagonNearVectors = {
 	FIntVector(1, 1, 0),
@@ -15,25 +134,6 @@ static const TArray<FIntVector> GXkHexagonNearVectors = {
 	FIntVector(0, -1, -1),
 	FIntVector(1, 0, -1)
 };
-
-
-FXkHexagonNode::FXkHexagonNode(AXkHexagonActor* InActor) 
-{
-	Actor = MakeWeakObjectPtr(InActor);
-}
-
-FXkHexagonNode::~FXkHexagonNode()
-{
-	Actor.Reset();
-}
-
-
-FXkHexagonNode& FXkHexagonNode::operator=(const FXkHexagonNode& other)
-{
-	Actor = other.Actor;
-	Cost = other.Cost;
-	return *this;
-}
 
 
 FXkHexagonAStarPathfinding::FXkHexagonAStarPathfinding()
@@ -175,7 +275,7 @@ bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, co
 }
 
 
-TArray<FIntVector> FXkHexagonAStarPathfinding::Backtracking(int32 MaxStep) const
+TArray<FIntVector> FXkHexagonAStarPathfinding::Backtracking(const int32 MaxStep) const
 {
 	TArray<FIntVector> BackTrackingList;
 	BackTrackingList.Add(TheTargetPoint);
@@ -286,7 +386,7 @@ int32 FXkHexagonAStarPathfinding::CalcManhattanDistance(const FIntVector& PointA
 }
 
 
-FIntVector FXkHexagonAStarPathfinding::CalcHexagonCoord(float PositionX, float PositionY, float XkHexagonRadius)
+FIntVector FXkHexagonAStarPathfinding::CalcHexagonCoord(const float PositionX, const float PositionY, const float XkHexagonRadius)
 {
 	FIntVector XkHexagonCoord = FIntVector(0, 0, 0);
 	FVector XkHexagonVec = FVector(PositionX, PositionY, 0.0);
@@ -308,13 +408,13 @@ FIntVector FXkHexagonAStarPathfinding::CalcHexagonCoord(float PositionX, float P
 }
 
 
-FVector2D FXkHexagonAStarPathfinding::CalcHexagonPosition(int32 IndexX, int32 IndexY, float Radius)
+FVector2D FXkHexagonAStarPathfinding::CalcHexagonPosition(const int32 IndexX, const int32 IndexY, const float Distance)
 {
-	float Pos_X = Radius * 1.5 * IndexX;
-	float Pos_Y = XkCos30 * Radius * 2.0 * IndexY;
+	float Pos_X = Distance * 1.5 * IndexX;
+	float Pos_Y = XkCos30 * Distance * 2.0 * IndexY;
 	if (IndexX % 2 != 0)
 	{
-		Pos_Y += (XkCos30 * Radius);
+		Pos_Y += (XkCos30 * Distance);
 	}
 	return FVector2D(Pos_X, Pos_Y);
 }

@@ -1,4 +1,4 @@
-﻿// Copyright ©xukai. All Rights Reserved.
+﻿// Copyright ©XUKAI. All Rights Reserved.
 
 #pragma once
 
@@ -27,6 +27,7 @@ public:
 	virtual void Split(const int32 InDepth);
 
 	virtual FBox GetNodeBox() const { return NodeBox; };
+	virtual FBox& GetNodeBoxRaw() { return NodeBox; };
 	virtual int32 GetNodeID() const { return NodeID; };
 	virtual int32 GetNodePosX() const { return NodePosX; };
 	virtual int32 GetNodePosY() const { return NodePosY; };
@@ -69,9 +70,14 @@ public:
 
 	virtual int32 AllocateNode(const FBox2D& Box, int32 InPosx, int32 InPosy, int32 InDepth, int32 Parent);
 
+	/* Visible quadtree node cull (select node) */
 	virtual void Cull(const FConvexVolume* InCamera, const FVector& InCameraPos, const FVector& InPosition, const int16 InFrameTag);
 
 	virtual void UpdateCameraPos(const FVector& InCameraPos, const FVector& Position);
+
+	virtual void InitProcessFunc(const TFunction<void(FQuadtreeNode&, const FVector&, const int32)>& Input) { ProcessNode = Input; };
+
+	virtual void ProcessNodeFunc(FQuadtreeNode& OutNode, const FVector& InCameraPos, const int32 InNodeID);
 
 	virtual int32 GetTreeDepth(const int32 InMinNodeSize) const;
 
@@ -116,6 +122,10 @@ private:
 	int32 MaxNodeMove;
 	int32 MaxDepth;
 	int32 WorldSize;
+	
+private:
+	// std::function to post process node's center and extent
+	TFunction<void(FQuadtreeNode&, const FVector& /*Camera Pos*/, const int32)> ProcessNode;
 };
 
 // https://www.ronja-tutorials.com/post/041-hsv-colorspace/
