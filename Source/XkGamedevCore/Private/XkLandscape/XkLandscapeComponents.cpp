@@ -108,57 +108,40 @@ void UXkQuadtreeComponent::FetchPatchData(TArray<FVector4f>& OutVertices, TArray
 }
 
 
-FPrimitiveSceneProxy* UXkSphericalLandscapeComponent::CreateSceneProxy()
+FMaterialRelevance UXkLandscapeWithWaterComponent::GetWaterMaterialRelevance(ERHIFeatureLevel::Type InFeatureLevel) const
 {
-	FPrimitiveSceneProxy* SphericalLandscapeSceneProxy = NULL;
-	if (Material)
-	{
-		MaterialDyn = UMaterialInstanceDynamic::Create(Material, GetWorld());
-	}
+	FMaterialRelevance Result;
+	Result |= WaterMaterial->GetRelevance_Concurrent(InFeatureLevel);
+	return Result;
+}
+
+
+void UXkLandscapeWithWaterComponent::GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials) const
+{
 	if (MaterialDyn)
 	{
-		FPrimitiveSceneProxy* Proxy = new FXkSphericalLandscapeSceneProxy(
-			this, NAME_None, MaterialDyn->GetRenderProxy());
-		SphericalLandscapeSceneProxy = Proxy;
+		OutMaterials.Add(MaterialDyn);
 	}
-	return SphericalLandscapeSceneProxy;
+	if (WaterMaterialDyn)
+	{
+		OutMaterials.Add(WaterMaterialDyn);
+	}
 }
 
 
 FPrimitiveSceneProxy* UXkSphericalLandscapeWithWaterComponent::CreateSceneProxy()
 {
 	FPrimitiveSceneProxy* LocalSceneProxy = NULL;
-	if (Material && MaterialWater)
+	if (Material && WaterMaterial)
 	{
 		MaterialDyn = UMaterialInstanceDynamic::Create(Material, GetWorld());
-		MaterialWaterDyn = UMaterialInstanceDynamic::Create(MaterialWater, GetWorld());
+		WaterMaterialDyn = UMaterialInstanceDynamic::Create(WaterMaterial, GetWorld());
 	}
-	if (MaterialDyn && MaterialWaterDyn)
+	if (MaterialDyn && WaterMaterialDyn)
 	{
 		FPrimitiveSceneProxy* Proxy = new FXkSphericalLandscapeWithWaterSceneProxy(
-			this, NAME_None, MaterialDyn->GetRenderProxy(), MaterialWaterDyn->GetRenderProxy());
+			this, NAME_None, MaterialDyn->GetRenderProxy(), WaterMaterialDyn->GetRenderProxy());
 		LocalSceneProxy = Proxy;
 	}
 	return LocalSceneProxy;
-}
-
-
-FMaterialRelevance UXkSphericalLandscapeWithWaterComponent::GetMaterialWaterRelevance(ERHIFeatureLevel::Type InFeatureLevel) const
-{
-	FMaterialRelevance Result;
-	Result |= MaterialWater->GetRelevance_Concurrent(InFeatureLevel);
-	return Result;
-}
-
-
-void UXkSphericalLandscapeWithWaterComponent::GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials) const
-{
-	if (MaterialDyn)
-	{
-		OutMaterials.Add(MaterialDyn);
-	}
-	if (MaterialWaterDyn)
-	{
-		OutMaterials.Add(MaterialWaterDyn);
-	}
 }

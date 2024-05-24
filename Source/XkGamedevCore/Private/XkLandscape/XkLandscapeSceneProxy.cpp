@@ -46,7 +46,7 @@ public:
 FXkQuadtreeVertexFactory::FXkQuadtreeVertexFactory(ERHIFeatureLevel::Type InFeatureLevel)
 	:FVertexFactory(InFeatureLevel)
 {
-	SceneProxy = NULL;
+
 }
 
 
@@ -54,17 +54,17 @@ void FXkQuadtreeVertexFactory::InitRHI()
 {
 	FVertexDeclarationElementList Elements;
 
-	if (SceneProxy)
+	if (VertexPositionBuffer && InstancePositionBuffer && InstanceMorphBuffer)
 	{
-		FVertexStreamComponent VertexPosStream(&SceneProxy->VertexPositionBuffer_GPU, 0, sizeof(FVector4f), VET_Float4);
+		FVertexStreamComponent VertexPosStream(VertexPositionBuffer, 0, sizeof(FVector4f), VET_Float4);
 
 		Elements.Add(AccessStreamComponent(VertexPosStream, 0));
 
-		FVertexStreamComponent PositionInstStream(&SceneProxy->InstancePositionBuffer_GPU, 0, sizeof(FVector4f), VET_Float4, EVertexStreamUsage::Instancing);
+		FVertexStreamComponent PositionInstStream(InstancePositionBuffer, 0, sizeof(FVector4f), VET_Float4, EVertexStreamUsage::Instancing);
 
 		Elements.Add(AccessStreamComponent(PositionInstStream, 1));
 
-		FVertexStreamComponent MorphInstStream(&SceneProxy->InstanceMorphBuffer_GPU, 0, sizeof(FVector4f), VET_Float4, EVertexStreamUsage::Instancing);
+		FVertexStreamComponent MorphInstStream(InstanceMorphBuffer, 0, sizeof(FVector4f), VET_Float4, EVertexStreamUsage::Instancing);
 
 		Elements.Add(AccessStreamComponent(MorphInstStream, 2));
 
@@ -73,9 +73,12 @@ void FXkQuadtreeVertexFactory::InitRHI()
 }
 
 
-void FXkQuadtreeVertexFactory::SetSceneProxy(FXkQuadtreeSceneProxy* pProxy)
+void FXkQuadtreeVertexFactory::SetVertexStreams(FVertexBuffer* InStream0, FVertexBuffer* InStream1, FVertexBuffer* InStream2)
 {
-	SceneProxy = pProxy;
+	VertexPositionBuffer = InStream0;
+	InstancePositionBuffer = InStream1;
+	InstanceMorphBuffer = InStream2;
+
 	UpdateRHI();
 }
 
@@ -97,6 +100,7 @@ void FXkQuadtreeVertexFactory::ModifyCompilationEnvironment(const FVertexFactory
 	OutEnvironment.SetDefine(TEXT("HEXAGON_VERTEX"), 0);
 	OutEnvironment.SetDefine(TEXT("FARMESH_VERTEX"), 0);
 }
+
 
 IMPLEMENT_TYPE_LAYOUT(FXkQuadtreeVertexFactoryShaderParameters);
 // ----------------------------------------------------------------------------------
@@ -171,7 +175,7 @@ FXkQuadtreeSceneProxy::FXkQuadtreeSceneProxy(const UXkQuadtreeComponent* InCompo
 	VertexFactory = new FXkQuadtreeVertexFactory(GetScene().GetFeatureLevel());
 	Quadtree.Initialize(1024, 16);
 
-	PatchSize = 33;
+	PatchSize = 65;
 	BuildPatch(PatchData.Vertices, PatchData.Indices, PatchSize);
 
 	// Enqueue initialization of render resource
@@ -281,7 +285,7 @@ void FXkQuadtreeSceneProxy::CreateRenderThreadResources()
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::CreateRenderThreadResources);
 	check(IsInRenderingThread());
 
-	VertexFactory->SetSceneProxy(this);
+	VertexFactory->SetVertexStreams(&VertexPositionBuffer_GPU, &InstancePositionBuffer_GPU, &InstanceMorphBuffer_GPU);
 	VertexFactory->InitResource();
 }
 
@@ -573,7 +577,7 @@ void FXkQuadtreeSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
 }
 
 
-FXkLandscapeSceneProxy::FXkLandscapeSceneProxy(const UXkQuadtreeComponent* InComponent, const FName ResourceName, FMaterialRenderProxy* InMaterialRenderProxy)
+FXkLandscapeSceneProxy::FXkLandscapeSceneProxy(const UXkLandscapeComponent* InComponent, const FName ResourceName, FMaterialRenderProxy* InMaterialRenderProxy)
 	:FXkQuadtreeSceneProxy(InComponent, ResourceName, InMaterialRenderProxy)
 {
 }
@@ -584,20 +588,318 @@ FXkLandscapeSceneProxy::~FXkLandscapeSceneProxy()
 }
 
 
-FXkSphericalLandscapeSceneProxy::FXkSphericalLandscapeSceneProxy(const UXkQuadtreeComponent* InComponent, const FName ResourceName, FMaterialRenderProxy* InMaterialRenderProxy)
-	:FXkQuadtreeSceneProxy(InComponent, ResourceName, InMaterialRenderProxy)
+FXkLandscapeWithWaterSceneProxy::FXkLandscapeWithWaterSceneProxy(const UXkLandscapeWithWaterComponent* InComponent, const FName ResourceName, FMaterialRenderProxy* InMaterialRenderProxy, FMaterialRenderProxy* InWaterMaterialRenderProxy)
+	:FXkLandscapeSceneProxy(InComponent, ResourceName, InMaterialRenderProxy),
+	WaterMaterialRelevance(InComponent->GetWaterMaterialRelevance(GetScene().GetFeatureLevel()))
+{
+	WaterVertexFactory = new FXkQuadtreeVertexFactory(GetScene().GetFeatureLevel());
+
+	WaterMaterialRenderProxy = InWaterMaterialRenderProxy;
+
+	WaterPatchSize = 33;
+	BuildPatch(WaterPatchData.Vertices, WaterPatchData.Indices, WaterPatchSize);
+
+	// Enqueue initialization of render resource
+	BeginInitResource(&WaterVertexPositionBuffer_GPU);
+	BeginInitResource(&WaterInstancePositionBuffer_GPU);
+	BeginInitResource(&WaterInstanceMorphBuffer_GPU);
+	BeginInitResource(&WaterIndexBuffer_GPU);
+
+	GenerateBuffers();
+}
+
+
+FXkLandscapeWithWaterSceneProxy::~FXkLandscapeWithWaterSceneProxy()
+{
+	check(IsInRenderingThread());
+
+	VertexFactory->ReleaseResource();
+	WaterVertexFactory->ReleaseResource();
+
+	VertexPositionBuffer_GPU.ReleaseResource();
+	InstancePositionBuffer_GPU.ReleaseResource();
+	InstanceMorphBuffer_GPU.ReleaseResource();
+	IndexBuffer_GPU.ReleaseResource();
+
+	WaterVertexPositionBuffer_GPU.ReleaseResource();
+	WaterInstancePositionBuffer_GPU.ReleaseResource();
+	WaterInstanceMorphBuffer_GPU.ReleaseResource();
+	WaterIndexBuffer_GPU.ReleaseResource();
+
+	OwnerComponent = nullptr;
+	VertexFactory = nullptr;
+}
+
+
+void FXkLandscapeWithWaterSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeWithWaterSceneProxy::GetDynamicMeshElements);
+
+	check(IsInRenderingThread());
+
+	if (!static_cast<UXkLandscapeWithWaterComponent*>(OwnerComponent)->bDisableLandscape)
+	{
+		FXkLandscapeSceneProxy::GetDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector);
+	}
+	if (static_cast<UXkLandscapeWithWaterComponent*>(OwnerComponent)->bDisableWaterBody)
+	{
+		return;
+	}
+
+	// Set up wire frame material (if needed)
+	const bool bWireframe = AllowDebugViewmodes() && (ViewFamily.EngineShowFlags.Wireframe);
+	FColoredMaterialRenderProxy* WireframeMaterialInstance = nullptr;
+	if (bWireframe)
+	{
+		WireframeMaterialInstance = new FColoredMaterialRenderProxy(
+			GEngine->WireframeMaterial ? GEngine->WireframeMaterial->GetRenderProxy() : NULL, FColor::Cyan);
+		Collector.RegisterOneFrameMaterialProxy(WireframeMaterialInstance);
+	}
+
+	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
+	{
+		const FSceneView& View = *Views[ViewIndex];
+
+		int32 NunInst = Quadtree.GetVisibleNodes().Num();
+		if (NunInst > 0)
+		{
+			// Draw the far mesh.
+			FMeshBatch& Mesh = Collector.AllocateMesh();
+			Mesh.bWireframe = bWireframe;
+			Mesh.bUseForMaterial = true;
+			Mesh.bUseWireframeSelectionColoring = IsSelected();
+			Mesh.VertexFactory = WaterVertexFactory;
+			Mesh.MaterialRenderProxy = (WireframeMaterialInstance != nullptr) ? WireframeMaterialInstance : WaterMaterialRenderProxy;
+			Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
+			Mesh.Type = PT_TriangleList;
+			Mesh.DepthPriorityGroup = SDPG_World;
+			Mesh.bCanApplyViewModeOverrides = false;
+
+			FMeshBatchElement& BatchElement = Mesh.Elements[0];
+			BatchElement.NumInstances = NunInst;
+			BatchElement.IndexBuffer = &WaterIndexBuffer_GPU;
+
+			// We need the uniform buffer of this primitive because it stores the proper value for the bOutputVelocity flag.
+			// The identity primitive uniform buffer simply stores false for this flag which leads to missing motion vectors.
+			BatchElement.PrimitiveUniformBuffer = GetUniformBuffer();
+
+			BatchElement.FirstIndex = 0;
+			BatchElement.NumPrimitives = WaterIndexBuffer_GPU.IndexBufferRHI->GetSize() / (3 * sizeof(uint32));
+			BatchElement.MinVertexIndex = 0;
+			BatchElement.MaxVertexIndex = WaterVertexPositionBuffer_GPU.VertexBufferRHI->GetSize() - 1;
+
+			TRACE_CPUPROFILER_EVENT_SCOPE(Collector.AddMesh);
+			Collector.AddMesh(ViewIndex, Mesh);
+		}
+	}
+}
+
+
+void FXkLandscapeWithWaterSceneProxy::CreateRenderThreadResources()
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::CreateRenderThreadResources);
+	check(IsInRenderingThread());
+
+	FXkLandscapeSceneProxy::CreateRenderThreadResources();
+
+	WaterVertexFactory->SetVertexStreams(&WaterVertexPositionBuffer_GPU, &WaterInstancePositionBuffer_GPU, &WaterInstanceMorphBuffer_GPU);
+	WaterVertexFactory->InitResource();
+}
+
+
+FPrimitiveViewRelevance FXkLandscapeWithWaterSceneProxy::GetViewRelevance(const FSceneView* View) const
+{
+	FPrimitiveViewRelevance Result;
+	Result = Super::GetViewRelevance(View);
+	Result.bDrawRelevance = IsShown(View);
+	Result.bShadowRelevance = false;
+	Result.bDynamicRelevance = true;
+	Result.bStaticRelevance = false;
+	Result.bRenderInMainPass = ShouldRenderInMainPass();
+	Result.bUsesLightingChannels = GetLightingChannelMask() != GetDefaultLightingChannelMask();
+	Result.bRenderCustomDepth = ShouldRenderCustomDepth();
+	Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
+	WaterMaterialRelevance.SetPrimitiveViewRelevance(Result);
+	Result.bVelocityRelevance = DrawsVelocity() && Result.bOpaque && Result.bRenderInMainPass;
+	return Result;
+}
+
+
+void FXkLandscapeWithWaterSceneProxy::GenerateBuffers()
+{
+	if (WaterPatchData.Vertices.Num())
+	{
+		check(WaterPatchData.Vertices.Num());
+		check(WaterPatchData.Indices.Num());
+
+		FPatchData* PatchDataRef = new FPatchData();
+		PatchDataRef->Vertices = WaterPatchData.Vertices;
+		PatchDataRef->Indices = WaterPatchData.Indices;
+
+		FXkLandscapeWithWaterSceneProxy* SceneProxy = this;
+
+		ENQUEUE_RENDER_COMMAND(GenerateBuffers)(
+			[PatchDataRef, SceneProxy](FRHICommandListImmediate& RHICmdList)
+			{
+				SceneProxy->GenerateBuffers_Renderthread(RHICmdList, PatchDataRef);
+				delete PatchDataRef;
+			});
+	}
+}
+
+
+void FXkLandscapeWithWaterSceneProxy::GenerateBuffers_Renderthread(FRHICommandListImmediate& RHICmdList, FPatchData* InWaterPatchData)
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeWithWaterSceneProxy::GenerateWaterBuffers_Renderthread);
+
+	check(IsInRenderingThread());
+
+	if (!InWaterPatchData->Vertices.Num())
+		return;
+
+	FRHIResourceCreateInfo CreateInfo(TEXT("XkLandscapeWithWaterSceneProxy"));
+
+	/** vertex buffer */
+	int32 NumSourceVerts = InWaterPatchData->Vertices.Num();
+	WaterVertexPositionBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
+		NumSourceVerts * sizeof(FVector4f),
+		BUF_Static | BUF_ShaderResource, CreateInfo);
+	void* RawVertexBuffer = RHILockBuffer(
+		WaterVertexPositionBuffer_GPU.VertexBufferRHI, 0,
+		WaterVertexPositionBuffer_GPU.VertexBufferRHI->GetSize(),
+		RLM_WriteOnly);
+	FMemory::Memcpy((char*)RawVertexBuffer, &InWaterPatchData->Vertices[0], NumSourceVerts * sizeof(FVector4f));
+	RHIUnlockBuffer(WaterVertexPositionBuffer_GPU.VertexBufferRHI);
+
+	/** index buffer */
+	int32 NumSourceIndices = InWaterPatchData->Indices.Num();
+	WaterIndexBuffer_GPU.IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint32), sizeof(uint32) * NumSourceIndices, BUF_Static, CreateInfo);
+	/** index buffer */
+	void* RawIndexBuffer = RHILockBuffer(
+		WaterIndexBuffer_GPU.IndexBufferRHI,
+		0, NumSourceIndices * sizeof(uint32),
+		RLM_WriteOnly);
+	FMemory::Memcpy((char*)RawIndexBuffer, &InWaterPatchData->Indices[0], NumSourceIndices * sizeof(uint32));
+	RHIUnlockBuffer(WaterIndexBuffer_GPU.IndexBufferRHI);
+
+	/** instance position */
+	WaterInstancePositionBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
+		MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f),
+		BUF_Dynamic | BUF_ShaderResource, CreateInfo);
+	void* RawInstancePositionBuffer = RHILockBuffer(
+		WaterInstancePositionBuffer_GPU.VertexBufferRHI, 0,
+		WaterInstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
+		RLM_WriteOnly);
+	FMemory::Memset((char*)RawInstancePositionBuffer, 0, MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f));
+	RHIUnlockBuffer(WaterInstancePositionBuffer_GPU.VertexBufferRHI);
+
+	/** instance vertex morph */
+	WaterInstanceMorphBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
+		MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f),
+		BUF_Dynamic | BUF_ShaderResource, CreateInfo);
+	void* RawInstanceMorphBuffer = RHILockBuffer(
+		WaterInstanceMorphBuffer_GPU.VertexBufferRHI, 0,
+		WaterInstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
+		RLM_WriteOnly);
+	FMemory::Memset((char*)RawInstanceMorphBuffer, 0, MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f));
+	RHIUnlockBuffer(WaterInstanceMorphBuffer_GPU.VertexBufferRHI);
+}
+
+
+void FXkLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeWithWaterSceneProxy::UpdateInstanceBuffer);
+
+	check(IsInRenderingThread());
+
+	/** instance pos buffer */
+	FRHIResourceCreateInfo CreateInfo(TEXT("UpdateInstanceBuffer"));
+	int iNunInst = Quadtree.GetVisibleNodes().Num();
+	TArray<FVector4f> InstancePositionData;
+	TArray<FVector4f> InstanceMorphData;
+
+	FVector4f v4Zero;
+	v4Zero.X = 0;
+	v4Zero.Y = 0;
+	v4Zero.Z = 0;
+	v4Zero.W = 0;
+
+	FVector3f RootOffset = FVector3f(Quadtree.GetRootOffset());
+	float fMaxX = -99999999;
+	float fMinX = 99999999;;
+	float fMaxY = -99999999;;
+	float fMinY = 99999999;
+
+	for (int i = 0; i < Quadtree.GetVisibleNodes().Num(); i++)
+	{
+		int32 iTreeIndex = Quadtree.GetVisibleNodes()[i];
+		const FQuadtreeNode& QuadtreeNode = Quadtree.GetTreeNodes()[iTreeIndex];
+		fMaxX = fMaxX > QuadtreeNode.GetNodeBox().Max.X ? fMaxX : QuadtreeNode.GetNodeBox().Max.X;
+		fMaxY = fMaxY > QuadtreeNode.GetNodeBox().Max.Y ? fMaxY : QuadtreeNode.GetNodeBox().Max.Y;
+		fMinX = fMinX < QuadtreeNode.GetNodeBox().Min.X ? fMinX : QuadtreeNode.GetNodeBox().Min.X;
+		fMinY = fMinY < QuadtreeNode.GetNodeBox().Min.Y ? fMinY : QuadtreeNode.GetNodeBox().Min.Y;
+	}
+
+	for (int i = 0; i < iNunInst; i++)
+	{
+		int32 iTreeIndex = Quadtree.GetVisibleNodes()[i];
+		const FQuadtreeNode& QuadtreeNode = Quadtree.GetTreeNodes()[iTreeIndex];
+		FVector3f Extent3D = FVector3f(QuadtreeNode.GetNodeBox().GetExtent());
+		FVector2f vExtent = FVector2f(Extent3D.X, Extent3D.Y);
+
+		FVector4f InstancePositionValue;
+		FVector4f InstanceMorphValue;
+
+		InstancePositionValue.X = QuadtreeNode.GetNodeBox().Min.X + RootOffset.X;
+		InstancePositionValue.Y = QuadtreeNode.GetNodeBox().Min.Y + RootOffset.Y;
+		InstancePositionValue.Z = (QuadtreeNode.GetNodeBox().Min.Z + QuadtreeNode.GetNodeBox().Max.Z) / 2.0;
+		InstancePositionValue.W = vExtent.X * 2.0;
+
+		// LOD Level
+		InstanceMorphValue.X = Quadtree.GetMaxDepth() - QuadtreeNode.GetNodeDepth() - 1;
+		// LOD Scale
+		InstanceMorphValue.Y = Quadtree.GetMinNodeSize() * FQuadtree::UnrealUnitScale;
+		// Quad Size
+		InstanceMorphValue.Z = PatchSize - 1;
+		// Node Depth
+		InstanceMorphValue.W = QuadtreeNode.GetNodeDepth();
+
+		InstancePositionData.Add(InstancePositionValue);
+		InstanceMorphData.Add(InstanceMorphValue);
+	}
+
+	/** instance position data */
+	void* RawInstancePositionData = RHILockBuffer(
+		WaterInstancePositionBuffer_GPU.VertexBufferRHI, 0,
+		WaterInstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
+		RLM_WriteOnly);
+	FMemory::Memcpy((char*)RawInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
+	RHIUnlockBuffer(WaterInstancePositionBuffer_GPU.VertexBufferRHI);
+
+	/** instance morph data */
+	void* RawInstanceMorphData = RHILockBuffer(
+		WaterInstanceMorphBuffer_GPU.VertexBufferRHI, 0,
+		WaterInstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
+		RLM_WriteOnly);
+	FMemory::Memcpy((char*)RawInstanceMorphData, InstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
+	RHIUnlockBuffer(WaterInstanceMorphBuffer_GPU.VertexBufferRHI);
+}
+
+
+FXkSphericalLandscapeWithWaterSceneProxy::FXkSphericalLandscapeWithWaterSceneProxy(const UXkSphericalLandscapeWithWaterComponent* InComponent, const FName ResourceName, FMaterialRenderProxy* InMaterialRenderProxy, FMaterialRenderProxy* InWaterMaterialRenderProxy)
+	:FXkLandscapeWithWaterSceneProxy(InComponent, ResourceName, InMaterialRenderProxy, InWaterMaterialRenderProxy)
 {
 }
 
 
-FXkSphericalLandscapeSceneProxy::~FXkSphericalLandscapeSceneProxy()
+FXkSphericalLandscapeWithWaterSceneProxy::~FXkSphericalLandscapeWithWaterSceneProxy()
 {
 }
 
 
-void FXkSphericalLandscapeSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, class FMeshElementCollector& Collector) const
+void FXkSphericalLandscapeWithWaterSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, class FMeshElementCollector& Collector) const
 {
-	TRACE_CPUPROFILER_EVENT_SCOPE(FXkSphericalLandscapeSceneProxy::GetDynamicMeshElements);
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkSphericalLandscapeWithWaterSceneProxy::GetDynamicMeshElements);
 
 	check(IsInRenderingThread());
 
@@ -627,158 +929,5 @@ void FXkSphericalLandscapeSceneProxy::GetDynamicMeshElements(const TArray<const 
 			});
 	}
 
-	FXkQuadtreeSceneProxy::GetDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector);
-}
-
-
-void FXkSphericalLandscapeSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
-{
-	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::UpdateInstanceBuffer);
-
-	check(IsInRenderingThread());
-
-	/** instance pos buffer */
-	FRHIResourceCreateInfo CreateInfo(TEXT("UpdateInstanceBuffer"));
-	int iNunInst = Quadtree.GetVisibleNodes().Num();
-	TArray<FVector4f> InstancePositionData;
-	TArray<FVector4f> InstanceMorphData;
-
-	FVector3f RootOffset = FVector3f(Quadtree.GetRootOffset());
-
-	for (int i = 0; i < iNunInst; i++)
-	{
-		int32 iTreeIndex = Quadtree.GetVisibleNodes()[i];
-		const FQuadtreeNode& QuadtreeNode = Quadtree.GetTreeNodes()[iTreeIndex];
-		FVector3f Extent3D = FVector3f(QuadtreeNode.GetNodeBox().GetExtent());
-		FVector2f vExtent = FVector2f(Extent3D.X, Extent3D.Y);
-
-		FVector4f InstancePositionValue;
-		FVector4f InstanceMorphValue;
-
-		InstancePositionValue.X = QuadtreeNode.GetNodeBox().Min.X + RootOffset.X;
-		InstancePositionValue.Y = QuadtreeNode.GetNodeBox().Min.Y + RootOffset.Y;
-		InstancePositionValue.Z = 0.0;
-		InstancePositionValue.W = vExtent.X * 2.0;
-
-		// LOD Level
-		InstanceMorphValue.X = Quadtree.GetMaxDepth() - QuadtreeNode.GetNodeDepth() - 1;
-		// LOD Scale
-		InstanceMorphValue.Y = Quadtree.GetMinNodeSize() * FQuadtree::UnrealUnitScale;
-		// Quad Size
-		InstanceMorphValue.Z = PatchSize - 1;
-		// Node Depth
-		InstanceMorphValue.W = QuadtreeNode.GetNodeDepth();
-
-		InstancePositionData.Add(InstancePositionValue);
-		InstanceMorphData.Add(InstanceMorphValue);
-	}
-	/** instance position data */
-	void* RawInstancePositionData = RHILockBuffer(
-		InstancePositionBuffer_GPU.VertexBufferRHI, 0,
-		InstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
-	RHIUnlockBuffer(InstancePositionBuffer_GPU.VertexBufferRHI);
-
-	/** instance morph data */
-	void* RawInstanceMorphData = RHILockBuffer(
-		InstanceMorphBuffer_GPU.VertexBufferRHI, 0,
-		InstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstanceMorphData, InstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
-	RHIUnlockBuffer(InstanceMorphBuffer_GPU.VertexBufferRHI);
-}
-
-
-FXkSphericalLandscapeWithWaterSceneProxy::FXkSphericalLandscapeWithWaterSceneProxy(const UXkSphericalLandscapeWithWaterComponent* InComponent, const FName ResourceName, FMaterialRenderProxy* InMaterialRenderProxy, FMaterialRenderProxy* InMaterialWaterRenderProxy)
-	:FXkSphericalLandscapeSceneProxy(InComponent, ResourceName, InMaterialRenderProxy),
-	MaterialWaterRelevance(InComponent->GetMaterialWaterRelevance(GetScene().GetFeatureLevel()))
-{
-	MaterialWaterRenderProxy = InMaterialWaterRenderProxy;
-}
-
-
-FXkSphericalLandscapeWithWaterSceneProxy::~FXkSphericalLandscapeWithWaterSceneProxy()
-{
-}
-
-
-void FXkSphericalLandscapeWithWaterSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const
-{
-	TRACE_CPUPROFILER_EVENT_SCOPE(FXkSphericalLandscapeWithWaterSceneProxy::GetDynamicMeshElements);
-
-	check(IsInRenderingThread());
-
-	FXkSphericalLandscapeSceneProxy::GetDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector);
-
-	// Set up wire frame material (if needed)
-	const bool bWireframe = AllowDebugViewmodes() && (ViewFamily.EngineShowFlags.Wireframe);
-	FColoredMaterialRenderProxy* WireframeMaterialInstance = nullptr;
-	if (bWireframe)
-	{
-		WireframeMaterialInstance = new FColoredMaterialRenderProxy(
-			GEngine->WireframeMaterial ? GEngine->WireframeMaterial->GetRenderProxy() : NULL, FColor::Cyan);
-		Collector.RegisterOneFrameMaterialProxy(WireframeMaterialInstance);
-	}
-
-	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
-	{
-		const FSceneView& View = *Views[ViewIndex];
-
-		int32 NunInst = Quadtree.GetVisibleNodes().Num();
-		if (NunInst > 0)
-		{
-			// Draw the far mesh.
-			FMeshBatch& Mesh = Collector.AllocateMesh();
-			Mesh.bWireframe = bWireframe;
-			Mesh.bUseForMaterial = true;
-			Mesh.bUseWireframeSelectionColoring = IsSelected();
-			Mesh.VertexFactory = VertexFactory;
-			Mesh.MaterialRenderProxy = (WireframeMaterialInstance != nullptr) ? WireframeMaterialInstance : MaterialWaterRenderProxy;
-			Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
-			Mesh.Type = PT_TriangleList;
-			Mesh.DepthPriorityGroup = SDPG_World;
-			Mesh.bCanApplyViewModeOverrides = false;
-
-			FMeshBatchElement& BatchElement = Mesh.Elements[0];
-			BatchElement.NumInstances = NunInst;
-			BatchElement.IndexBuffer = &IndexBuffer_GPU;
-
-			// We need the uniform buffer of this primitive because it stores the proper value for the bOutputVelocity flag.
-			// The identity primitive uniform buffer simply stores false for this flag which leads to missing motion vectors.
-			BatchElement.PrimitiveUniformBuffer = GetUniformBuffer();
-
-			BatchElement.FirstIndex = 0;
-			BatchElement.NumPrimitives = IndexBuffer_GPU.IndexBufferRHI->GetSize() / (3 * sizeof(uint32));
-			BatchElement.MinVertexIndex = 0;
-			BatchElement.MaxVertexIndex = VertexPositionBuffer_GPU.VertexBufferRHI->GetSize() - 1;
-
-			TRACE_CPUPROFILER_EVENT_SCOPE(Collector.AddMesh);
-			Collector.AddMesh(ViewIndex, Mesh);
-		}
-	}
-}
-
-
-FPrimitiveViewRelevance FXkSphericalLandscapeWithWaterSceneProxy::GetViewRelevance(const FSceneView* View) const
-{
-	FPrimitiveViewRelevance Result;
-	Result = Super::GetViewRelevance(View);
-	Result.bDrawRelevance = IsShown(View);
-	Result.bShadowRelevance = false;
-	Result.bDynamicRelevance = true;
-	Result.bStaticRelevance = false;
-	Result.bRenderInMainPass = ShouldRenderInMainPass();
-	Result.bUsesLightingChannels = GetLightingChannelMask() != GetDefaultLightingChannelMask();
-	Result.bRenderCustomDepth = ShouldRenderCustomDepth();
-	Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
-	MaterialWaterRelevance.SetPrimitiveViewRelevance(Result);
-	Result.bVelocityRelevance = DrawsVelocity() && Result.bOpaque && Result.bRenderInMainPass;
-	return Result;
-}
-
-
-void FXkSphericalLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
-{
-	Super::UpdateInstanceBuffer(InFrameTag);
+	FXkLandscapeWithWaterSceneProxy::GetDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector);
 }
