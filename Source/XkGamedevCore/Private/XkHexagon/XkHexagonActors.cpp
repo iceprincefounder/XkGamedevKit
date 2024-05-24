@@ -1,4 +1,4 @@
-﻿// Copyright ©xukai. All Rights Reserved.
+﻿// Copyright ©XUKAI. All Rights Reserved.
 
 #include "XkHexagon/XkHexagonActors.h"
 #include "XkHexagon/XkHexagonPathfinding.h"
@@ -15,21 +15,21 @@ static const TArray<FLinearColor> GXkHexagonColor = {
 	FLinearColor(0.15, 0.1, 0.0)
 };
 
-
 AXkHexagonActor::AXkHexagonActor()
 {
 	ProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProcMesh"));
-	ProcMesh->SetCollisionProfileName(FName(TEXT("IgnoreOnlyPawn")));
+	ProcMesh->SetCollisionProfileName(FName(TEXT("BlockAll")));
 	ProcMesh->SetCastShadow(false);
-	ProcMesh->SetupAttachment(RootComponent);
+	SetRootComponent(ProcMesh);
 
 	Radius = 100.0;
+	Height = 10.0;
+	GapWidth = 0.0;
 	BaseInnerGap = 5.0;
+	BaseOuterGap = 0.0;
 	EdgeInnerGap = 9.0;
 	EdgeOuterGap = 1.0;
-	Height = 10.0;
-	bShowBaseMesh = true;
-	bShowEdgeMesh = true;
+
 	BaseColor = FLinearColor::White;
 	EdgeColor = FLinearColor::White;
 }
@@ -59,6 +59,7 @@ void AXkHexagonActor::SnapToLandscape()
 	}
 }
 
+
 void AXkHexagonActor::ConstructionScripts()
 {
 	UpdateMaterial();
@@ -66,12 +67,36 @@ void AXkHexagonActor::ConstructionScripts()
 	UpdateProcMesh();
 }
 
+
 void AXkHexagonActor::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
 	ConstructionScripts();
 }
+
+
+#if WITH_EDITOR
+void AXkHexagonActor::PostEditMove(bool bFinished)
+{
+	Super::PostEditMove(bFinished);
+
+	FVector Location = GetActorLocation();
+	if (bFinished && CachedHexagonalWorld.IsValid())
+	{	
+		HexagonNode = CachedHexagonalWorld->GetHexagonNodeByLocation(Location);
+		if (HexagonNode)
+		{
+			FVector4f Position = HexagonNode->Position;
+			FVector NewLocation = FVector(Position.X, Position.Y, Location.Z);
+			HexagonNode->Position = FVector4f(NewLocation.X, NewLocation.Y, NewLocation.Z, 1.0f);
+			SetActorLocation(NewLocation, true);
+			CachedHexagonalWorld->UpdateHexagonalWorld();
+		}
+	}
+}
+#endif
+
 
 bool AXkHexagonActor::IsAccessible() const
 {
@@ -84,22 +109,10 @@ int32 AXkHexagonActor::CalcCostOffset() const
 	return (HexagonType == EXkHexagonType::Road) ? -1 : 0;
 }
 
-void AXkHexagonActor::SetBaseColor(const FLinearColor& Input)
-{ 
-	BaseColor = Input; 
-	UpdateMaterial();
-}
-
-void AXkHexagonActor::SetEdgeColor(const FLinearColor& Input)
-{
-	EdgeColor = Input;
-	UpdateMaterial();
-}
-
 
 void AXkHexagonActor::SetHexagonWorld(class AXkHexagonalWorldActor* Input)
-{ 
-	CachedHexagonalWorld = MakeWeakObjectPtr<AXkHexagonalWorldActor>(Input); 
+{
+	CachedHexagonalWorld = MakeWeakObjectPtr<AXkHexagonalWorldActor>(Input);
 }
 
 
@@ -153,6 +166,7 @@ void AXkHexagonActor::OnEdgeHighlight(bool bHighlight, const FLinearColor& Highl
 	{
 		bCachedEdgeHighlight = bHighlight;
 		CachedEdgeHighlightColor = HighlightColor;
+		AXkHexagonActor::OnEdgeHighlight(bHighlight, HighlightColor);
 		EdgeMID->SetVectorParameterValue(FName("Color"), bHighlight ? HighlightColor : EdgeColor);
 		ProcMesh->SetMeshSectionVisible(EDGE_SECTION_INDEX, bHighlight ? true : bShowEdgeMesh);
 	}
@@ -189,172 +203,22 @@ void AXkHexagonActor::UpdateMaterial()
 
 void AXkHexagonActor::UpdateProcMesh()
 {
-	TArray<FVector> VerticesTopArray;
-	TArray<FVector> VerticesBtmArray;
-	{
-		TArray<FVector> VerticesArray;
-		TArray<int32> TrianglesArray;
-		TArray<FVector> NormalsArray;
-		TArray<FProcMeshTangent> TangentsArray;
-		TArray<FColor> VertexColorsArray;
+	TArray<FVector> BaseVertices;
+	TArray<int32> BaseIndices;
 
-		//	x
-		//	|   1
-		//	| 2/ \6
-		//	| | 0 |
-		//	| 3\ /5
-		//	|   4
-		//	---------y
+	TArray<FVector> EdgeVertices;
+	TArray<int32> EdgeIndices;
 
-		VerticesArray.Add(FVector(0.0, 0.0, Height));
-		VerticesTopArray.Empty();
-		VerticesTopArray.Add(FVector((Radius - BaseInnerGap), 0.0, Height));
-		VerticesTopArray.Add(FVector((Radius - BaseInnerGap) * XkSin30, -XkCos30 * (Radius - BaseInnerGap), Height));
-		VerticesTopArray.Add(FVector(-(Radius - BaseInnerGap) * XkSin30, -XkCos30 * (Radius - BaseInnerGap), Height));
-		VerticesTopArray.Add(FVector(-(Radius - BaseInnerGap), 0.0, Height));
-		VerticesTopArray.Add(FVector(-(Radius - BaseInnerGap) * XkSin30, XkCos30 * (Radius - BaseInnerGap), Height));
-		VerticesTopArray.Add(FVector((Radius - BaseInnerGap) * XkSin30, XkCos30 * (Radius - BaseInnerGap), Height));
-		for (const FVector& Vert : VerticesTopArray)
-		{
-			VerticesArray.Add(Vert);
-		}
-		TrianglesArray = { 0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0 , 5, 6, 0, 6, 1 };
-		VerticesBtmArray.Empty();
-		VerticesBtmArray.Add(FVector(Radius, 0.0, 0.0));
-		VerticesBtmArray.Add(FVector(Radius * XkSin30, -XkCos30 * Radius, 0.0));
-		VerticesBtmArray.Add(FVector(-Radius * XkSin30, -XkCos30 * Radius, 0.0));
-		VerticesBtmArray.Add(FVector(-Radius, 0.0, 0.0));
-		VerticesBtmArray.Add(FVector(-Radius * XkSin30, XkCos30 * Radius, 0.0));
-		VerticesBtmArray.Add(FVector(Radius * XkSin30, XkCos30 * Radius, 0.0));
-		for (int32 i = 0; i < VerticesTopArray.Num(); i++)
-		{
-			int32 IndexTopA = (i + 1) % VerticesTopArray.Num();
-			int32 IndexTopB = (i + 1 + 1) % VerticesTopArray.Num();
-			int32 IndexBtmA = (i + 1) % VerticesTopArray.Num();
-			int32 IndexBtmB = (i + 1 + 1) % VerticesTopArray.Num();
+	BuildHexagon(BaseVertices, BaseIndices, EdgeVertices, EdgeIndices, Radius, Height, BaseInnerGap, BaseOuterGap, EdgeInnerGap, EdgeOuterGap);
 
-			FVector VertTopA = VerticesTopArray[IndexTopA];
-			FVector VertTopB = VerticesTopArray[IndexTopB];
-			FVector VertBtmA = VerticesBtmArray[IndexBtmA];
-			FVector VertBtmB = VerticesBtmArray[IndexBtmB];
+	ProcMesh->CreateMeshSection(BASE_SECTION_INDEX, BaseVertices, BaseIndices, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>(), true);
+	ProcMesh->SetMeshSectionVisible(BASE_SECTION_INDEX, bShowBaseMesh);
+	ProcMesh->SetMaterial(BASE_SECTION_INDEX, BaseMID);
+	ProcMesh->Bounds = FBoxSphereBounds(BaseVertices, BaseVertices.Num());
 
-			int32 CurrIndex = VerticesArray.Num();
-			VerticesArray.Add(VertTopA);
-			VerticesArray.Add(VertTopB);
-			VerticesArray.Add(VertBtmA);
-			VerticesArray.Add(VertBtmB);
-
-			TrianglesArray.Add(CurrIndex);
-			TrianglesArray.Add(CurrIndex + 2);
-			TrianglesArray.Add(CurrIndex + 1);
-			TrianglesArray.Add(CurrIndex + 1);
-			TrianglesArray.Add(CurrIndex + 2);
-			TrianglesArray.Add(CurrIndex + 3);
-		}
-		//TrianglesArray = {0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0 , 5, 6, 0, 6, 1,
-		//1, 7, 2, 2, 7, 8, 2, 8, 3, 3, 8, 9, 3, 9, 4, 4, 9, 10, 4, 10, 5, 5, 10, 11, 5, 11, 6, 6, 11, 12};
-
-		NormalsArray.Init(FVector::ZeroVector, VerticesArray.Num());
-		TangentsArray.Init(FProcMeshTangent(0.0f, 0.0f, 0.0f), VerticesArray.Num());
-		for (int32 i = 0; i < TrianglesArray.Num() / 3; i++)
-		{
-			int32 I0 = TrianglesArray[i * 3];
-			FVector P0 = VerticesArray[I0];
-			int32 I1 = TrianglesArray[i * 3 + 1];
-			FVector P1 = VerticesArray[I1];
-			int32 I2 = TrianglesArray[i * 3 + 2];
-			FVector P2 = VerticesArray[I2];
-			FVector N = -FVector::CrossProduct(P1 - P0, P2 - P1).GetSafeNormal();
-			FVector T = (P1 - P0).GetUnsafeNormal();
-			NormalsArray[I0] += N;
-			NormalsArray[I1] += N;
-			NormalsArray[I2] += N;
-			TangentsArray[I0].TangentX += T;
-			TangentsArray[I1].TangentX += T;
-			TangentsArray[I2].TangentX += T;
-		}
-		ProcMesh->CreateMeshSection(BASE_SECTION_INDEX, VerticesArray, TrianglesArray, NormalsArray, TArray<FVector2D>(), TArray<FColor>(), TangentsArray, true);
-		ProcMesh->SetMeshSectionVisible(BASE_SECTION_INDEX, bShowBaseMesh);
-		ProcMesh->SetMaterial(BASE_SECTION_INDEX, BaseMID);
-		ProcMesh->Bounds = FBoxSphereBounds(VerticesArray, VerticesArray.Num());
-	}
-
-	{
-		// XkHexagon Edge ->|-----------|------------|-------------|----------> XkHexagon Center
-		//		    BaseOuterGap EdgeOuterGap EdgeInnerGap BaseInnerGap
-		float EdgeHeight = Height + 1; // Fix Z-fighting
-		VerticesTopArray.Empty();
-		VerticesTopArray.Add(FVector((Radius - EdgeInnerGap), 0.0, EdgeHeight));
-		VerticesTopArray.Add(FVector((Radius - EdgeInnerGap) * XkSin30, -XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
-		VerticesTopArray.Add(FVector(-(Radius - EdgeInnerGap) * XkSin30, -XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
-		VerticesTopArray.Add(FVector(-(Radius - EdgeInnerGap), 0.0, EdgeHeight));
-		VerticesTopArray.Add(FVector(-(Radius - EdgeInnerGap) * XkSin30, XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
-		VerticesTopArray.Add(FVector((Radius - EdgeInnerGap) * XkSin30, XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
-		VerticesBtmArray.Empty();
-		VerticesBtmArray.Add(FVector(Radius - EdgeOuterGap, 0.0, EdgeHeight));
-		VerticesBtmArray.Add(FVector((Radius - EdgeOuterGap) * XkSin30, -XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
-		VerticesBtmArray.Add(FVector(-(Radius - EdgeOuterGap) * XkSin30, -XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
-		VerticesBtmArray.Add(FVector(-(Radius - EdgeOuterGap), 0.0, EdgeHeight));
-		VerticesBtmArray.Add(FVector(-(Radius - EdgeOuterGap) * XkSin30, XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
-		VerticesBtmArray.Add(FVector((Radius - EdgeOuterGap)* XkSin30, XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
-
-		TArray<FVector> VerticesArray;
-		TArray<int32> TrianglesArray;
-		TArray<FVector> NormalsArray;
-		TArray<FProcMeshTangent> TangentsArray;
-		TArray<FColor> VertexColorsArray;
-
-		for (int32 i = 0; i < VerticesTopArray.Num(); i++)
-		{
-			int32 IndexTopA = (i + 1) % VerticesTopArray.Num();
-			int32 IndexTopB = (i + 1 + 1) % VerticesTopArray.Num();
-			int32 IndexBtmA = (i + 1) % VerticesTopArray.Num();
-			int32 IndexBtmB = (i + 1 + 1) % VerticesTopArray.Num();
-
-			FVector VertTopA = VerticesTopArray[IndexTopA];
-			FVector VertTopB = VerticesTopArray[IndexTopB];
-			FVector VertBtmA = VerticesBtmArray[IndexBtmA];
-			VertBtmA.Z = VertTopA.Z;
-			FVector VertBtmB = VerticesBtmArray[IndexBtmB];
-			VertBtmB.Z = VertTopB.Z;
-
-			int32 CurrIndex = VerticesArray.Num();
-			VerticesArray.Add(VertTopA);
-			VerticesArray.Add(VertTopB);
-			VerticesArray.Add(VertBtmA);
-			VerticesArray.Add(VertBtmB);
-
-			TrianglesArray.Add(CurrIndex);
-			TrianglesArray.Add(CurrIndex + 2);
-			TrianglesArray.Add(CurrIndex + 1);
-			TrianglesArray.Add(CurrIndex + 1);
-			TrianglesArray.Add(CurrIndex + 2);
-			TrianglesArray.Add(CurrIndex + 3);
-		}
-
-		NormalsArray.Init(FVector::ZeroVector, VerticesArray.Num());
-		TangentsArray.Init(FProcMeshTangent(0.0f, 0.0f, 0.0f), VerticesArray.Num());
-		for (int32 i = 0; i < TrianglesArray.Num() / 3; i++)
-		{
-			int32 I0 = TrianglesArray[i * 3];
-			FVector P0 = VerticesArray[I0];
-			int32 I1 = TrianglesArray[i * 3 + 1];
-			FVector P1 = VerticesArray[I1];
-			int32 I2 = TrianglesArray[i * 3 + 2];
-			FVector P2 = VerticesArray[I2];
-			FVector N = -FVector::CrossProduct(P1 - P0, P2 - P1).GetSafeNormal();
-			FVector T = (P1 - P0).GetUnsafeNormal();
-			NormalsArray[I0] += N;
-			NormalsArray[I1] += N;
-			NormalsArray[I2] += N;
-			TangentsArray[I0].TangentX += T;
-			TangentsArray[I1].TangentX += T;
-			TangentsArray[I2].TangentX += T;
-		}
-		ProcMesh->CreateMeshSection(EDGE_SECTION_INDEX, VerticesArray, TrianglesArray, NormalsArray, TArray<FVector2D>(), TArray<FColor>(), TangentsArray, true);
-		ProcMesh->SetMeshSectionVisible(EDGE_SECTION_INDEX, bShowEdgeMesh);
-		ProcMesh->SetMaterial(EDGE_SECTION_INDEX, EdgeMID);
-	}
+	ProcMesh->CreateMeshSection(EDGE_SECTION_INDEX, EdgeVertices, EdgeIndices, TArray<FVector>(), TArray<FVector2D>(), TArray<FColor>(), TArray<FProcMeshTangent>(), true);
+	ProcMesh->SetMeshSectionVisible(EDGE_SECTION_INDEX, bShowEdgeMesh);
+	ProcMesh->SetMaterial(EDGE_SECTION_INDEX, EdgeMID);
 }
 
 
@@ -364,32 +228,48 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 	SceneRoot = CreateDefaultSubobject<UXkHexagonArrowComponent>(TEXT("SceneRoot"));
 	RootComponent = SceneRoot;
 
+	HexagonalWorldComponent = CreateDefaultSubobject<UXkHexagonalWorldComponent>(TEXT("HexagonalWorld"));
+	HexagonalWorldComponent->SetupAttachment(RootComponent);
+
 	UObject* BaseMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonBase"));
 	BaseMaterial = CastChecked<UMaterialInterface>(BaseMaterialObject);
 	UObject* EdgeMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonEdge"));
 	EdgeMaterial = CastChecked<UMaterialInterface>(EdgeMaterialObject);
 
 	Radius = 100.0;
-	BaseInnerGap = 5.0;
-	//////////////////////////////////////////
-	// EdgeWidth = EdgeInnerGap - EdgeOuterGap
-	EdgeInnerGap = 9.0;
-	EdgeOuterGap = 1.0;
 	Height = 10.0;
 	GapWidth = 0.0;
+	BaseInnerGap = 5.0;
+	BaseOuterGap = 0.0;
+	EdgeInnerGap = 9.0;
+	EdgeOuterGap = 1.0;
+
+	bSpawnActors = false;
+	SpawnActorsMaxMhtDist = 10;
 	XAxisCount = 10;
 	YAxisCount = 10;
-	bShowBaseMesh = false;
-	bShowEdgeMesh = true;
+	MaxManhattanDistance = 10;
+	bShowHexagonActorsBaseMesh = false;
+	bShowHexagonActorsBaseMesh = true;
+	bShowHexagonalWorldBaseMesh = false;
+	bShowHexagonalWorldEdgeMesh = true;
 	BaseColor = FLinearColor::White;
 	EdgeColor = FLinearColor::White;
 	EdgeColor.A = 0.25f;
 	PathfindingMaxStep = 9999;
 	BacktrackingMaxStep = 9999;
+
+	GeneratingMaxStep = 9999;
+	CenterFieldRange = 1;
+	PositionRandom = FVector2D(0.0, 0.0);
+	PositionScale = 1.0;
+	FalloffCenter = FVector2D::ZeroVector;
+	FalloffExtent = FVector2D(3000.0);
+	FalloffCornerRadii = 1500.0;
 }
 
 
-void AXkHexagonalWorldActor::Generate()
+void AXkHexagonalWorldActor::GenerateHexagons()
 {
 	if (!ensure(GetWorld()))
 	{
@@ -401,40 +281,288 @@ void AXkHexagonalWorldActor::Generate()
 		AXkHexagonActor* HexagonActor = *It;
 		HexagonActor->Destroy();
 	}
+
+	HexagonalWorldComponent->HexagonalWorldNodes.Empty();
 	for (int32 X = -XAxisCount; X < (XAxisCount + 1); X++)
 	{
 		for (int32 Y = -YAxisCount; Y < (YAxisCount + 1); Y++)
 		{
-			float Dist = Radius + GapWidth;
+			float Dist = HexagonalWorldComponent->Radius + HexagonalWorldComponent->GapWidth;
 			FVector2D Pos = FXkHexagonAStarPathfinding::CalcHexagonPosition(X, Y, Dist);
 			//////////////////////////////////////////////////////////////
 			// calculate XkHexagon coordinate
-			 FIntVector HexagonCoord = FXkHexagonAStarPathfinding::CalcHexagonCoord(Pos.X, Pos.Y, Dist);
-			//////////////////////////////////////////////////////////////
+			FIntVector HexagonCoord = FXkHexagonAStarPathfinding::CalcHexagonCoord(Pos.X, Pos.Y, Dist);
+			int32 ManhattanDistanceToCenter = FXkHexagonAStarPathfinding::CalcManhattanDistance(HexagonCoord, FIntVector(0, 0, 0));
+			if (ManhattanDistanceToCenter > MaxManhattanDistance)
+			{
+				continue;
+			}
 			FVector Location = FVector(Pos.X, Pos.Y, 0.0);
-			FActorSpawnParameters ActorSpawnParameters;
-			AXkHexagonActor* HexagonActor = GetWorld()->SpawnActor<AXkHexagonActor>(AXkHexagonActor::StaticClass(), Location, FRotator(0.0), ActorSpawnParameters);
-			HexagonActor->SetRadius(Radius);
-			HexagonActor->SetBaseInnerGap(BaseInnerGap);
-			HexagonActor->SetEdgeInnerGap(EdgeInnerGap);
-			HexagonActor->SetEdgeOuterGap(EdgeOuterGap);
-			HexagonActor->SetHeight(Height);
-			HexagonActor->SetCoord(HexagonCoord);
-			HexagonActor->SetShowBaseMesh(bShowBaseMesh);
-			HexagonActor->SetShowEdgeMesh(bShowEdgeMesh);
-			HexagonActor->SetBaseColor(BaseColor);
-			HexagonActor->SetEdgeColor(EdgeColor);
-			HexagonActor->SetHexagonWorld(this);
-			FString CoordString = FString::Printf(
-				TEXT("HexagonActor(%i, %i, %i)"), HexagonCoord.X, HexagonCoord.Y, HexagonCoord.Z);
+			FVector4f Position = FVector4f(Pos.X, Pos.Y, 0.0, 1.0);
+
+			FXkHexagonNode HexagonNode = FXkHexagonNode(Position, FLinearColor::White, 0, HexagonCoord);
+			HexagonalWorldComponent->HexagonalWorldNodes.Add(HexagonCoord, HexagonNode);
+			if (bSpawnActors && ManhattanDistanceToCenter < SpawnActorsMaxMhtDist)
+			{
+				FActorSpawnParameters ActorSpawnParameters;
+				AXkHexagonActor* HexagonActor = GetWorld()->SpawnActor<AXkHexagonActor>(AXkHexagonActor::StaticClass(), Location, FRotator(0.0), ActorSpawnParameters);
+				HexagonActor->SetRadius(Radius);
+				HexagonActor->SetHeight(Height);
+				HexagonActor->SetGapWidth(GapWidth);
+				HexagonActor->SetBaseInnerGap(BaseInnerGap);
+				HexagonActor->SetBaseOuterGap(BaseOuterGap);
+				HexagonActor->SetEdgeInnerGap(EdgeInnerGap);
+				HexagonActor->SetEdgeOuterGap(EdgeOuterGap);
+				HexagonActor->SetShowBaseMesh(bShowHexagonActorsBaseMesh);
+				HexagonActor->SetShowEdgeMesh(bShowHexagonActorsEdgeMesh);
+				HexagonActor->SetBaseColor(BaseColor);
+				HexagonActor->SetEdgeColor(EdgeColor);
+				HexagonActor->SetCoord(HexagonCoord);
+				HexagonActor->SetHexagonWorld(this);
 #if WITH_EDITOR
-			HexagonActor->SetActorLabel(CoordString);
+				FString CoordString = FString::Printf(
+					TEXT("HexagonActor(%i, %i, %i)"), HexagonCoord.X, HexagonCoord.Y, HexagonCoord.Z);
+				HexagonActor->SetActorLabel(CoordString);
 #endif
-			HexagonActor->ConstructionScripts();
-			HexagonActor->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+				HexagonActor->ConstructionScripts();
+				HexagonActor->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+			}
 		}
 	}
 	HexagonAStarPathfinding.Init(GetWorld());
+}
+
+
+void AXkHexagonalWorldActor::GenerateNoise()
+{
+	auto RectangleFalloff = [](FVector2D Position, FVector2D Center, FVector2D Extent, float Radius, float CornerRadii) -> float
+	{
+		FVector2D SafeExtent = Extent - FVector2D(CornerRadii);
+		FVector2D FalloffCenter = FVector2D(Extent.X - CornerRadii, Extent.Y - CornerRadii);
+
+		if (FMath::Abs(Position.X) < Extent.X && FMath::Abs(Position.Y) < Extent.Y)
+		{
+			if (FMath::Abs(Position.X) < SafeExtent.X || FMath::Abs(Position.Y) < SafeExtent.Y)
+			{
+				return 1.0;
+			}
+			float Y = FMath::Sqrt(FMath::Square(CornerRadii) - FMath::Square(FMath::Abs(Position.X) - SafeExtent.X)) + SafeExtent.Y;
+			if (FMath::Abs(Position.Y) <= Y)
+			{
+				return 1.0;
+			}
+		}
+		return 0.0;
+	};
+
+	auto NotInsideNumber = [](const TArray<FIntVector>& AllNodes, const TArray<FIntVector>& CheckNodes) -> int32
+	{
+		int32 Result = 0;
+		for (const FIntVector& CheckNode : CheckNodes)
+		{
+			if (!AllNodes.Contains(CheckNode))
+			{
+				Result++;
+			}
+		}
+		return Result;
+	};
+
+	if (!GetWorld())
+	{
+		return;
+	}
+
+	TMap<FIntVector, FXkHexagonNode>& HexagonalWorldNodes = HexagonalWorldComponent->HexagonalWorldNodes;
+	uint32 CurrentGeneratingStep = 0;
+
+	TArray<FIntVector> AllNodes;
+	HexagonalWorldNodes.GenerateKeyArray(AllNodes);
+
+	TArray<FIntVector> AllLandNodes;
+	TArray<FIntVector> TempLandNodes;
+
+	TArray<FIntVector> BeachNodes;
+
+	FVector2D RandomOffset = FVector2D(FMath::RandRange(PositionRandom.X, PositionRandom.Y), FMath::RandRange(PositionRandom.X, PositionRandom.Y));
+	for (const FIntVector& NodeCoord : AllNodes)
+	{
+		FXkHexagonNode& Node = HexagonalWorldNodes[NodeCoord];
+		Node.Color = FLinearColor::Black;
+		FVector4f Position = Node.Position;
+
+		FVector Location = FVector(Position.X, Position.Y, Position.Z);
+
+		if (FXkHexagonAStarPathfinding::CalcManhattanDistance(FIntVector(0, 0, 0), NodeCoord) < (int32)(CenterFieldRange))
+		{
+			AllLandNodes.Add(NodeCoord);
+			continue;
+		}
+		FVector2D RandomLocation = (FVector2D(Location.X, Location.Y) + RandomOffset) * PositionScale;
+		// noise range of - 1.0 to 1.0
+		float Noise = FMath::PerlinNoise2D(RandomLocation);
+		FVector2D FalloffLocation = FVector2D(Location.X, Location.Y);
+		Noise = FMath::CeilToFloat(Noise);
+		float Falloff = RectangleFalloff(FalloffLocation, FalloffCenter, FalloffExtent, FalloffRadius, FalloffCornerRadii);
+
+		if (Noise * Falloff)
+		{
+			AllLandNodes.Add(NodeCoord);
+		}
+	}
+
+	// 1. fill thin land
+	if (CurrentGeneratingStep < GeneratingMaxStep)
+	{
+		for (FIntVector NodeCoord : AllLandNodes)
+		{
+			TArray<FIntVector> NeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NodeCoord);
+			if (NotInsideNumber(AllLandNodes, NeighborNodeCoords) > 3)
+			{
+				for (const FIntVector& NeighborNodeCoord : NeighborNodeCoords)
+				{
+					if (!HexagonalWorldNodes.Contains(NeighborNodeCoord))
+					{
+						continue;
+					}
+					FXkHexagonNode& Node = HexagonalWorldNodes[NeighborNodeCoord];
+					TempLandNodes.AddUnique(NeighborNodeCoord);
+				}
+			}
+			else
+			{
+				TempLandNodes.AddUnique(NodeCoord);
+			}
+		}
+		AllLandNodes = TempLandNodes;
+		TempLandNodes.Empty();
+		CurrentGeneratingStep++;
+	}
+
+
+	if (CurrentGeneratingStep < GeneratingMaxStep)
+	{
+		// 2. noise the border
+		for (FIntVector NodeCoord : AllLandNodes)
+		{
+			TempLandNodes.AddUnique(NodeCoord);
+			TArray<FIntVector> NeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NodeCoord);
+			if (NotInsideNumber(AllLandNodes, NeighborNodeCoords) > 0)
+			{
+				for (const FIntVector& NeighborNodeCoord : NeighborNodeCoords)
+				{
+					if (!HexagonalWorldNodes.Contains(NeighborNodeCoord))
+					{
+						continue;
+					}
+					FXkHexagonNode& Node = HexagonalWorldNodes[NeighborNodeCoord];
+					FVector4f Position = Node.Position;
+					FVector2D RandomLocation = (FVector2D(Position.X, Position.Y) + RandomOffset);
+					float Noise = FMath::PerlinNoise2D(RandomLocation);
+					Noise = FMath::CeilToFloat(Noise);
+					if (Noise)
+					{
+						TempLandNodes.AddUnique(NeighborNodeCoord);
+					}
+				}
+			}
+		}
+		AllLandNodes = TempLandNodes;
+		TempLandNodes.Empty();
+		CurrentGeneratingStep++;
+	}
+
+
+	if (CurrentGeneratingStep < GeneratingMaxStep)
+	{
+		// 3. find the beach
+		for (FIntVector NodeCoord : AllLandNodes)
+		{
+			TempLandNodes.Add(NodeCoord);
+			TArray<FIntVector> NeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NodeCoord);
+			if (NotInsideNumber(AllLandNodes, NeighborNodeCoords) != 6)
+			{
+				for (const FIntVector& NeighborNodeCoord : NeighborNodeCoords)
+				{
+					if (!AllLandNodes.Contains(NeighborNodeCoord))
+					{
+						if (!HexagonalWorldNodes.Contains(NeighborNodeCoord))
+						{
+							continue;
+						}
+						FXkHexagonNode& Node = HexagonalWorldNodes[NeighborNodeCoord];
+						TArray<FIntVector> NeighborsNeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NeighborNodeCoord);
+
+						TempLandNodes.Add(NeighborNodeCoord);
+						if (NotInsideNumber(AllLandNodes, NeighborsNeighborNodeCoords) != 0)
+						{
+							BeachNodes.Add(NeighborNodeCoord);
+						}
+					}
+				}
+			}
+		}
+		AllLandNodes = TempLandNodes;
+		TempLandNodes.Empty();
+		CurrentGeneratingStep++;
+	}
+
+
+	// 4. noise the beach
+	if (CurrentGeneratingStep < GeneratingMaxStep)
+	{
+		for (FIntVector NodeCoord : BeachNodes)
+		{
+			TempLandNodes.AddUnique(NodeCoord);
+			TArray<FIntVector> NeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NodeCoord);
+			if (NotInsideNumber(AllLandNodes, NeighborNodeCoords) > 0)
+			{
+				for (const FIntVector& NeighborNodeCoord : NeighborNodeCoords)
+				{
+					if (!HexagonalWorldNodes.Contains(NeighborNodeCoord))
+					{
+						continue;
+					}
+					FXkHexagonNode& Node = HexagonalWorldNodes[NeighborNodeCoord];
+					FVector4f Position = Node.Position;
+					FVector2D RandomLocation = (FVector2D(Position.X, Position.Y) + RandomOffset);
+					float Noise = FMath::PerlinNoise2D(RandomLocation);
+					Noise = FMath::CeilToFloat(Noise);
+					if (Noise)
+					{
+						TempLandNodes.AddUnique(NeighborNodeCoord);
+						AllLandNodes.AddUnique(NeighborNodeCoord);
+					}
+				}
+			}
+		}
+		BeachNodes = TempLandNodes;
+		TempLandNodes.Empty();
+		CurrentGeneratingStep++;
+	}
+
+
+	// visualize nodes
+	for (const FIntVector& NodeCoord : AllLandNodes)
+	{
+		if (!HexagonalWorldNodes.Contains(NodeCoord))
+		{
+			continue;
+		}
+		FXkHexagonNode& Node = HexagonalWorldNodes[NodeCoord];
+		Node.Position.Z = (100.0);
+		Node.Color = FLinearColor::White;
+	}
+	for (const FIntVector& NodeCoord : BeachNodes)
+	{
+		if (!HexagonalWorldNodes.Contains(NodeCoord))
+		{
+			continue;
+		}
+		FXkHexagonNode& Node = HexagonalWorldNodes[NodeCoord];
+		Node.Position.Z = (50.0);
+		Node.Color = FLinearColor::Yellow;
+	}
 }
 
 
@@ -515,9 +643,22 @@ void AXkHexagonalWorldActor::BeginPlay()
 void AXkHexagonalWorldActor::OnConstruction(const FTransform& Transform)
 {
 #if WITH_EDITOR
+	float Distance = Radius + GapWidth;
 	SceneRoot->ArrowZOffset = Height;
 	SceneRoot->ArrowMarkStep = Radius;
-	SceneRoot->SetArrowLength(XAxisCount * Radius * 1.5 * 2.0);
+	SceneRoot->SetArrowLength(MaxManhattanDistance * Distance * 1.5);
+
+	HexagonalWorldComponent->Radius = Radius;
+	HexagonalWorldComponent->GapWidth = GapWidth;
+	HexagonalWorldComponent->BaseInnerGap = BaseInnerGap;
+	HexagonalWorldComponent->BaseOuterGap = BaseOuterGap;
+	HexagonalWorldComponent->EdgeInnerGap = EdgeInnerGap;
+	HexagonalWorldComponent->EdgeOuterGap = EdgeOuterGap;
+	HexagonalWorldComponent->MaxManhattanDistance = MaxManhattanDistance;
+	HexagonalWorldComponent->bShowBaseMesh = bShowHexagonalWorldBaseMesh;
+	HexagonalWorldComponent->bShowEdgeMesh = bShowHexagonalWorldEdgeMesh;
+	HexagonalWorldComponent->BaseMaterial = BaseMaterial;
+	HexagonalWorldComponent->EdgeMaterial = EdgeMaterial;
 
 	if (IsValid(HexagonStarter))
 	{
@@ -533,9 +674,8 @@ void AXkHexagonalWorldActor::OnConstruction(const FTransform& Transform)
 		AXkHexagonActor* HexagonActor = *It;
 		if (IsValid(HexagonActor))
 		{
-			HexagonActor->SetHeight(Height);
-			HexagonActor->SetShowBaseMesh(bShowBaseMesh);
-			HexagonActor->SetShowEdgeMesh(bShowEdgeMesh);
+			HexagonActor->SetShowBaseMesh(bShowHexagonActorsBaseMesh);
+			HexagonActor->SetShowEdgeMesh(bShowHexagonActorsEdgeMesh);
 			HexagonActor->SetBaseColor(BaseColor);
 			HexagonActor->SetEdgeColor(EdgeColor);
 			HexagonActor->SetHexagonWorld(this);
@@ -560,6 +700,25 @@ bool AXkHexagonalWorldActor::IsHexagonActorsNeighboring(const AXkHexagonActor* A
 }
 
 
+FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNodeByCoord(const FIntVector& InCoord) const
+{
+	FXkHexagonNode* Result = nullptr;
+	if (HexagonalWorldComponent->HexagonalWorldNodes.Contains(InCoord))
+	{
+		Result = &HexagonalWorldComponent->HexagonalWorldNodes[InCoord];
+	}	
+	return Result;
+}
+
+
+FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNodeByLocation(const FVector& InPosition) const
+{
+	FIntVector InputCoord = HexagonAStarPathfinding.CalcHexagonCoord(
+		InPosition.X, InPosition.Y, (Radius + GapWidth));
+	return GetHexagonNodeByCoord(InputCoord);
+}
+
+
 AXkHexagonActor* AXkHexagonalWorldActor::GetHexagonActorByCoord(const FIntVector& InCoord) const
 {
 	return HexagonAStarPathfinding.FindHexagonActor(InCoord);
@@ -580,6 +739,7 @@ int32 AXkHexagonalWorldActor::GetHexagonManhattanDistance(const FVector& A, cons
 	AXkHexagonActor* HexagonB = GetHexagonActorByLocation(B);
 	return GetHexagonManhattanDistance(HexagonA, HexagonB);
 }
+
 
 int32 AXkHexagonalWorldActor::GetHexagonManhattanDistance(const AXkHexagonActor* A, const AXkHexagonActor* B) const
 {
@@ -683,15 +843,15 @@ AXkHexagonActor* AXkHexagonalWorldActor::GetHexagonActorNearestNeighbor(const AX
 	TArray<AXkHexagonActor*> PendingMovementTargets = GetHexagonActorNeighborsRecursively(TargetActor, BlockList);
 	AXkHexagonActor* Result = nullptr;
 	FIntVector StartPoint = InputActor->GetCoord();
-	int32 MaxManhattanDistance = 9999;
+	int32 MaxDist = 9999;
 	for (AXkHexagonActor* Target : PendingMovementTargets)
 	{
 		FIntVector EndPoint = Target->GetCoord();
 		int32 ManhattanDistance = FXkHexagonAStarPathfinding::CalcManhattanDistance(StartPoint, EndPoint);
-		if (ManhattanDistance < MaxManhattanDistance)
+		if (ManhattanDistance < MaxDist)
 		{
 			Result = Target;
-			MaxManhattanDistance = ManhattanDistance;
+			MaxDist = ManhattanDistance;
 		}
 	}
 	return Result;

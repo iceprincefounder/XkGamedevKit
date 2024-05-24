@@ -1,4 +1,4 @@
-// Copyright ©xukai. All Rights Reserved.
+// Copyright ©XUKAI. All Rights Reserved.
 
 #pragma once
 
@@ -39,15 +39,21 @@ class XKGAMEDEVCORE_API AXkTopDownCamera : public AXkCamera
 	TObjectPtr<UArrowComponent> ArrowComponent;
 #endif
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	bool bCameraInvisibleWall;
 	/** Camera boom positioning the camera above the character */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	FBox2D CameraInvisibleWall;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	bool bCameraRotationLock;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	FVector2D CameraRotationLock;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	float CameraZoomArmLength;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	FVector2D CameraZoomArmRange;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
 	float MaxVelocity;
@@ -79,7 +85,7 @@ public:
 	FORCEINLINE virtual void AddMovement(const FVector& InputValue, const float Speed);
 	FORCEINLINE virtual void AddRotation(const FVector2D& InputValue, const float Speed);
 	FORCEINLINE virtual void ResetRotation();
-	FORCEINLINE virtual void AddCameraZoom(const float InputValue, const FVector2D& Range, const float Speed);
+	FORCEINLINE virtual void AddCameraZoom(const float InputValue, const float Speed);
 	FORCEINLINE virtual void ResetCameraZoom();
 	FORCEINLINE virtual void AddMovementTarget(const FVector& InTarget);
 	FORCEINLINE virtual FRotator GetForwardRotator() const;

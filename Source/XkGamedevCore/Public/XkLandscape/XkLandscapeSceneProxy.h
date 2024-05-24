@@ -1,4 +1,4 @@
-﻿// Copyright ©xukai. All Rights Reserved.
+﻿// Copyright ©XUKAI. All Rights Reserved.
 
 #pragma once
 
@@ -48,6 +48,7 @@ public:
 	FXkQuadtreeSceneProxy* SceneProxy;
 };
 
+
 class FXkQuadtreeSceneProxy : public FPrimitiveSceneProxy
 {
 	friend UXkQuadtreeComponent;
@@ -58,15 +59,16 @@ class FXkQuadtreeSceneProxy : public FPrimitiveSceneProxy
 	{
 		TArray<FVector4f> Vertices;
 		TArray<uint32> Indices;
-	};
+	} PatchData;
 
-	typedef FXkQuadtreeSceneProxy Super;
 public:
 	FXkQuadtreeSceneProxy(
 		const UXkQuadtreeComponent* InComponent, const FName ResourceName = NAME_None,
 		FMaterialRenderProxy* InMaterialRenderProxy = nullptr);
 
 	virtual ~FXkQuadtreeSceneProxy();
+
+	typedef FXkQuadtreeSceneProxy Super;
 
 	//~ Begin FPrimitiveSceneProxy Interface
 	virtual SIZE_T GetTypeHash() const override;
@@ -83,7 +85,7 @@ public:
 	//~ End FPrimitiveSceneProxy Interface
 
 	virtual void GenerateBuffers();
-	virtual void GenerateBuffers_Renderthread(FRHICommandListImmediate& RHICmdList, FPatchData* PatchData);
+	virtual void GenerateBuffers_Renderthread(FRHICommandListImmediate& RHICmdList, FPatchData* InPatchData);
 	virtual void UpdateInstanceBuffer(const int16 InFrameTag);
 
 protected:
@@ -93,14 +95,11 @@ protected:
 	FMaterialRenderProxy* MaterialRenderProxy;
 	FMaterialRelevance MaterialRelevance;
 
-private:
-	FVertexBuffer VertexPositionData_GPU;
+	FVertexBuffer VertexPositionBuffer_GPU;
 	FVertexBuffer InstancePositionBuffer_GPU;
 	FVertexBuffer InstanceMorphBuffer_GPU;
 	FIndexBuffer  IndexBuffer_GPU;
 
-	TArray<FVector4f> PatchPosition;
-	TArray<uint32> PatchIndex;
 	uint8 PatchSize;
 };
 
@@ -116,16 +115,49 @@ public:
 };
 
 
-class FXkWaterBodySceneProxy final : public FXkQuadtreeSceneProxy
+class FXkSphericalLandscapeSceneProxy : public FXkQuadtreeSceneProxy
 {
 public:
-	FXkWaterBodySceneProxy(
+	FXkSphericalLandscapeSceneProxy(
 		const UXkQuadtreeComponent* InComponent, const FName ResourceName = NAME_None,
 		FMaterialRenderProxy* InMaterialRenderProxy = nullptr);
 
-	virtual ~FXkWaterBodySceneProxy();
-private:
-	FStaticMeshVertexBuffers VertexBuffers;
-	FDynamicMeshIndexBuffer32 IndexBuffer;
-	FLocalVertexFactory* FarMeshVertexFactory;
+	virtual ~FXkSphericalLandscapeSceneProxy();
+
+	typedef FXkSphericalLandscapeSceneProxy Super;
+
+	//~ Begin FXkQuadtreeSceneProxy Interface
+	virtual void GetDynamicMeshElements(
+		const TArray<const FSceneView*>& Views,
+		const FSceneViewFamily& ViewFamily,
+		uint32 VisibilityMap,
+		class FMeshElementCollector& Collector) const override;
+
+	virtual void UpdateInstanceBuffer(const int16 InFrameTag) override;
+	//~ End FXkQuadtreeSceneProxy Interface
+};
+
+
+class FXkSphericalLandscapeWithWaterSceneProxy final : public FXkSphericalLandscapeSceneProxy
+{
+public:
+	FXkSphericalLandscapeWithWaterSceneProxy(
+		const UXkSphericalLandscapeWithWaterComponent* InComponent, const FName ResourceName = NAME_None,
+		FMaterialRenderProxy* InMaterialRenderProxy = nullptr, FMaterialRenderProxy* InMaterialWaterRenderProxy = nullptr);
+
+	virtual ~FXkSphericalLandscapeWithWaterSceneProxy();
+
+	//~ Begin FXkQuadtreeSceneProxy Interface
+	virtual void GetDynamicMeshElements(
+		const TArray<const FSceneView*>& Views,
+		const FSceneViewFamily& ViewFamily,
+		uint32 VisibilityMap,
+		class FMeshElementCollector& Collector) const override;
+	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override;
+	virtual void UpdateInstanceBuffer(const int16 InFrameTag) override;
+	//~ End FXkQuadtreeSceneProxy Interface
+
+protected:
+	FMaterialRenderProxy* MaterialWaterRenderProxy;
+	FMaterialRelevance MaterialWaterRelevance;
 };

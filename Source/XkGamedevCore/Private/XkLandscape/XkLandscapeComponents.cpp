@@ -1,4 +1,4 @@
-﻿// Copyright ©xukai. All Rights Reserved.
+﻿// Copyright ©XUKAI. All Rights Reserved.
 
 
 #include "XkLandscape/XkLandscapeComponents.h"
@@ -6,7 +6,7 @@
 #include "XkLandscape/XkLandscapeSceneProxy.h"
 
 
-static bool VisQuadtreeBounds = 1;
+static bool VisQuadtreeBounds = 0;
 static FAutoConsoleVariableRef CVarVisQuadtreeBounds(
 	TEXT("r.xk.VisQuadtreeBounds"),
 	VisQuadtreeBounds,
@@ -49,7 +49,7 @@ FPrimitiveSceneProxy* UXkQuadtreeComponent::CreateSceneProxy()
 
 FBoxSphereBounds UXkQuadtreeComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
-	FBoxSphereBounds BoxSphereBounds = FBoxSphereBounds(FVector::ZeroVector, FVector(HALF_WORLD_MAX, HALF_WORLD_MAX, HALF_WORLD_MAX), HALF_WORLD_MAX);
+	FBoxSphereBounds BoxSphereBounds = FBoxSphereBounds(FVector::ZeroVector, FVector(51200, 51200, 51200), 51200);
 	return FBoxSphereBounds(BoxSphereBounds).TransformBy(LocalToWorld);
 }
 
@@ -94,5 +94,71 @@ void UXkQuadtreeComponent::GetUsedMaterials(TArray<UMaterialInterface*>& OutMate
 	if (MaterialDyn)
 	{
 		OutMaterials.Add(MaterialDyn);
+	}
+}
+
+
+void UXkQuadtreeComponent::FetchPatchData(TArray<FVector4f>& OutVertices, TArray<uint32>& OutIndices)
+{
+	if (FXkQuadtreeSceneProxy* QuadtreeSceneProxy = static_cast<FXkQuadtreeSceneProxy*>(SceneProxy))
+	{
+		OutVertices = QuadtreeSceneProxy->PatchData.Vertices;
+		OutIndices = QuadtreeSceneProxy->PatchData.Indices;
+	}
+}
+
+
+FPrimitiveSceneProxy* UXkSphericalLandscapeComponent::CreateSceneProxy()
+{
+	FPrimitiveSceneProxy* SphericalLandscapeSceneProxy = NULL;
+	if (Material)
+	{
+		MaterialDyn = UMaterialInstanceDynamic::Create(Material, GetWorld());
+	}
+	if (MaterialDyn)
+	{
+		FPrimitiveSceneProxy* Proxy = new FXkSphericalLandscapeSceneProxy(
+			this, NAME_None, MaterialDyn->GetRenderProxy());
+		SphericalLandscapeSceneProxy = Proxy;
+	}
+	return SphericalLandscapeSceneProxy;
+}
+
+
+FPrimitiveSceneProxy* UXkSphericalLandscapeWithWaterComponent::CreateSceneProxy()
+{
+	FPrimitiveSceneProxy* LocalSceneProxy = NULL;
+	if (Material && MaterialWater)
+	{
+		MaterialDyn = UMaterialInstanceDynamic::Create(Material, GetWorld());
+		MaterialWaterDyn = UMaterialInstanceDynamic::Create(MaterialWater, GetWorld());
+	}
+	if (MaterialDyn && MaterialWaterDyn)
+	{
+		FPrimitiveSceneProxy* Proxy = new FXkSphericalLandscapeWithWaterSceneProxy(
+			this, NAME_None, MaterialDyn->GetRenderProxy(), MaterialWaterDyn->GetRenderProxy());
+		LocalSceneProxy = Proxy;
+	}
+	return LocalSceneProxy;
+}
+
+
+FMaterialRelevance UXkSphericalLandscapeWithWaterComponent::GetMaterialWaterRelevance(ERHIFeatureLevel::Type InFeatureLevel) const
+{
+	FMaterialRelevance Result;
+	Result |= MaterialWater->GetRelevance_Concurrent(InFeatureLevel);
+	return Result;
+}
+
+
+void UXkSphericalLandscapeWithWaterComponent::GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials) const
+{
+	if (MaterialDyn)
+	{
+		OutMaterials.Add(MaterialDyn);
+	}
+	if (MaterialWaterDyn)
+	{
+		OutMaterials.Add(MaterialWaterDyn);
 	}
 }

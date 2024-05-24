@@ -1,0 +1,72 @@
+// Copyright ©XUKAI. All Rights Reserved.
+
+/*=============================================================================
+	XkRendererCS.usf
+=============================================================================*/
+
+# include "/Engine/Private/Common.ush"
+# include "/Engine/Private/MonteCarlo.ush"
+
+int4 TextureSize;
+int4 FilterParms;
+Texture2D<float4> SourceTexture;
+RWTexture2D<float4> TargetTexture;
+
+[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
+void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
+{
+	BRANCH
+	if (any(DispatchThreadId > TextureSize.zw))
+	{
+		return;
+	}
+	const uint2 PixelCoord = uint2(DispatchThreadId.x, DispatchThreadId.y);
+
+	float Sum = 0.0f;       // values sum of height which store in z component
+	uint ZeroCount = 0;     // number of pixels which w component is zero
+	uint NonzeroCount = 0;	// number of pixels which w component is not zero
+
+	uint Mode = FilterParms.x;
+	int Range = (int)FilterParms.y;
+	for (int x = -Range; x <= Range; x++)
+	{
+		for (int y = -Range; y <= Range; y++)
+		{
+			const uint2 PixelCoordOffset = uint2(DispatchThreadId.x + x, DispatchThreadId.y + y);
+			BRANCH
+			if (any(PixelCoordOffset <= TextureSize.zw))
+			{
+				float4 PixelValue = SourceTexture.Load(uint3(PixelCoordOffset, 0));
+				BRANCH
+				if (PixelValue.a == 0.0f)
+				{
+					ZeroCount++;
+				}
+				else
+				{
+					NonzeroCount++;
+					Sum += PixelValue.z;
+				}
+			}
+		}
+	}
+
+	BRANCH
+	if (Mode == 0)
+	{
+		TargetTexture[PixelCoord] = SourceTexture.Load(uint3(PixelCoord, 0));	
+	}
+	else if (Mode == 1 && NonzeroCount > 0)
+	{
+		float Height = Sum / float(NonzeroCount);
+		TargetTexture[PixelCoord] = float4(1.0f, 1.0f, Height, 1.0f);
+	}
+	else if(Mode == 2 && ZeroCount > 0)
+	{
+		TargetTexture[PixelCoord] = float4(0.0f, 0.0f, 0.0f, 0.0f);
+	}
+	else
+	{
+		TargetTexture[PixelCoord] = SourceTexture.Load(uint3(PixelCoord, 0));
+	}
+}

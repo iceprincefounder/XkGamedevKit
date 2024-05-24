@@ -1,4 +1,4 @@
-﻿// Copyright ©xukai. All Rights Reserved.
+﻿// Copyright ©XUKAI. All Rights Reserved.
 
 
 #include "XkLandscape/XkLandscapeRenderUtils.h"
@@ -22,6 +22,13 @@ FQuadtreeNode::~FQuadtreeNode()
 
 void FQuadtreeNode::Cull(TArray<int32>& OutNodes, const FConvexVolume* InCamera, const FVector& InCameraPos, const int8 InDepth, const int8 InDepthClip, const int16 InFrameTag)
 {
+	SCOPED_NAMED_EVENT(FQuadtreeNode_Cull, FColor::Red);
+	QUICK_SCOPE_CYCLE_COUNTER(STAT_FQuadtreeNode_Cull);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_FQuadtreeNode_Cull);
+
+	// process and update node with extra info
+	Quadtree->ProcessNodeFunc(*this, InCameraPos, NodeID);
+
 	FVector RootOffset = Quadtree->RootOffset;
 	FVector vCenter3D = NodeBox.GetCenter();
 	vCenter3D += RootOffset;
@@ -31,11 +38,11 @@ void FQuadtreeNode::Cull(TArray<int32>& OutNodes, const FConvexVolume* InCamera,
 	FBox TranslatedNodeBox = FBox(-vExtent3D + vCenter3D, vExtent3D + vCenter3D);
 	float fExtent = vExtent3D.X;
 	float fNodeSize = fExtent * 2;
+	bool bRootNode = fNodeSize > Quadtree->MaxNodeSize * Quadtree->UnrealUnitScale;
 	bool bIntersect = InCamera->IntersectBox(vCenter3D, vExtent3D);
+	
 	if (bIntersect)
 	{
-		bool bRootNode = fNodeSize > Quadtree->MaxNodeSize * Quadtree->UnrealUnitScale;
-
 		float Dist0 = FVector::Dist2D(InCameraPos, vCenter3D + FVector(-fExtent, -fExtent, 0));
 		float Dist1 = FVector::Dist2D(InCameraPos, vCenter3D + FVector(fExtent, -fExtent, 0));
 		float Dist2 = FVector::Dist2D(InCameraPos, vCenter3D + FVector(-fExtent, fExtent, 0));
@@ -102,6 +109,10 @@ void FQuadtreeNode::Cull(TArray<int32>& OutNodes, const FConvexVolume* InCamera,
 
 void FQuadtreeNode::Split(const int32 InDepth)
 {
+	SCOPED_NAMED_EVENT(FQuadtreeNode_Split, FColor::Red);
+	QUICK_SCOPE_CYCLE_COUNTER(STAT_FQuadtreeNode_Split);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_FQuadtreeNode_Split);
+
 	const FVector Center = NodeBox.GetCenter();
 	const FVector Extent = NodeBox.GetExtent();
 	const FVector BoxMin = NodeBox.Min;
@@ -175,6 +186,10 @@ FQuadtree::~FQuadtree()
 
 void FQuadtree::Initialize(const int32 InWorldSize, const int32 InMinNodeSize)
 {
+	SCOPED_NAMED_EVENT(FQuadtree_Initialize, FColor::Red);
+	QUICK_SCOPE_CYCLE_COUNTER(STAT_FQuadtree_Initialize);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_FQuadtree_Initialize);
+
 	if (!Init)
 	{
 		Init = true;
@@ -231,6 +246,7 @@ int32 FQuadtree::AllocateNode(const FBox2D& Box, int32 InPosx, int32 InPosy, int
 	int32 NodeIndex = GetNodeIndex(InPosx, InPosy, InDepth);
 	FQuadtreeNode& NewNode = TreeNodes[NodeIndex];
 	NewNode.NodeID = NodeIndex;
+	// NodeBox extent z is one, center at zero
 	NewNode.NodeBox = FBox(FVector(Box.Min.X, Box.Min.Y, -0.5), FVector(Box.Max.X, Box.Max.Y, 0.5));
 	NewNode.NodePosX = InPosx;
 	NewNode.NodePosY = InPosy;
@@ -264,6 +280,15 @@ void FQuadtree::UpdateCameraPos(const FVector& InCameraPos, const FVector& InPos
 	RootOffset.X = fXPos * MoveUnit;
 	RootOffset.Y = fYPos * MoveUnit;
 	RootOffset.Z = InPosition.Z;
+}
+
+
+void FQuadtree::ProcessNodeFunc(FQuadtreeNode& OutNode, const FVector& InCameraPos, const int32 InNodeID) 
+{ 
+	if (ProcessNode) // check if TFunction callable
+	{
+		ProcessNode(OutNode, InCameraPos, InNodeID);
+	}
 }
 
 

@@ -1,0 +1,35 @@
+// Copyright ©XUKAI. All Rights Reserved.
+
+/*=============================================================================
+	XkRendererPS.usf
+=============================================================================*/
+
+#pragma once
+
+# include "/Engine/Private/Common.ush"
+# include "/Engine/Private/Landscape/LandscapeCommon.ush"
+
+// https://www.ronja-tutorials.com/post/041-hsv-colorspace/
+float3 Hue2RGB(float hue)
+{
+	hue = frac(hue); //only use fractional part of hue, making it loop
+	float r = abs(hue * 6 - 3) - 1; //red
+	float g = 2 - abs(hue * 6 - 2); //green
+	float b = 2 - abs(hue * 6 - 4); //blue
+	float3 rgb = float3(r, g, b); //combine components
+	rgb = clamp(rgb, 0.0, 1.0); //clamp between 0 and 1
+	return rgb;
+}
+
+
+void MainPS(
+	in float4 SVPos			: SV_POSITION, 
+	in float2 Height		: TEXCOORD0, 
+	in float4 Weight		: TEXCOORD1, 
+	out float4 OutColor0	: SV_Target0, 
+	out float4 OutColor1	: SV_Target1)
+{
+	float3 PreviewColor = Parameters.Color.rgb * Hue2RGB(float(Height.y) * 1.71f); ;
+	OutColor0 = float4(PreviewColor, Height.x);
+	OutColor1 = Weight;
+}

@@ -8,9 +8,8 @@ struct FVertexFactoryInput
 {
 	float4 Position: ATTRIBUTE0;
 	/* instance position */
-	float4 InstanceData0: ATTRIBUTE1;
-	/* instance morph */
-	float4 InstanceData1: ATTRIBUTE2;
+	float4 InstancePosition: ATTRIBUTE1;
+	float4 InstanceExtraData: ATTRIBUTE2;
 
 	VF_GPUSCENE_DECLARE_INPUT_BLOCK(2)
 	VF_INSTANCED_STEREO_DECLARE_INPUT_BLOCK()
@@ -19,21 +18,25 @@ struct FVertexFactoryInput
 struct FVertexFactoryIntermediates
 {
 	float4 InputPosition;
-	float4 InstanceData0;
-	float4 InstanceData1;
+	float4 InstancePosition;
+	float4 InstanceExtraData;
 
-	float3 MorphedTranslatedWorldPos;
+	float3 TranslatedWorldPos;
 	float3 WorldNormal;
+	float4 VertexColor;
+	float4 TexCoord0;
 
 	/** Cached primitive and instance data */
 	FSceneDataIntermediates SceneData;
-
-	float4 DebugData;
 };
 
 struct FVertexFactoryInterpolantsVSToPS
 {
-	float2	TexCoord0: TEXCOORD0;
+#if INTERPOLATE_VERTEX_COLOR
+	float4	VertexColor : COLOR0;
+#endif
+
+	float2 TexCoord0: TEXCOORD0;
 #if NUM_MATERIAL_TEXCOORDS
 	float2 TexCoord1: TEXCOORD1;
 	float2 TexCoord2: TEXCOORD2;
@@ -48,40 +51,6 @@ struct FVertexFactoryInterpolantsVSToDS
 	FVertexFactoryInterpolantsVSToPS InterpolantsVSToPS;
 };
 
-// @see: https://svnte.se/cdlod-terrain WaterMeshVertexFactory.usf
-float3 MorphTranslatedWorldPosition(float3 OriginalTranslatedWorldPos, float2 InMorphOriginTWS, float LODLevel, float InLODScale, float2 QuadSize, float HeightLODFactor, out float LODFactor)
-{
-	float3 TranslatedWorldPos = OriginalTranslatedWorldPos;
-
-	float3 TranslatedWorldCameraOrigin = LWCHackToFloat(ResolvedView.WorldCameraOrigin).xyz;
-	float DistanceToVert2D = distance(TranslatedWorldPos.xy, TranslatedWorldCameraOrigin.xy);
-
-	LODFactor = saturate(DistanceToVert2D / (InLODScale * pow(2.0f, LODLevel)) - 1.0f);
-	LODFactor = saturate(HeightLODFactor + LODFactor);
-
-	float2 Grid4 = 4.0f * QuadSize;
-
-	// InMorphOriginTWS is the corner of the node being rendered
-	const float2 MorphLocalPos = TranslatedWorldPos.xy - InMorphOriginTWS;
-
-	// Offset is like a UV offset (-0.5 to 0.5) within a quadtree node. This is the scalar used to move the vertex
-	float2 Offset = frac(MorphLocalPos / Grid4) - float2(0.5, 0.5);
-
-	// Move every other vert either positive or negative towards a neighboring vert
-	// This is the smooth continuous sliding which moved to the next LOD level
-	const float MinRadius = 0.26f;
-	if (abs(Offset.x) < MinRadius)
-	{
-		TranslatedWorldPos.x += Offset.x * LODFactor * Grid4.x;
-	}
-	if (abs(Offset.y) < MinRadius)
-	{
-		TranslatedWorldPos.y += Offset.y * LODFactor * Grid4.y;
-	}
-
-	return TranslatedWorldPos;
-}
-
 FVertexFactoryInterpolantsVSToPS VertexFactoryAssignInterpolants(FVertexFactoryInterpolantsVSToDS Input)
 {
 	return Input.InterpolantsVSToPS;
@@ -92,19 +61,48 @@ FPrimitiveSceneData GetPrimitiveData(FVertexFactoryIntermediates Intermediates)
 	return Intermediates.SceneData.Primitive;
 }
 
+uint GetPrimitiveId(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+#if VF_USE_PRIMITIVE_SCENE_DATA
+	return Interpolants.PrimitiveId;
+#else
+	return 0;
+#endif
+}
+
+void SetPrimitiveId(inout FVertexFactoryInterpolantsVSToPS Interpolants, uint PrimitiveId)
+{
+#if VF_USE_PRIMITIVE_SCENE_DATA
+	Interpolants.PrimitiveId = PrimitiveId;
+#endif
+}
+
 /** [VertexFactory Interface] */
 float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
 {
 	FLWCMatrix LocalToWorld = GetPrimitiveData(Intermediates).LocalToWorld;
-	return TransformLocalToTranslatedWorld(Intermediates.MorphedTranslatedWorldPos, LocalToWorld);
+	return TransformLocalToTranslatedWorld(Intermediates.TranslatedWorldPos, LocalToWorld);
 }
 
 /** [VertexFactory Interface] */
 float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
 {
 	FLWCMatrix LocalToWorld = GetPrimitiveData(Intermediates).LocalToWorld;
-	FLWCVector3 WorldPosition = TransformLocalToWorld(Intermediates.MorphedTranslatedWorldPos, LocalToWorld);
+	FLWCVector3 WorldPosition = TransformLocalToWorld(Intermediates.TranslatedWorldPos, LocalToWorld);
 	return float4(LWCToFloat(LWCAdd(WorldPosition, ResolvedView.PrevPreViewTranslation)), 1.0f);
+}
+
+/** [VertexFactory Interface] */
+float4 VertexFactoryGetTranslatedPrimitiveVolumeBounds(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	FPrimitiveSceneData PrimitiveData = GetPrimitiveData(GetPrimitiveId(Interpolants));
+	return float4(LWCToFloat(LWCAdd(PrimitiveData.ObjectWorldPosition, ResolvedView.PreViewTranslation)), PrimitiveData.ObjectRadius);
+}
+
+/** [VertexFactory Interface] */
+uint VertexFactoryGetPrimitiveId(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	return GetPrimitiveId(Interpolants);
 }
 
 /** [VertexFactory Interface] */
@@ -157,18 +155,25 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS(FVertexFacto
 	FVertexFactoryInterpolantsVSToPS Interpolants;
 
 	Interpolants = (FVertexFactoryInterpolantsVSToPS)0;
+
+#if INTERPOLATE_VERTEX_COLOR
+	Interpolants.VertexColor = Intermediates.VertexColor;
+#endif
+
+	Interpolants.TexCoord0.xy = Intermediates.TexCoord0.xy;
 #if NUM_MATERIAL_TEXCOORDS
 		float2 CustomizedUVs[NUM_MATERIAL_TEXCOORDS];
 		GetMaterialCustomizedUVs(VertexParameters, CustomizedUVs);
 		Interpolants.TexCoord0.xy = CustomizedUVs[0];
-	#if NUM_MATERIAL_TEXCOORDS > 1
+#if NUM_MATERIAL_TEXCOORDS > 1
 				Interpolants.TexCoord1.xy = CustomizedUVs[1];
-		#if NUM_MATERIAL_TEXCOORDS > 2
+#if NUM_MATERIAL_TEXCOORDS > 2
 					Interpolants.TexCoord2 = CustomizedUVs[2];
-		#endif // 2
-	#endif // 1
-#endif //NUM_MATERIAL_TEXCOORDS
-	Interpolants.TexCoord0.xy = Intermediates.DebugData.xy;
+#endif // NUM_MATERIAL_TEXCOORDS > 2
+#endif // NUM_MATERIAL_TEXCOORDS > 1
+#endif // NUM_MATERIAL_TEXCOORDS
+	SetPrimitiveId(Interpolants, Intermediates.SceneData.PrimitiveId);
+
 	return Interpolants;
 }
 
@@ -181,28 +186,32 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 
 	float2 LightmapUVs = float2(0, 0);
 
-	float3 vertexNormal = float3(0, 0, 1);
+	float3 VertexNormal = float3(0, 0, 1);
 #if NUM_MATERIAL_TEXCOORDS
 	Result.TexCoords[0] = Interpolants.TexCoord0.xy;
-	#if NUM_MATERIAL_TEXCOORDS > 1
-				Result.TexCoords[1]	= Interpolants.TexCoord1.xy;
-		#if NUM_MATERIAL_TEXCOORDS > 2
-						Result.TexCoords[2] = Interpolants.TexCoord2.xy;
-		#endif // 2
-	#endif // 1
-#endif //NUM_MATERIAL_TEXCOORDS
+#if NUM_MATERIAL_TEXCOORDS > 1
+	Result.TexCoords[1]	= Interpolants.TexCoord1.xy;
+#if NUM_MATERIAL_TEXCOORDS > 2
+	Result.TexCoords[2] = Interpolants.TexCoord2.xy;
+#endif // NUM_MATERIAL_TEXCOORDS > 2
+#endif // NUM_MATERIAL_TEXCOORDS > 1
+#endif // NUM_MATERIAL_TEXCOORDS
 
 	// Calculate LocalToTangent directly from normal map texture.
 	float3x3 TangentToLocal = VertexFactoryGetPerPixelTangentBasis(Interpolants);
 	Result.TangentToWorld = TangentToLocal;
 	Result.UnMirrored = 1;
 	Result.VertexColor = 1;
+#if INTERPOLATE_VERTEX_COLOR
+	Result.VertexColor = Interpolants.VertexColor;
+#endif
 
 #if LIGHTMAP_UV_ACCESS
 	Result.LightmapUVs = LightmapUVs;
 #endif
 
 	Result.TwoSidedSign = 1;
+	Result.PrimitiveId = GetPrimitiveId(Interpolants);
 	return Result;
 }
 
@@ -218,14 +227,19 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	Result.TangentToWorld = float3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
 	Result.PreSkinnedPosition = Input.Position.xyz;
 	Result.PreSkinnedNormal = float3(0, 0, 1);
+	Result.VertexColor = Intermediates.VertexColor;
 
-#if NUM_MATERIAL_TEXCOORDS
+#if NUM_MATERIAL_TEXCOORDS_VERTEX
 	UNROLL
 	for(int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS_VERTEX; CoordinateIndex++)
 	{
-		Result.TexCoords[CoordinateIndex] = Intermediates.MorphedTranslatedWorldPos.xy;
+		Result.TexCoords[CoordinateIndex] = Intermediates.TranslatedWorldPos.xy;
 	}
 #endif //NUM_MATERIAL_TEXCOORDS
+
+#if VF_USE_PRIMITIVE_SCENE_DATA
+	Result.PrimitiveId = Interpolants.PrimitiveId;
+#endif
 	return Result;
 }
 
@@ -235,31 +249,36 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates)0;
 	Intermediates.InputPosition = Input.Position;
 
-#if FAR_MESH
-	Intermediates.InstanceData0 = 0;
-	Intermediates.InstanceData1 = 0;
+#if FARMESH_VERTEX
+	Intermediates.InstancePosition = 0;
+	Intermediates.InstanceExtraData = 0;
 #else
-	Intermediates.InstanceData0 = Input.InstanceData0;
-	Intermediates.InstanceData1 = Input.InstanceData1;
+	Intermediates.InstancePosition = Input.InstancePosition;
+	Intermediates.InstanceExtraData = Input.InstanceExtraData;
 #endif
 	float3 VertexPosition = Input.Position.xyz;
-	float3 TranslatedWorldPosition = 0;
-	float4 InstanceData0 = Intermediates.InstanceData0;
-	float4 InstanceData1 = Intermediates.InstanceData1;
-	const float3 Translation = InstanceData0.xyz;
-	const float3 Scale = InstanceData0.w;
+	float3 TranslatedWorldPos = 0;
+	float4 InstancePosition = Intermediates.InstancePosition;
+	float4 InstanceExtraData = Intermediates.InstanceExtraData;
+	const float3 Translation = InstancePosition.xyz;
+	const float3 Scale = InstancePosition.w;
 	// calculate the world position
-	TranslatedWorldPosition.xyz = VertexPosition.xyz * Scale;
-	TranslatedWorldPosition.xyz += Translation;
+	TranslatedWorldPos.xyz = VertexPosition.xyz * Scale;
+	TranslatedWorldPos.xyz += Translation;
+	float3 WorldNormal = float3(0.0, 0.0, 1.0);
+	float4 VertexColor = float4(1.0, 1.0, 1.0, 1.0);
+	float4 TexCoord0 = float4(0.0, 0.0, 0.0, 0.0);
 
+#if QUADTREE_VERTEX
 	// CDLOD morph vertex
-	const float LODLevel = InstanceData1.x;
-	const float LODScale = InstanceData1.y;
-	const float QuadNum = InstanceData1.z;
-	const float NodeDepth = InstanceData1.w;
+	// @see: https://svnte.se/cdlod-terrain WaterMeshVertexFactory.usf
+	const float LODLevel = InstanceExtraData.x;
+	const float LODScale = InstanceExtraData.y;
+	const float QuadNum = InstanceExtraData.z;
+	const float NodeDepth = InstanceExtraData.w;
 	const float2 QuadSize = Scale.xy / QuadNum;
 	float3 CameraPos = LWCToFloat(ResolvedView.WorldCameraOrigin).xyz;
-	float Dist = distance(TranslatedWorldPosition.xy, CameraPos.xy);
+	float Dist = distance(TranslatedWorldPos.xy, CameraPos.xy);
 	const float LowRange = LODScale * pow(2.0, LODLevel + 1.0);
 	const float HighRange = LODScale * pow(2.0, LODLevel + 2.0);
 	float Factor = (Dist - LowRange) / (HighRange - LowRange);
@@ -267,23 +286,26 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 
 	float LODFactor = MorphValue;
 	float2 MorphOriginTWS = Translation.xy - Scale.xy * 0.5f;
-	const float2 MorphLocalPos = TranslatedWorldPosition.xy - MorphOriginTWS;
+	const float2 MorphLocalPos = TranslatedWorldPos.xy - MorphOriginTWS;
 	float2 Grid4 = 4.0f * QuadSize;
 	float2 Offset = frac(MorphLocalPos / Grid4) - float2(0.5, 0.5);
 	const float MinRadius = 0.26f;
 	if (abs(Offset.x) < MinRadius)
 	{
-		TranslatedWorldPosition.x += Offset.x * LODFactor * Grid4.x;
+		TranslatedWorldPos.x += Offset.x * LODFactor * Grid4.x;
 	}
 	if (abs(Offset.y) < MinRadius)
 	{
-		TranslatedWorldPosition.y += Offset.y * LODFactor * Grid4.y;
+		TranslatedWorldPos.y += Offset.y * LODFactor * Grid4.y;
 	}
-
-	Intermediates.MorphedTranslatedWorldPos = TranslatedWorldPosition;
-	Intermediates.WorldNormal = float3(0.0, 0.0, 1.0);
+#elif HEXAGON_VERTEX
+	VertexColor = InstanceExtraData;
+#endif
+	Intermediates.TranslatedWorldPos = TranslatedWorldPos;
+	Intermediates.WorldNormal = WorldNormal;
+	Intermediates.VertexColor = VertexColor;
+	Intermediates.TexCoord0 = TexCoord0;
 	Intermediates.SceneData = GetSceneDataIntermediates();
-	Intermediates.DebugData = float4(MorphValue, Factor, 0.0, 0.0);
 	return Intermediates;
 }
 

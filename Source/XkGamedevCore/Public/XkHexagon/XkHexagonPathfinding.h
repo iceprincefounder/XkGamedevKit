@@ -1,14 +1,30 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright ©XUKAI. All Rights Reserved.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "XkHexagonPathfinding.generated.h"
 
-class AXkHexagonActor;
+// 1024 x 1024
+#define	MAX_HEXAGON_NODE_COUNT 1048576
 
+template<typename T0, typename T1>
+extern void BuildHexagon(TArray<T0>& OutBaseVertices, TArray<T1>& OutBaseIndices, TArray<T0>& OutEdgeVertices, TArray<T1>& OutEdgeIndices,
+	float Radius, float Height, float BaseInnerGap, float BaseOuterGap, float EdgeInnerGap, float EdgeOuterGap);
+
+extern void CullHexagonalWorld(TArray<FXkHexagonNode*> OutHexagonNodes, const TMap<FIntVector, FXkHexagonNode>& HexagonalWorldNodes, const FSceneView& View, const float Distance);
+
+static float Sin30 = FMath::Sin(UE_DOUBLE_PI / (180.0) * 30.0);
+static float Cos30 = FMath::Cos(UE_DOUBLE_PI / (180.0) * 30.0);
 static float XkSin30 = 0.5;
-static float XkCos30 = FMath::Cos(UE_DOUBLE_PI / (180.0) * 30.0);
+static float XkCos30 = 0.86602540378443864676372317075294;
+static float XkCos30d2 = 0.43301270189221932338186158537647;
+static float XkCos30x2 = 1.7320508075688772935274463415059;
+static float XkCos45 = 0.70710678118654752440084436210485;
+static float XkCos60 = 0.5;
+static float XkCos30xCos45x2 = 1.224744871391589049098642037353;
+
+class AXkHexagonActor;
 
 USTRUCT(BlueprintType, Blueprintable)
 struct FXkPathCostValue
@@ -70,16 +86,57 @@ struct XKGAMEDEVCORE_API FXkHexagonNode
 	GENERATED_BODY()
 
 public:
-	FXkHexagonNode() {};
-	FXkHexagonNode(class AXkHexagonActor* InActor);
-	~FXkHexagonNode();
+	FXkHexagonNode()
+	{
+		Position = FVector4f::Zero();
+		Color = FLinearColor::Black;
+		Splatmap = 0;
+		Coord = FIntVector::ZeroValue;
+	};
+	FXkHexagonNode(
+		const FVector4f& InPosition, const FLinearColor& InColor, const uint8 InSplatmap, const FIntVector& InCoord)
+		:
+		Position(InPosition),
+		Color(InColor),
+		Splatmap(InSplatmap),
+		Coord(InCoord) {};
+	FXkHexagonNode(AXkHexagonActor* InActor)
+	{
+		Actor = MakeWeakObjectPtr(InActor);
+	};
+	~FXkHexagonNode()
+	{
+		Actor.Reset();
+	};
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
+	FVector4f Position;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
+	FLinearColor Color;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
+	uint8 Splatmap;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
+	FIntVector Coord;
+
+	UPROPERTY(Transient)
 	TWeakObjectPtr<class AXkHexagonActor> Actor;
-	UPROPERTY()
+
+	UPROPERTY(Transient)
 	FXkPathCostValue Cost;
 
-	FXkHexagonNode& operator=(const FXkHexagonNode& other);
+	FXkHexagonNode& operator= (const FXkHexagonNode& rhs)
+	{
+		Position = rhs.Position;
+		Color = rhs.Color;
+		Splatmap = rhs.Splatmap;
+		Coord = rhs.Coord;
+		Actor = rhs.Actor;
+		Cost = rhs.Cost;
+		return *this;
+	};
 };
 
 
@@ -101,7 +158,7 @@ public:
 	void Reinit();
 	void Blocking(const TArray<FIntVector>& Input);
 	bool Pathfinding(const FIntVector& StartingPoint, const FIntVector& TargetPoint, int32 MaxStep = 9999);
-	TArray<FIntVector> Backtracking(int32 MaxStep = 9999) const;
+	TArray<FIntVector> Backtracking(const int32 MaxStep = 9999) const;
 	TArray<FIntVector> SearchArea() const;
 
 	TArray<class AXkHexagonActor*> FindHexagonActors(const TArray<FIntVector>& Inputs) const;
@@ -111,14 +168,14 @@ public:
 	static FXkPathCostValue CalcPathCostValue(const FIntVector& StartingPoint,
 		const FIntVector& ConsideredPoint, const FIntVector& TargetPoint, int32 Offset = 0);
 	static int32 CalcManhattanDistance(const FIntVector& PointA, const FIntVector& PointB);
-	static FIntVector CalcHexagonCoord(float PositionX, float PositionY, float XkHexagonRadius);
+	static FIntVector CalcHexagonCoord(const float PositionX, const float PositionY, const float XkHexagonRadius);
 	/** 
 	* @brief Calculate hexagon actor position by Cartesian coordinate XY index number
 	* @param IndexX Cartesian coordinate X index
 	* @param IndexY Cartesian coordinate Y index
 	* @Distance Distance between two hexagons
 	*/
-	static FVector2D CalcHexagonPosition(int32 IndexX, int32 IndexY, float Distance);
+	static FVector2D CalcHexagonPosition(const int32 IndexX, const int32 IndexY, const float Distance);
 	static TArray<FIntVector> CalcHexagonNeighboringCoord(const FIntVector& InputCoord);
 protected:
 	UPROPERTY(Transient)

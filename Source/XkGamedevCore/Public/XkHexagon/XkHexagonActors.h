@@ -1,4 +1,4 @@
-﻿// Copyright ©xukai. All Rights Reserved.
+﻿// Copyright ©XUKAI. All Rights Reserved.
 
 #pragma once
 
@@ -15,7 +15,6 @@
 
 class UProceduralMeshComponent;
 
-
 UENUM(BlueprintType, Blueprintable)
 enum class EXkHexagonType : uint8
 {
@@ -24,7 +23,6 @@ enum class EXkHexagonType : uint8
 	Forest,
 	Cliff
 };
-
 
 UCLASS(BlueprintType, Blueprintable)
 class XKGAMEDEVCORE_API AXkHexagonActor : public AActor
@@ -38,7 +36,16 @@ class XKGAMEDEVCORE_API AXkHexagonActor : public AActor
 	float Radius;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
+	float Height;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
+	float GapWidth;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
 	float BaseInnerGap;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
+	float BaseOuterGap;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
 	float EdgeInnerGap;
@@ -47,10 +54,10 @@ class XKGAMEDEVCORE_API AXkHexagonActor : public AActor
 	float EdgeOuterGap;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
-	float Height;
+	FLinearColor BaseColor;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
-	FIntVector Coord;
+	FLinearColor EdgeColor;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
 	bool bShowBaseMesh;
@@ -59,69 +66,79 @@ class XKGAMEDEVCORE_API AXkHexagonActor : public AActor
 	bool bShowEdgeMesh;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
-	FLinearColor BaseColor;
+	FIntVector Coord;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
-	FLinearColor EdgeColor;
+	EXkHexagonType HexagonType;
 
 	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
 	class UMaterialInstanceDynamic* BaseMID;
 
 	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
 	class UMaterialInstanceDynamic* EdgeMID;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
-	EXkHexagonType HexagonType;
-
 public:
 	AXkHexagonActor();
 
 	UFUNCTION(CallInEditor, Category = "HexagonActor [KEVINTSUIXU GAMEDEV]")
 	void SnapToLandscape();
 
-	void ConstructionScripts();
-	void OnConstruction(const FTransform& Transform) override;
+	virtual void ConstructionScripts();
+	virtual void OnConstruction(const FTransform& Transform) override;
+#if WITH_EDITOR
+	void PostEditMove(bool bFinished) override;
+#endif
 
 public:
 	bool IsAccessible() const;
 	int32 CalcCostOffset() const;
 
 	//~ Begin AXkHexagonActor Interface
-	float GetRadius() const { return Radius; };
-	void SetRadius(float Input) { Radius = Input; };
-	float GetBaseInnerGap() const { return BaseInnerGap; };
-	void SetBaseInnerGap(float Input) { BaseInnerGap = Input; };
-	float GetEdgeInnerGap() const { return EdgeInnerGap; };
-	void SetEdgeInnerGap(float Input) { EdgeInnerGap = Input; };
-	float GetEdgeOuterGap() const { return EdgeOuterGap; };
-	void SetEdgeOuterGap(float Input) { EdgeOuterGap = Input; };
-	float GetHeight() const { return Height; };
-	void SetHeight(float Input) { Height = Input; };
-	FIntVector GetCoord() const { return Coord; };
-	void SetCoord(const FIntVector& Input) { Coord = Input; };
-	bool IsShowBaseMesh() const{ return bShowBaseMesh; };
-	void SetShowBaseMesh(const bool Input) { bShowBaseMesh = Input; };
-	bool IsShowEdgeMesh() const { return bShowEdgeMesh; };
-	void SetShowEdgeMesh(const bool Input) { bShowEdgeMesh = Input; };
-	FLinearColor GetBaseColor() const { return BaseColor; };
-	void SetBaseColor(const FLinearColor& Input);
-	FLinearColor GetEdgeColor() const { return EdgeColor; };
-	void SetEdgeColor(const FLinearColor& Input);
-	EXkHexagonType GetHexagonType() const { return HexagonType; };
-	void SetHexagonType(EXkHexagonType Input) { HexagonType = Input; };
-	TWeakObjectPtr<class AXkHexagonalWorldActor> GetHexagonalWorld() const { return CachedHexagonalWorld; };
-	void SetHexagonWorld(class AXkHexagonalWorldActor* Input);
+	virtual float GetRadius() const { return Radius; };
+	virtual void SetRadius(float Input) { Radius = Input; };
+	virtual float GetHeight() const { return Height; };
+	virtual void SetHeight(float Input) { Height = Input; };
+	virtual float GetGapWidth() const { return GapWidth; };
+	virtual void SetGapWidth(float Input) { GapWidth = Input; };
+	virtual float GetBaseInnerGap() const { return BaseInnerGap; };
+	virtual void SetBaseInnerGap(float Input) { BaseInnerGap = Input; };
+	virtual float GetBaseOuterGap() const { return BaseOuterGap; };
+	virtual void SetBaseOuterGap(float Input) { BaseOuterGap = Input; };
+	virtual float GetEdgeInnerGap() const { return EdgeInnerGap; };
+	virtual void SetEdgeInnerGap(float Input) { EdgeInnerGap = Input; };
+	virtual float GetEdgeOuterGap() const { return EdgeOuterGap; };
+	virtual void SetEdgeOuterGap(float Input) { EdgeOuterGap = Input; };
+	virtual FLinearColor GetBaseColor() const { return BaseColor; };
+	virtual void SetBaseColor(const FLinearColor& Input) { BaseColor = Input; };
+	virtual FLinearColor GetEdgeColor() const { return EdgeColor; };
+	virtual void SetEdgeColor(const FLinearColor& Input) { EdgeColor = Input; };
+	virtual bool IsShowBaseMesh() const { return bShowBaseMesh; };
+	virtual void SetShowBaseMesh(const bool Input) { bShowBaseMesh = Input; };
+	virtual bool IsShowEdgeMesh() const { return bShowEdgeMesh; };
+	virtual void SetShowEdgeMesh(const bool Input) { bShowEdgeMesh = Input; };
+	virtual FIntVector GetCoord() const { return Coord; };
+	virtual void SetCoord(const FIntVector& Input) { Coord = Input; };
+	virtual EXkHexagonType GetHexagonType() const { return HexagonType; };
+	virtual void SetHexagonType(EXkHexagonType Input) { HexagonType = Input; };
+	virtual FXkHexagonNode* GetHexagonNode() { return HexagonNode; };
+	virtual void SetHexagonNode(FXkHexagonNode* Input) { HexagonNode = Input; HexagonNode->Actor = MakeWeakObjectPtr(this); };
+	virtual TWeakObjectPtr<class AXkHexagonalWorldActor> GetHexagonalWorld() const { return CachedHexagonalWorld; };
+	virtual void SetHexagonWorld(class AXkHexagonalWorldActor* Input);
 	//~ End AXkHexagonActor Interface
 
-	void OnBaseSelecting(bool bSelecting, const FLinearColor& SelectingColor = FLinearColor::White);
-	void OnBaseHighlight(bool bHighlight, const FLinearColor& HighlightColor = FLinearColor::White);
-	void OnEdgeSelecting(bool bSelecting, const FLinearColor& SelectingColor = FLinearColor::White);
-	void OnEdgeHighlight(bool bHighlight, const FLinearColor& HighlightColor = FLinearColor::White);
+	/** OnBaseSelecting color is temporary and override the OnBaseHighlight color*/
+	virtual void OnBaseSelecting(bool bSelecting, const FLinearColor& SelectingColor = FLinearColor::White);
+	/** the basic base color*/
+	virtual void OnBaseHighlight(bool bHighlight, const FLinearColor& HighlightColor = FLinearColor::White);
+	/** OnEdgeSelecting color is temporary and override the OnEdgeHighlight color*/
+	virtual void OnEdgeSelecting(bool bSelecting, const FLinearColor& SelectingColor = FLinearColor::White);
+	/** the basic edge color*/
+	virtual void OnEdgeHighlight(bool bHighlight, const FLinearColor& HighlightColor = FLinearColor::White);
 
+public:
 	void UpdateMaterial();
 	void UpdateProcMesh();
 
-private:
+protected:
 	UPROPERTY()
 	bool bCachedBaseHighlight;
 	UPROPERTY()
@@ -132,77 +149,133 @@ private:
 	FLinearColor CachedEdgeHighlightColor;
 	UPROPERTY()
 	TWeakObjectPtr<class AXkHexagonalWorldActor> CachedHexagonalWorld;
+
+private:
+	FXkHexagonNode* HexagonNode;
 };
 
 
 UCLASS(BlueprintType, Blueprintable)
 class XKGAMEDEVCORE_API AXkHexagonalWorldActor : public AActor
 {
-	GENERATED_UCLASS_BODY()
-
-	UPROPERTY()
-	TObjectPtr<class UXkHexagonArrowComponent> SceneRoot;
-
-	UPROPERTY(EditAnywhere, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	int32 PathfindingMaxStep;
-
-	UPROPERTY(EditAnywhere, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	int32 BacktrackingMaxStep;
-
-	UPROPERTY(EditAnywhere, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class AXkHexagonActor> HexagonStarter;
-
-	UPROPERTY(EditAnywhere, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class AXkHexagonActor> HexagonTargeter;
-
-	UPROPERTY(EditAnywhere, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	TArray<TObjectPtr<class AXkHexagonActor>> HexagonBlockers;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	float Radius;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	float BaseInnerGap;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	float EdgeInnerGap;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	float EdgeOuterGap;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	float Height;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	float GapWidth;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	int32 XAxisCount;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	int32 YAxisCount;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	bool bShowBaseMesh;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	bool bShowEdgeMesh;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	FLinearColor BaseColor;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	FLinearColor EdgeColor;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	class UMaterialInterface* BaseMaterial;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	class UMaterialInterface* EdgeMaterial;
+	GENERATED_BODY()
 
 public:
+	UPROPERTY(VisibleAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	TObjectPtr<class UXkHexagonArrowComponent> SceneRoot;
+
+	UPROPERTY(VisibleAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	TObjectPtr<class UXkHexagonalWorldComponent> HexagonalWorldComponent;
+
+	UPROPERTY(EditAnywhere, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]")
+	int32 PathfindingMaxStep;
+
+	UPROPERTY(EditAnywhere, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]")
+	int32 BacktrackingMaxStep;
+
+	UPROPERTY(EditAnywhere, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]")
+	TObjectPtr<class AXkHexagonActor> HexagonStarter;
+
+	UPROPERTY(EditAnywhere, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]")
+	TObjectPtr<class AXkHexagonActor> HexagonTargeter;
+
+	UPROPERTY(EditAnywhere, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]")
+	TArray<TObjectPtr<class AXkHexagonActor>> HexagonBlockers;
+
+	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	uint32 GeneratingMaxStep;
+
+	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	uint32 CenterFieldRange;
+
+	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	FVector2D PositionRandom;
+
+	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	float PositionScale;
+
+	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	float FalloffRadius;
+
+	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	FVector2D FalloffCenter;
+
+	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	FVector2D FalloffExtent;
+
+	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	float FalloffCornerRadii;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	float Radius;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	float Height;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	float GapWidth;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	float BaseInnerGap;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	float BaseOuterGap;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	float EdgeInnerGap;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	float EdgeOuterGap;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	bool bSpawnActors;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	int32 SpawnActorsMaxMhtDist;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	int32 XAxisCount;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	int32 YAxisCount;
+
+	/* Max Manhattan distance to center.*/
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	int32 MaxManhattanDistance;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	bool bShowHexagonActorsBaseMesh;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	bool bShowHexagonActorsEdgeMesh;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	bool bShowHexagonalWorldBaseMesh;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	bool bShowHexagonalWorldEdgeMesh;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	FLinearColor BaseColor;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	FLinearColor EdgeColor;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	class UMaterialInterface* BaseMaterial;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
+	class UMaterialInterface* EdgeMaterial;
+
+	friend class AXkHexagonActor;
+
+	AXkHexagonalWorldActor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+public:
 	UFUNCTION(CallInEditor, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
-	void Generate();
+	void GenerateHexagons();
+
+	UFUNCTION(CallInEditor, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	void GenerateNoise();
 
 	UFUNCTION(CallInEditor, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]")
 	void Pathfinding();
@@ -214,8 +287,22 @@ public:
 	void BeginPlay() override;
 	void OnConstruction(const FTransform& Transform) override;
 	//~ End Actor Interface
+
+	virtual void UpdateHexagonalWorld() {};
 public:
 	FORCEINLINE virtual bool IsHexagonActorsNeighboring(const AXkHexagonActor* A, const AXkHexagonActor* B) const;
+
+	/**
+	* @brief Find a hexagon node by input coordinate
+	* @param InCoord The coordinate a hexagon pretend to be
+	*/
+	FORCEINLINE virtual FXkHexagonNode* GetHexagonNodeByCoord(const FIntVector& InCoord) const;
+
+	/**
+	* @brief Find a hexagon node by input position
+	* @param InPosition The position a hexagon node pretend to be
+	*/
+	FORCEINLINE virtual FXkHexagonNode* GetHexagonNodeByLocation(const FVector& InPosition) const;
 
 	/**
 	* @brief Find a hexagon by input coordinate
@@ -279,4 +366,14 @@ public:
 private:
 	UPROPERTY()
 	FXkHexagonAStarPathfinding HexagonAStarPathfinding;
+};
+
+
+/**
+* Class could spawn into hexagonal world in hexagonal coordinated space.
+*/
+UCLASS(BlueprintType, Blueprintable)
+class XKGAMEDEVCORE_API AXkHexagonalSpawnableActor : public AActor
+{
+	GENERATED_BODY()
 };

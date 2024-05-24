@@ -1,0 +1,49 @@
+// Copyright ©XUKAI. All Rights Reserved.
+
+/*=============================================================================
+	XkRendererVS.usf
+=============================================================================*/
+
+# include "/Engine/Private/Common.ush"
+
+Buffer<float4> InstancePositionBuffer;
+Buffer<float4> InstanceWeightBuffer;
+
+float RemapClamped(float InputValue, float SourceMin, float SourceMax, float TarggetMin, float TarggetMax)
+{
+	float ValueClamped = clamp(InputValue, SourceMin, SourceMax);
+	return (ValueClamped - SourceMin) / (SourceMax - SourceMin) * (TarggetMax - TarggetMin) + TarggetMin;
+}
+
+
+void MainVS(
+	float4 Position				: ATTRIBUTE0,
+	float2 UV					: ATTRIBUTE1,
+	uint InstanceID				: SV_InstanceID,
+	out float4 OutPosition		: SV_POSITION,
+	out float2 OutHeight		: TEXCOORD0,
+	out float4 OutWeight		: TEXCOORD1)
+{
+	float4 InstancePosition = InstancePositionBuffer[InstanceID];
+	float4 InstanceWeight = InstanceWeightBuffer[InstanceID];
+	float3 TranslatedWorldPosition = Position.xyz + InstancePosition.xyz;
+	float4x4 LocalToWorld = Parameters.LocalToWorld;
+	float3 CanvasPosition = TranslatedWorldPosition - Parameters.Center.xyz;
+	float2 ExtentBound = Parameters.Extent.xy;
+	float2 ExtentRange = Parameters.Extent.zw;
+	CanvasPosition.x = CanvasPosition.x / (ExtentBound.x) * 2.0f;
+	CanvasPosition.y = CanvasPosition.y / (ExtentBound.y) * 2.0f;
+	CanvasPosition.y *= -1.0f;
+	CanvasPosition.z = 0.0f;
+	// Calculate height delta and remap into 0.0~1.0
+	// Delta value need tranfrom to world space
+	// @see https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-mul
+	float3 WP0 = mul(TranslatedWorldPosition, LocalToWorld).xyz;
+	float3 WP1 = mul(Parameters.Center, LocalToWorld).xyz;
+	float3 Delta = WP0 - WP1;
+
+	float Height = RemapClamped(Delta.z, ExtentRange.x, ExtentRange.y, 0.0f, 1.0f);
+	OutPosition = float4(CanvasPosition, 1.0f);
+	OutHeight = float2(Height, InstanceID);
+	OutWeight = InstanceWeight; // Parameters.Color;
+}
