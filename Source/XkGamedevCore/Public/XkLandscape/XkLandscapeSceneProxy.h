@@ -87,10 +87,9 @@ public:
 	virtual bool CanBeOccluded() const override { return false; };
 	//~ End FPrimitiveSceneProxy Interface
 
-private:
 	void GenerateBuffers();
 	void GenerateBuffers_Renderthread(FRHICommandListImmediate& RHICmdList, FPatchData* InPatchData);
-	void UpdateInstanceBuffer(const int16 InFrameTag);
+	virtual void UpdateInstanceBuffer(const int16 InFrameTag);
 
 protected:
 	mutable FQuadtree Quadtree;
@@ -137,12 +136,13 @@ public:
 		class FMeshElementCollector& Collector) const override;
 	virtual void CreateRenderThreadResources() override;
 	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override;
+
+	virtual void UpdateInstanceBuffer(const int16 InFrameTag) override;
 	//~ End FXkQuadtreeSceneProxy Interface
 
 private:
 	void GenerateBuffers();
 	void GenerateBuffers_Renderthread(FRHICommandListImmediate& RHICmdList, FPatchData* InPatchData);
-	void UpdateInstanceBuffer(const int16 InFrameTag);
 
 protected:
 	FXkQuadtreeVertexFactory* WaterVertexFactory;
