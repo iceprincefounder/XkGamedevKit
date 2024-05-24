@@ -40,33 +40,38 @@ class XKGAMEDEVCORE_API UXkLandscapeComponent : public UXkQuadtreeComponent
 };
 
 
-UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, meta = (BlueprintSpawnableComponent, DisplayName = "XkSphericalLandscapeComponent"))
-class XKGAMEDEVCORE_API UXkSphericalLandscapeComponent : public UXkLandscapeComponent
+UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, meta = (BlueprintSpawnableComponent, DisplayName = "XkLandscapeWithWaterComponent"))
+class XKGAMEDEVCORE_API UXkLandscapeWithWaterComponent : public UXkLandscapeComponent
 {
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SphericalLandscapeWithWater [KEVINTSUIXU GAMEDEV]")
+	UMaterialInterface* WaterMaterial;
+
+	UPROPERTY(Transient)
+	UMaterialInstanceDynamic* WaterMaterialDyn;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SphericalLandscapeWithWater [KEVINTSUIXU GAMEDEV]")
+	bool bDisableLandscape;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SphericalLandscapeWithWater [KEVINTSUIXU GAMEDEV]")
+	bool bDisableWaterBody;
+
+	FMaterialRelevance GetWaterMaterialRelevance(ERHIFeatureLevel::Type InFeatureLevel) const;
+
 	//~ Begin UPrimitiveComponent interface
-	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
+	virtual void GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials = false) const override;
 	//~ End UPrimitiveComponent interface
 };
 
 
 UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, meta = (BlueprintSpawnableComponent, DisplayName = "XkSphericalLandscapeComponent"))
-class XKGAMEDEVCORE_API UXkSphericalLandscapeWithWaterComponent : public UXkSphericalLandscapeComponent
+class XKGAMEDEVCORE_API UXkSphericalLandscapeWithWaterComponent : public UXkLandscapeWithWaterComponent
 {
 	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Quadtree Mesh[KEVINTSUIXU GAMEDEV]")
-	UMaterialInterface *MaterialWater;
-
-	UPROPERTY(Transient)
-	UMaterialInstanceDynamic* MaterialWaterDyn;
 public:
 	//~ Begin UPrimitiveComponent interface
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
-	FMaterialRelevance GetMaterialWaterRelevance(ERHIFeatureLevel::Type InFeatureLevel) const;
-	virtual void GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials = false) const override;
 	//~ End UPrimitiveComponent interface
 };
