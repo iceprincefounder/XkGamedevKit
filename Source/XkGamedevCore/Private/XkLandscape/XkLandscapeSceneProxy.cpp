@@ -175,7 +175,7 @@ FXkQuadtreeSceneProxy::FXkQuadtreeSceneProxy(const UXkQuadtreeComponent* InCompo
 	VertexFactory = new FXkQuadtreeVertexFactory(GetScene().GetFeatureLevel());
 	Quadtree.Initialize(1024, 16);
 
-	PatchSize = 65;
+	PatchSize = 33;
 	BuildPatch(PatchData.Vertices, PatchData.Indices, PatchSize);
 
 	// Enqueue initialization of render resource
@@ -613,21 +613,12 @@ FXkLandscapeWithWaterSceneProxy::~FXkLandscapeWithWaterSceneProxy()
 {
 	check(IsInRenderingThread());
 
-	VertexFactory->ReleaseResource();
 	WaterVertexFactory->ReleaseResource();
-
-	VertexPositionBuffer_GPU.ReleaseResource();
-	InstancePositionBuffer_GPU.ReleaseResource();
-	InstanceMorphBuffer_GPU.ReleaseResource();
-	IndexBuffer_GPU.ReleaseResource();
 
 	WaterVertexPositionBuffer_GPU.ReleaseResource();
 	WaterInstancePositionBuffer_GPU.ReleaseResource();
 	WaterInstanceMorphBuffer_GPU.ReleaseResource();
 	WaterIndexBuffer_GPU.ReleaseResource();
-
-	OwnerComponent = nullptr;
-	VertexFactory = nullptr;
 }
 
 
@@ -812,11 +803,13 @@ void FXkLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 InFrameTa
 
 	check(IsInRenderingThread());
 
+	FXkLandscapeSceneProxy::UpdateInstanceBuffer(InFrameTag);
+
 	/** instance pos buffer */
 	FRHIResourceCreateInfo CreateInfo(TEXT("UpdateInstanceBuffer"));
 	int iNunInst = Quadtree.GetVisibleNodes().Num();
-	TArray<FVector4f> InstancePositionData;
-	TArray<FVector4f> InstanceMorphData;
+	TArray<FVector4f> WaterInstancePositionData;
+	TArray<FVector4f> WaterInstanceMorphData;
 
 	FVector4f v4Zero;
 	v4Zero.X = 0;
@@ -847,25 +840,25 @@ void FXkLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 InFrameTa
 		FVector3f Extent3D = FVector3f(QuadtreeNode.GetNodeBox().GetExtent());
 		FVector2f vExtent = FVector2f(Extent3D.X, Extent3D.Y);
 
-		FVector4f InstancePositionValue;
-		FVector4f InstanceMorphValue;
+		FVector4f WaterInstancePositionValue;
+		FVector4f WaterInstanceMorphValue;
 
-		InstancePositionValue.X = QuadtreeNode.GetNodeBox().Min.X + RootOffset.X;
-		InstancePositionValue.Y = QuadtreeNode.GetNodeBox().Min.Y + RootOffset.Y;
-		InstancePositionValue.Z = (QuadtreeNode.GetNodeBox().Min.Z + QuadtreeNode.GetNodeBox().Max.Z) / 2.0;
-		InstancePositionValue.W = vExtent.X * 2.0;
+		WaterInstancePositionValue.X = QuadtreeNode.GetNodeBox().Min.X + RootOffset.X;
+		WaterInstancePositionValue.Y = QuadtreeNode.GetNodeBox().Min.Y + RootOffset.Y;
+		WaterInstancePositionValue.Z = 0.0;
+		WaterInstancePositionValue.W = vExtent.X * 2.0;
 
 		// LOD Level
-		InstanceMorphValue.X = Quadtree.GetMaxDepth() - QuadtreeNode.GetNodeDepth() - 1;
+		WaterInstanceMorphValue.X = Quadtree.GetMaxDepth() - QuadtreeNode.GetNodeDepth() - 1;
 		// LOD Scale
-		InstanceMorphValue.Y = Quadtree.GetMinNodeSize() * FQuadtree::UnrealUnitScale;
+		WaterInstanceMorphValue.Y = Quadtree.GetMinNodeSize() * FQuadtree::UnrealUnitScale;
 		// Quad Size
-		InstanceMorphValue.Z = PatchSize - 1;
+		WaterInstanceMorphValue.Z = WaterPatchSize - 1;
 		// Node Depth
-		InstanceMorphValue.W = QuadtreeNode.GetNodeDepth();
+		WaterInstanceMorphValue.W = QuadtreeNode.GetNodeDepth();
 
-		InstancePositionData.Add(InstancePositionValue);
-		InstanceMorphData.Add(InstanceMorphValue);
+		WaterInstancePositionData.Add(WaterInstancePositionValue);
+		WaterInstanceMorphData.Add(WaterInstanceMorphValue);
 	}
 
 	/** instance position data */
@@ -873,7 +866,7 @@ void FXkLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 InFrameTa
 		WaterInstancePositionBuffer_GPU.VertexBufferRHI, 0,
 		WaterInstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
 		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
+	FMemory::Memcpy((char*)RawInstancePositionData, WaterInstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
 	RHIUnlockBuffer(WaterInstancePositionBuffer_GPU.VertexBufferRHI);
 
 	/** instance morph data */
@@ -881,7 +874,7 @@ void FXkLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 InFrameTa
 		WaterInstanceMorphBuffer_GPU.VertexBufferRHI, 0,
 		WaterInstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
 		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstanceMorphData, InstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
+	FMemory::Memcpy((char*)RawInstanceMorphData, WaterInstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
 	RHIUnlockBuffer(WaterInstanceMorphBuffer_GPU.VertexBufferRHI);
 }
 
@@ -930,4 +923,110 @@ void FXkSphericalLandscapeWithWaterSceneProxy::GetDynamicMeshElements(const TArr
 	}
 
 	FXkLandscapeWithWaterSceneProxy::GetDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector);
+}
+
+
+void FXkSphericalLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeWithWaterSceneProxy::UpdateInstanceBuffer);
+
+	check(IsInRenderingThread());
+
+	/** instance pos buffer */
+	FRHIResourceCreateInfo CreateInfo(TEXT("UpdateInstanceBuffer"));
+	int iNunInst = Quadtree.GetVisibleNodes().Num();
+	TArray<FVector4f> InstancePositionData;
+	TArray<FVector4f> InstanceMorphData;
+	TArray<FVector4f> WaterInstancePositionData;
+	TArray<FVector4f> WaterInstanceMorphData;
+
+	FVector4f v4Zero;
+	v4Zero.X = 0;
+	v4Zero.Y = 0;
+	v4Zero.Z = 0;
+	v4Zero.W = 0;
+
+	FVector3f RootOffset = FVector3f(Quadtree.GetRootOffset());
+	float fMaxX = -99999999;
+	float fMinX = 99999999;;
+	float fMaxY = -99999999;;
+	float fMinY = 99999999;
+
+	for (int i = 0; i < Quadtree.GetVisibleNodes().Num(); i++)
+	{
+		int32 iTreeIndex = Quadtree.GetVisibleNodes()[i];
+		const FQuadtreeNode& QuadtreeNode = Quadtree.GetTreeNodes()[iTreeIndex];
+		fMaxX = fMaxX > QuadtreeNode.GetNodeBox().Max.X ? fMaxX : QuadtreeNode.GetNodeBox().Max.X;
+		fMaxY = fMaxY > QuadtreeNode.GetNodeBox().Max.Y ? fMaxY : QuadtreeNode.GetNodeBox().Max.Y;
+		fMinX = fMinX < QuadtreeNode.GetNodeBox().Min.X ? fMinX : QuadtreeNode.GetNodeBox().Min.X;
+		fMinY = fMinY < QuadtreeNode.GetNodeBox().Min.Y ? fMinY : QuadtreeNode.GetNodeBox().Min.Y;
+	}
+
+	for (int i = 0; i < iNunInst; i++)
+	{
+		int32 iTreeIndex = Quadtree.GetVisibleNodes()[i];
+		const FQuadtreeNode& QuadtreeNode = Quadtree.GetTreeNodes()[iTreeIndex];
+		FVector3f Extent3D = FVector3f(QuadtreeNode.GetNodeBox().GetExtent());
+		FVector2f vExtent = FVector2f(Extent3D.X, Extent3D.Y);
+
+		FVector4f InstancePositionValue;
+		FVector4f InstanceMorphValue;
+		FVector4f WaterInstancePositionValue;
+		FVector4f WaterInstanceMorphValue;
+
+		InstancePositionValue.X = QuadtreeNode.GetNodeBox().Min.X + RootOffset.X;
+		InstancePositionValue.Y = QuadtreeNode.GetNodeBox().Min.Y + RootOffset.Y;
+		InstancePositionValue.Z = 0.0;
+		InstancePositionValue.W = vExtent.X * 2.0;
+
+		// LOD Level
+		InstanceMorphValue.X = Quadtree.GetMaxDepth() - QuadtreeNode.GetNodeDepth() - 1;
+		WaterInstanceMorphValue.X = Quadtree.GetMaxDepth() - QuadtreeNode.GetNodeDepth() - 1;
+		// LOD Scale
+		InstanceMorphValue.Y = Quadtree.GetMinNodeSize() * FQuadtree::UnrealUnitScale;
+		WaterInstanceMorphValue.Y = Quadtree.GetMinNodeSize() * FQuadtree::UnrealUnitScale;
+		// Quad Size
+		InstanceMorphValue.Z = PatchSize - 1;
+		WaterInstanceMorphValue.Z = WaterPatchSize - 1;
+		// Node Depth
+		InstanceMorphValue.W = QuadtreeNode.GetNodeDepth();
+		WaterInstanceMorphValue.W = QuadtreeNode.GetNodeDepth();
+
+		InstancePositionData.Add(InstancePositionValue);
+		InstanceMorphData.Add(InstanceMorphValue);
+		WaterInstancePositionData.Add(WaterInstancePositionValue);
+		WaterInstanceMorphData.Add(WaterInstanceMorphValue);
+	}
+
+	/** instance position data */
+	void* RawInstancePositionData = RHILockBuffer(
+		InstancePositionBuffer_GPU.VertexBufferRHI, 0,
+		InstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
+		RLM_WriteOnly);
+	FMemory::Memcpy((char*)RawInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
+	RHIUnlockBuffer(InstancePositionBuffer_GPU.VertexBufferRHI);
+
+	/** instance morph data */
+	void* RawInstanceMorphData = RHILockBuffer(
+		InstanceMorphBuffer_GPU.VertexBufferRHI, 0,
+		InstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
+		RLM_WriteOnly);
+	FMemory::Memcpy((char*)RawInstanceMorphData, InstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
+	RHIUnlockBuffer(InstanceMorphBuffer_GPU.VertexBufferRHI);
+
+	/** instance position data */
+	void* RawInstancePositionData = RHILockBuffer(
+		WaterInstancePositionBuffer_GPU.VertexBufferRHI, 0,
+		WaterInstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
+		RLM_WriteOnly);
+	FMemory::Memcpy((char*)RawInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
+	RHIUnlockBuffer(WaterInstancePositionBuffer_GPU.VertexBufferRHI);
+
+	/** instance morph data */
+	void* RawInstanceMorphData = RHILockBuffer(
+		WaterInstanceMorphBuffer_GPU.VertexBufferRHI, 0,
+		WaterInstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
+		RLM_WriteOnly);
+	FMemory::Memcpy((char*)RawInstanceMorphData, InstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
+	RHIUnlockBuffer(WaterInstanceMorphBuffer_GPU.VertexBufferRHI);
 }
