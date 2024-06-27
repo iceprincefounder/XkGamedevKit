@@ -73,6 +73,23 @@ public:
 
 	typedef FXkQuadtreeSceneProxy Super;
 
+protected:
+	mutable FQuadtree Quadtree;
+	UXkQuadtreeComponent* OwnerComponent;
+	FXkQuadtreeVertexFactory* VertexFactory;
+};
+
+
+class FXkLandscapeSceneProxy : public FXkQuadtreeSceneProxy
+{
+	friend class UXkLandscapeComponent;
+public:
+	FXkLandscapeSceneProxy(
+		const UXkLandscapeComponent* InComponent, const FName ResourceName = NAME_None,
+		FMaterialRenderProxy* InMaterialRenderProxy = nullptr);
+
+	virtual ~FXkLandscapeSceneProxy();
+
 	//~ Begin FPrimitiveSceneProxy Interface
 	virtual SIZE_T GetTypeHash() const override;
 	virtual uint32 GetMemoryFootprint(void) const override;
@@ -92,9 +109,6 @@ public:
 	virtual void UpdateInstanceBuffer(const int16 InFrameTag);
 
 protected:
-	mutable FQuadtree Quadtree;
-	UXkQuadtreeComponent* OwnerComponent;
-	FXkQuadtreeVertexFactory* VertexFactory;
 	FMaterialRenderProxy* MaterialRenderProxy;
 	FMaterialRelevance MaterialRelevance;
 
@@ -108,19 +122,9 @@ protected:
 };
 
 
-class FXkLandscapeSceneProxy : public FXkQuadtreeSceneProxy
-{
-public:
-	FXkLandscapeSceneProxy(
-		const UXkLandscapeComponent* InComponent, const FName ResourceName = NAME_None,
-		FMaterialRenderProxy* InMaterialRenderProxy = nullptr);
-
-	virtual ~FXkLandscapeSceneProxy();
-};
-
-
 class FXkLandscapeWithWaterSceneProxy : public FXkLandscapeSceneProxy
 {
+	friend class UXkLandscapeWithWaterComponent;
 public:
 	FXkLandscapeWithWaterSceneProxy(
 		const UXkLandscapeWithWaterComponent* InComponent, const FName ResourceName = NAME_None,
@@ -161,6 +165,7 @@ protected:
 
 class FXkSphericalLandscapeWithWaterSceneProxy final : public FXkLandscapeWithWaterSceneProxy
 {
+	friend class UXkSphericalLandscapeWithWaterComponent;
 public:
 	FXkSphericalLandscapeWithWaterSceneProxy(
 		const UXkSphericalLandscapeWithWaterComponent* InComponent, const FName ResourceName = NAME_None,
@@ -174,5 +179,7 @@ public:
 		const FSceneViewFamily& ViewFamily,
 		uint32 VisibilityMap,
 		class FMeshElementCollector& Collector) const override;
+
+	void UpdateInstanceBuffer(const int16 InFrameTag) override;
 	//~ End FXkQuadtreeSceneProxy Interface
 };

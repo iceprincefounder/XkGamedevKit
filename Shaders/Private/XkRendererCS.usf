@@ -4,69 +4,104 @@
 	XkRendererCS.usf
 =============================================================================*/
 
-# include "/Engine/Private/Common.ush"
-# include "/Engine/Private/MonteCarlo.ush"
+#include "/Engine/Private/Common.ush"
 
-int4 TextureSize;
-int4 FilterParms;
+int4 TextureFilter;
+float4 Center;
+float4 Extent;
 Texture2D<float4> SourceTexture;
 RWTexture2D<float4> TargetTexture;
+
 
 [numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
 void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 {
 	BRANCH
-	if (any(DispatchThreadId > TextureSize.zw))
+	if (any(DispatchThreadId > TextureFilter.ww))
 	{
 		return;
 	}
 	const uint2 PixelCoord = uint2(DispatchThreadId.x, DispatchThreadId.y);
+#if HEIGHT_FILTER
+	int Range = (int) TextureFilter.x;
 
 	float Sum = 0.0f;       // values sum of height which store in z component
-	uint ZeroCount = 0;     // number of pixels which w component is zero
-	uint NonzeroCount = 0;	// number of pixels which w component is not zero
-
-	uint Mode = FilterParms.x;
-	int Range = (int)FilterParms.y;
+	int SumCount = 0;
 	for (int x = -Range; x <= Range; x++)
 	{
 		for (int y = -Range; y <= Range; y++)
 		{
 			const uint2 PixelCoordOffset = uint2(DispatchThreadId.x + x, DispatchThreadId.y + y);
 			BRANCH
-			if (any(PixelCoordOffset <= TextureSize.zw))
+			if (any(PixelCoordOffset <= TextureFilter.ww))
 			{
 				float4 PixelValue = SourceTexture.Load(uint3(PixelCoordOffset, 0));
-				BRANCH
-				if (PixelValue.a == 0.0f)
-				{
-					ZeroCount++;
-				}
-				else
-				{
-					NonzeroCount++;
-					Sum += PixelValue.z;
-				}
+				Sum += PixelValue.w;
+				SumCount++;
 			}
 		}
 	}
 
+	float4 Source = SourceTexture.Load(uint3(PixelCoord, 0));
+	TargetTexture[PixelCoord] = float4(Source.x, Source.y, Source.z, Sum / SumCount);
+#endif
+	
+#if NORMAL_FILTER
+	int Range = (int) TextureFilter.y;
+	float4 Source = SourceTexture.Load(uint3(PixelCoord, 0));
+	float HeightScale = Extent.w - Extent.z;
+	float2 WorldSizePrePixel = Extent.xy / TextureFilter.ww;
+	const uint2 PixelCoordOffsetX = uint2(DispatchThreadId.x + Range, DispatchThreadId.y);
+	const uint2 PixelCoordOffsetY = uint2(DispatchThreadId.x, DispatchThreadId.y + Range);
+	float A_H = Source.w;
+	float B0_H = SourceTexture.Load(uint3(PixelCoordOffsetX, 0)).w;
+	float B1_H = SourceTexture.Load(uint3(PixelCoordOffsetY, 0)).w;
+	float3 A = float3(0.0, 0.0, (A_H - 0.5f) * 2.0f * HeightScale);
+	float3 B0 = float3(WorldSizePrePixel.x * Range, 0.0, (B0_H - 0.5f) * 2.0f * HeightScale);
+	float3 B1 = float3(0.0, WorldSizePrePixel.y * Range, (B1_H - 0.5f) * 2.0f * HeightScale);
+	float3 N = cross(B0 - A, B1 - A);
+	N = normalize(N);
+	float2 PackedN = N.xy / (N.z + 1.0) * 0.5 + 0.5; // Compress normal to float2
+	TargetTexture[PixelCoord] = float4(PackedN.x, PackedN.y, 0.0f, Source.w);
+#endif
+
+#if SDF_FILTER
+	float LandHeight = Center.w;
+	int Range = (int) TextureFilter.z;
+	float4 Source = SourceTexture.Load(uint3(PixelCoord, 0));
+	float HeightScale = Extent.w - Extent.z;
+	float CurrentHeight = (Source.w - 0.5f) * 2.0f * HeightScale;
+	float2 WorldSizePrePixel = Extent.xy / TextureFilter.ww;
+	float MaxDistance = length(float2((float)Range, (float)Range)) * WorldSizePrePixel;
+	float MinialDistance = 1000.0f;
 	BRANCH
-	if (Mode == 0)
+	if	(CurrentHeight >= LandHeight)
 	{
-		TargetTexture[PixelCoord] = SourceTexture.Load(uint3(PixelCoord, 0));	
+		TargetTexture[PixelCoord] = float4(Source.x, Source.y, Source.z, Source.w);
+		return;
 	}
-	else if (Mode == 1 && NonzeroCount > 0)
+	for (int x = -Range; x <= Range; x++)
 	{
-		float Height = Sum / float(NonzeroCount);
-		TargetTexture[PixelCoord] = float4(1.0f, 1.0f, Height, 1.0f);
+		for (int y = -Range; y <= Range; y++)
+		{
+			const uint2 PixelCoordOffset = uint2(DispatchThreadId.x + x, DispatchThreadId.y + y);
+			BRANCH
+			if (any(PixelCoordOffset <= TextureFilter.ww))
+			{
+				float4 PixelValue = SourceTexture.Load(uint3(PixelCoordOffset, 0));
+				float PixelHeight = (PixelValue.w - 0.5f) * 2.0f * HeightScale;
+				BRANCH
+				if (PixelHeight >= LandHeight)
+				{
+					float2 PixelOffset = float2(x, y);
+					float2 WorldOffset = PixelOffset * WorldSizePrePixel;
+					float2 Distance = WorldOffset - float2(0.0, 0.0);
+					float DistanceValue = length(Distance);
+					MinialDistance = min(MinialDistance, DistanceValue);
+				}
+			}
+		}
 	}
-	else if(Mode == 2 && ZeroCount > 0)
-	{
-		TargetTexture[PixelCoord] = float4(0.0f, 0.0f, 0.0f, 0.0f);
-	}
-	else
-	{
-		TargetTexture[PixelCoord] = SourceTexture.Load(uint3(PixelCoord, 0));
-	}
+	TargetTexture[PixelCoord] = float4(Source.x, Source.y, saturate(MinialDistance / MaxDistance), Source.w);
+#endif
 }

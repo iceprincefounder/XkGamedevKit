@@ -40,7 +40,9 @@ public:
 FXkHexagonalWorldVertexFactory::FXkHexagonalWorldVertexFactory(ERHIFeatureLevel::Type InFeatureLevel)
 	:FVertexFactory(InFeatureLevel)
 {
-	SceneProxy = NULL;
+	VertexPositionVertexBuffer = NULL;
+	InstancePositionVertexBuffer = NULL;
+	VertexPositionVertexBuffer = NULL;
 }
 
 
@@ -48,17 +50,17 @@ void FXkHexagonalWorldVertexFactory::InitRHI()
 {
 	FVertexDeclarationElementList Elements;
 
-	if (SceneProxy)
+	if (VertexPositionVertexBuffer && InstancePositionVertexBuffer && InstanceColorVertexBuffer)
 	{
-		FVertexStreamComponent VertexPosStream(&SceneProxy->VertexPositionBuffer_GPU, 0, sizeof(FVector4f), VET_Float4);
+		FVertexStreamComponent VertexPosStream(VertexPositionVertexBuffer, 0, sizeof(FVector4f), VET_Float4);
 
 		Elements.Add(AccessStreamComponent(VertexPosStream, 0));
 
-		FVertexStreamComponent PositionInstStream(&SceneProxy->InstancePositionBuffer_GPU, 0, sizeof(FVector4f), VET_Float4, EVertexStreamUsage::Instancing);
+		FVertexStreamComponent PositionInstStream(InstancePositionVertexBuffer, 0, sizeof(FVector4f), VET_Float4, EVertexStreamUsage::Instancing);
 
 		Elements.Add(AccessStreamComponent(PositionInstStream, 1));
 
-		FVertexStreamComponent WeightInstStream(&SceneProxy->InstanceWeightBuffer_GPU, 0, sizeof(FVector4f), VET_Float4, EVertexStreamUsage::Instancing);
+		FVertexStreamComponent WeightInstStream(InstanceColorVertexBuffer, 0, sizeof(FVector4f), VET_Float4, EVertexStreamUsage::Instancing);
 
 		Elements.Add(AccessStreamComponent(WeightInstStream, 2));
 
@@ -67,12 +69,13 @@ void FXkHexagonalWorldVertexFactory::InitRHI()
 }
 
 
-void FXkHexagonalWorldVertexFactory::SetSceneProxy(FXkHexagonalWorldSceneProxy* pProxy)
+void FXkHexagonalWorldVertexFactory::SetVertexBuffer(FVertexBuffer* InData0, FVertexBuffer* InData1, FVertexBuffer* InData2)
 {
-	SceneProxy = pProxy;
+	VertexPositionVertexBuffer = InData0;
+	InstancePositionVertexBuffer = InData1;
+	InstanceColorVertexBuffer = InData2;
 	UpdateRHI();
 }
-
 
 bool FXkHexagonalWorldVertexFactory::ShouldCompilePermutation(const FVertexFactoryShaderPermutationParameters& Parameters)
 {
@@ -118,7 +121,8 @@ FXkHexagonalWorldSceneProxy::FXkHexagonalWorldSceneProxy(const UXkHexagonalWorld
 	OwnerComponent = const_cast<UXkHexagonalWorldComponent*>(InComponent);
 	BaseMaterialRenderProxy = InBaseMaterialRenderProxy;
 	EdgeMaterialRenderProxy = InEdgeMaterialRenderProxy;
-	VertexFactory = new FXkHexagonalWorldVertexFactory(GetScene().GetFeatureLevel());
+	BaseVertexFactory = new FXkHexagonalWorldVertexFactory(GetScene().GetFeatureLevel());
+	EdgeVertexFactory = new FXkHexagonalWorldVertexFactory(GetScene().GetFeatureLevel());
 
 	BuildHexagon(HexagonData.BaseVertices, HexagonData.BaseIndices, HexagonData.EdgeVertices, HexagonData.EdgeIndices,
 		OwnerComponent->Radius, OwnerComponent->Height, OwnerComponent->BaseInnerGap, OwnerComponent->BaseOuterGap, OwnerComponent->EdgeInnerGap, OwnerComponent->EdgeOuterGap);
@@ -126,7 +130,8 @@ FXkHexagonalWorldSceneProxy::FXkHexagonalWorldSceneProxy(const UXkHexagonalWorld
 	// Enqueue initialization of render resource
 	BeginInitResource(&VertexPositionBuffer_GPU);
 	BeginInitResource(&InstancePositionBuffer_GPU);
-	BeginInitResource(&InstanceWeightBuffer_GPU);
+	BeginInitResource(&InstanceBaseColorBuffer_GPU);
+	BeginInitResource(&InstanceEdgeColorBuffer_GPU);
 	BeginInitResource(&BaseIndexBuffer_GPU);
 	BeginInitResource(&EdgeIndexBuffer_GPU);
 
@@ -138,16 +143,19 @@ FXkHexagonalWorldSceneProxy::~FXkHexagonalWorldSceneProxy()
 {
 	check(IsInRenderingThread());
 
-	VertexFactory->ReleaseResource();
+	BaseVertexFactory->ReleaseResource();
+	EdgeVertexFactory->ReleaseResource();
 
 	VertexPositionBuffer_GPU.ReleaseResource();
 	InstancePositionBuffer_GPU.ReleaseResource();
-	InstanceWeightBuffer_GPU.ReleaseResource();
+	InstanceBaseColorBuffer_GPU.ReleaseResource();
+	InstanceEdgeColorBuffer_GPU.ReleaseResource();
 	BaseIndexBuffer_GPU.ReleaseResource();
 	EdgeIndexBuffer_GPU.ReleaseResource();
 
 	OwnerComponent = nullptr;
-	VertexFactory = nullptr;
+	BaseVertexFactory = nullptr;
+	EdgeVertexFactory = nullptr;
 }
 
 
@@ -189,11 +197,10 @@ void FXkHexagonalWorldSceneProxy::GetDynamicMeshElements(const TArray<const FSce
 		int16 FrameTag = View.GetOcclusionFrameCounter() % 65535;
 		FVector Position = GetActorPosition();
 
-		int32 NunInst = OwnerComponent->HexagonalWorldNodes.Num();
+		const_cast<FXkHexagonalWorldSceneProxy*>(this)->UpdateInstanceBuffer(FrameTag);
+		int32 NunInst = VisibleNodes.Num();
 		if (NunInst > 0)
 		{
-			const_cast<FXkHexagonalWorldSceneProxy*>(this)->UpdateInstanceBuffer(FrameTag);
-
 			// Hexagon Base Mesh
 			if (bShowBaseMesh)
 			{
@@ -201,7 +208,7 @@ void FXkHexagonalWorldSceneProxy::GetDynamicMeshElements(const TArray<const FSce
 				Mesh.bWireframe = bWireframe;
 				Mesh.bUseForMaterial = true;
 				Mesh.bUseWireframeSelectionColoring = IsSelected();
-				Mesh.VertexFactory = VertexFactory;
+				Mesh.VertexFactory = BaseVertexFactory;
 				Mesh.MaterialRenderProxy = (WireframeMaterialInstance != nullptr) ? WireframeMaterialInstance : BaseMaterialRenderProxy;
 				Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
 				Mesh.Type = PT_TriangleList;
@@ -232,7 +239,7 @@ void FXkHexagonalWorldSceneProxy::GetDynamicMeshElements(const TArray<const FSce
 				Mesh.bWireframe = bWireframe;
 				Mesh.bUseForMaterial = true;
 				Mesh.bUseWireframeSelectionColoring = IsSelected();
-				Mesh.VertexFactory = VertexFactory;
+				Mesh.VertexFactory = EdgeVertexFactory;
 				Mesh.MaterialRenderProxy = (WireframeMaterialInstance != nullptr) ? WireframeMaterialInstance : EdgeMaterialRenderProxy;
 				Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
 				Mesh.Type = PT_TriangleList;
@@ -266,8 +273,10 @@ void FXkHexagonalWorldSceneProxy::CreateRenderThreadResources()
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::CreateRenderThreadResources);
 	check(IsInRenderingThread());
 
-	VertexFactory->SetSceneProxy(this);
-	VertexFactory->InitResource();
+	BaseVertexFactory->SetVertexBuffer(&VertexPositionBuffer_GPU, &InstancePositionBuffer_GPU, &InstanceBaseColorBuffer_GPU);
+	BaseVertexFactory->InitResource();
+	EdgeVertexFactory->SetVertexBuffer(&VertexPositionBuffer_GPU, &InstancePositionBuffer_GPU, &InstanceEdgeColorBuffer_GPU);
+	EdgeVertexFactory->InitResource();
 }
 
 
@@ -376,16 +385,27 @@ void FXkHexagonalWorldSceneProxy::GenerateBuffers_Renderthread(FRHICommandListIm
 	FMemory::Memset((char*)RawInstancePositionBuffer, 0, MAX_HEXAGON_NODE_COUNT * sizeof(FVector4f));
 	RHIUnlockBuffer(InstancePositionBuffer_GPU.VertexBufferRHI);
 
-	/** instance weight, RGB for vertex color, A for splat map */
-	InstanceWeightBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
+	/** instance base color, RGBA for vertex color */
+	InstanceBaseColorBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
 		MAX_HEXAGON_NODE_COUNT * sizeof(FVector4f),
 		BUF_Dynamic | BUF_ShaderResource, CreateInfo);
-	void* RawInstanceWeightBuffer = RHILockBuffer(
-		InstanceWeightBuffer_GPU.VertexBufferRHI, 0,
-		InstanceWeightBuffer_GPU.VertexBufferRHI->GetSize(),
+	void* RawInstanceBaseColorBuffer = RHILockBuffer(
+		InstanceBaseColorBuffer_GPU.VertexBufferRHI, 0,
+		InstanceBaseColorBuffer_GPU.VertexBufferRHI->GetSize(),
 		RLM_WriteOnly);
-	FMemory::Memset((char*)RawInstanceWeightBuffer, 0, MAX_HEXAGON_NODE_COUNT * sizeof(FVector4f));
-	RHIUnlockBuffer(InstanceWeightBuffer_GPU.VertexBufferRHI);
+	FMemory::Memset((char*)RawInstanceBaseColorBuffer, 0, MAX_HEXAGON_NODE_COUNT * sizeof(FVector4f));
+	RHIUnlockBuffer(InstanceBaseColorBuffer_GPU.VertexBufferRHI);
+
+	/** instance edge color, RGBA for vertex color */
+	InstanceEdgeColorBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
+		MAX_HEXAGON_NODE_COUNT * sizeof(FVector4f),
+		BUF_Dynamic | BUF_ShaderResource, CreateInfo);
+	void* RawInstanceEdgeColorBuffer = RHILockBuffer(
+		InstanceEdgeColorBuffer_GPU.VertexBufferRHI, 0,
+		InstanceEdgeColorBuffer_GPU.VertexBufferRHI->GetSize(),
+		RLM_WriteOnly);
+	FMemory::Memset((char*)RawInstanceEdgeColorBuffer, 0, MAX_HEXAGON_NODE_COUNT * sizeof(FVector4f));
+	RHIUnlockBuffer(InstanceEdgeColorBuffer_GPU.VertexBufferRHI);
 }
 
 
@@ -398,20 +418,39 @@ void FXkHexagonalWorldSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
 	/** instance pos buffer */
 	FRHIResourceCreateInfo CreateInfo(TEXT("UpdateInstanceBuffer"));
 	// @TODO Cull
-	TArray<FXkHexagonNode> HexagonalWorldNodes;
-	OwnerComponent->HexagonalWorldNodes.GenerateValueArray(HexagonalWorldNodes);
-	int iNunInst = HexagonalWorldNodes.Num();
-	TArray<FVector4f> InstancePositionData;
-	TArray<FVector4f> InstanceWeightData;
-
-	for (int i = 0; i < iNunInst; i++)
+	TArray<FXkHexagonNode> AllHexagonalWorldNodes;
+	OwnerComponent->GetHexagonalWorldNodes().GenerateValueArray(AllHexagonalWorldNodes);
+	VisibleNodes.Empty();
+	for (int i = 0; i < AllHexagonalWorldNodes.Num(); i++)
 	{
-		const FXkHexagonNode& Node = HexagonalWorldNodes[i];
+		const FXkHexagonNode& Node = AllHexagonalWorldNodes[i];
+		if (Node.Type == EXkHexagonType::Unavailable)
+		{
+			continue;
+		}
+		VisibleNodes.Add(Node.Coord);
+	}
+
+	if (VisibleNodes.Num() == 0)
+	{
+		return;
+	}
+
+	TArray<FVector4f> InstancePositionData;
+	TArray<FVector4f> InstanceBaseColorData;
+	TArray<FVector4f> InstanceEdgeColorData;
+
+	for (int i = 0; i < VisibleNodes.Num(); i++)
+	{
+		FIntVector Coord = VisibleNodes[i];
+		const FXkHexagonNode& Node = OwnerComponent->GetHexagonalWorldNodes()[Coord];
 		FVector4f InstancePositionValue = Node.Position;
-		FVector4f InstanceWeightValue = FVector4f(FVector3f(Node.Color.R, Node.Color.G, Node.Color.B), Node.Splatmap);
+		FVector4f InstanceBaseColorValue = FVector4f(Node.BaseColor.R, Node.BaseColor.G, Node.BaseColor.B, Node.BaseColor.A);
+		FVector4f InstanceEdgeColorValue = FVector4f(Node.EdgeColor.R, Node.EdgeColor.G, Node.EdgeColor.B, Node.EdgeColor.A);
 
 		InstancePositionData.Add(InstancePositionValue);
-		InstanceWeightData.Add(InstanceWeightValue);
+		InstanceBaseColorData.Add(InstanceBaseColorValue);
+		InstanceEdgeColorData.Add(InstanceEdgeColorValue);
 	}
 
 	/** instance position data */
@@ -419,14 +458,22 @@ void FXkHexagonalWorldSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
 		InstancePositionBuffer_GPU.VertexBufferRHI, 0,
 		InstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
 		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
+	FMemory::Memcpy((char*)RawInstancePositionData, InstancePositionData.GetData(), InstancePositionData.Num() * sizeof(FVector4f));
 	RHIUnlockBuffer(InstancePositionBuffer_GPU.VertexBufferRHI);
 
-	/** instance weight data */
-	void* RawInstanceWeightData = RHILockBuffer(
-		InstanceWeightBuffer_GPU.VertexBufferRHI, 0,
-		InstanceWeightBuffer_GPU.VertexBufferRHI->GetSize(),
+	/** instance base color data */
+	void* RawInstanceBaseColorData = RHILockBuffer(
+		InstanceBaseColorBuffer_GPU.VertexBufferRHI, 0,
+		InstanceBaseColorBuffer_GPU.VertexBufferRHI->GetSize(),
 		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstanceWeightData, InstanceWeightData.GetData(), iNunInst * sizeof(FVector4f));
-	RHIUnlockBuffer(InstanceWeightBuffer_GPU.VertexBufferRHI);
+	FMemory::Memcpy((char*)RawInstanceBaseColorData, InstanceBaseColorData.GetData(), InstanceBaseColorData.Num() * sizeof(FVector4f));
+	RHIUnlockBuffer(InstanceBaseColorBuffer_GPU.VertexBufferRHI);
+
+	/** instance edge color data */
+	void* RawInstanceEdgeColorData = RHILockBuffer(
+		InstanceEdgeColorBuffer_GPU.VertexBufferRHI, 0,
+		InstanceEdgeColorBuffer_GPU.VertexBufferRHI->GetSize(),
+		RLM_WriteOnly);
+	FMemory::Memcpy((char*)RawInstanceEdgeColorData, InstanceEdgeColorData.GetData(), InstanceEdgeColorData.Num() * sizeof(FVector4f));
+	RHIUnlockBuffer(InstanceEdgeColorBuffer_GPU.VertexBufferRHI);
 }

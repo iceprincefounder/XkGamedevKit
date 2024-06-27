@@ -207,18 +207,17 @@ void XkCanvasRendererDraw(FRDGBuilder& GraphBuilder,
 void FXkCanvasRenderCS::ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
 {
 	FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
-	OutEnvironment.SetDefine(TEXT("APPLY_PATCH_FILTER"), 1);
 	OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEX"), ThreadGroupSizeX);
 	OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), ThreadGroupSizeY);
 }
 
 
-void XkCanvasMapComputeDispatch(FRDGBuilder& GraphBuilder,
-	FXkCanvasRenderCS::FParameters* InCSParameters, const FIntVector& DispatchCount)
+template<typename T, typename P>
+void XkCanvasComputeDispatch(FRDGBuilder& GraphBuilder, P* InCSParameters, const FIntVector& DispatchCount)
 {
 	FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
-	TShaderMapRef<FXkCanvasRenderCS> ComputeShader(ShaderMap);
-	FRDGEventName&& PassName = RDG_EVENT_NAME("ApplyPatchFilter");
+	TShaderMapRef<T> ComputeShader(ShaderMap);
+	FRDGEventName&& PassName = RDG_EVENT_NAME("XkCanvasComputeDispatch");
 	GraphBuilder.AddPass(
 		Forward<FRDGEventName>(PassName),
 		InCSParameters,
@@ -246,3 +245,6 @@ IMPLEMENT_UNIFORM_BUFFER_STRUCT(FXkCanvasRenderParameters, "Parameters");
 IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderVS, "/Plugin/XkGamedevKit/Private/XkRendererVS.usf", "MainVS", SF_Vertex);
 IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderPS, "/Plugin/XkGamedevKit/Private/XkRendererPS.usf", "MainPS", SF_Pixel);
 IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderCS, "/Plugin/XkGamedevKit/Private/XkRendererCS.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderHeightCS, "/Plugin/XkGamedevKit/Private/XkRendererCS.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderNormalCS, "/Plugin/XkGamedevKit/Private/XkRendererCS.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderSdfCS, "/Plugin/XkGamedevKit/Private/XkRendererCS.usf", "MainCS", SF_Compute);

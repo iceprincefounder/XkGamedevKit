@@ -14,11 +14,37 @@ class XKGAMEDEVCORE_API UXkCanvasRendererComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Canvas [KEVINTSUIXU GAMEDEV]")
+	/* The canvas render target 0 for landscape normal and height.*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
 	class UTextureRenderTarget2D* CanvasRT0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Canvas [KEVINTSUIXU GAMEDEV]")
+	/* The canvas render target 2 for landscape hexagon base&edge color and splat map.*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
 	class UTextureRenderTarget2D* CanvasRT1;
+
+	/* Height convolution range (aka Filter).*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	uint8 ConvolutionRangeX;
+
+	/* Normal convolution range (aka Filter).*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	uint8 ConvolutionRangeY;
+
+	/* SDF convolution range (aka Filter).*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	uint8 ConvolutionRangeZ;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	FVector4f CanvasCenter;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	FVector4f CanvasExtent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	float HorizonHeight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	UMaterialParameterCollection* CanvasMPC;
 
 	UXkCanvasRendererComponent(const FObjectInitializer& ObjectInitializer);
 
@@ -36,6 +62,9 @@ public:
 		FXkCanvasVertexBuffer* VertexBuffer, 
 		FXkCanvasIndexBuffer* IndexBuffer, 
 		FXkCanvasInstanceBuffer* InstancePositionBuffer, 
-		FXkCanvasInstanceBuffer* InstanceWeightBuffer,
-		const FVector4f& Center, const FVector4f& Extent);
+		FXkCanvasInstanceBuffer* InstanceWeightBuffer);
+	virtual FVector4f GetCanvasCenter() const { return CanvasCenter; }
+	virtual void SetCanvasCenter(const FVector4f& Input) { CanvasCenter = Input; }
+	virtual FVector4f GetCanvasExtent() const { return CanvasExtent; }
+	virtual void SetCanvasExtent(const FVector4f& Input) { CanvasExtent = Input; }
 };

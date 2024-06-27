@@ -37,13 +37,15 @@ public:
 
 	static bool ShouldCache(const FVertexFactoryShaderPermutationParameters& Parameters) { return true; }
 
-	void SetSceneProxy(FXkHexagonalWorldSceneProxy* pProxy);
+	void SetVertexBuffer(FVertexBuffer* InData0, FVertexBuffer* InData1, FVertexBuffer* InData2);
 
 	static bool ShouldCompilePermutation(const FVertexFactoryShaderPermutationParameters& Parameters);
 
 	static void ModifyCompilationEnvironment(const FVertexFactoryShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
 
-	FXkHexagonalWorldSceneProxy* SceneProxy;
+	FVertexBuffer* VertexPositionVertexBuffer;
+	FVertexBuffer* InstancePositionVertexBuffer;
+	FVertexBuffer* InstanceColorVertexBuffer;
 };
 
 
@@ -90,14 +92,19 @@ public:
 
 protected:
 	UXkHexagonalWorldComponent* OwnerComponent;
-	FXkHexagonalWorldVertexFactory* VertexFactory;
+	FXkHexagonalWorldVertexFactory* BaseVertexFactory;
+	FXkHexagonalWorldVertexFactory* EdgeVertexFactory;
 	FMaterialRenderProxy* BaseMaterialRenderProxy;
 	FMaterialRenderProxy* EdgeMaterialRenderProxy;
 	FMaterialRelevance MaterialRelevance;
 
 	FVertexBuffer VertexPositionBuffer_GPU;
 	FVertexBuffer InstancePositionBuffer_GPU;
-	FVertexBuffer InstanceWeightBuffer_GPU;
+	FVertexBuffer InstanceBaseColorBuffer_GPU;
+	FVertexBuffer InstanceEdgeColorBuffer_GPU;
 	FIndexBuffer  BaseIndexBuffer_GPU;
 	FIndexBuffer  EdgeIndexBuffer_GPU;
+
+private:
+	TArray<FIntVector> VisibleNodes;
 };

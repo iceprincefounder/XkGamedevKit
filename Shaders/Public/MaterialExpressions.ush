@@ -16,3 +16,15 @@ float3 XkSphericalWorldBending(float3 InCameraPosition, float3 InWorldPosition)
     float y = pow(max(x - b, 0.0f), 2.0f) * a;
     return float3(0.0f, 0.0f, y);
 }
+
+/**
+ * Extract packed normal from texture
+ * return XkCanvasExtractPackedNormal(PackedRG);
+ */
+float3 XkCanvasExtractPackedNormal(float2 InPackedRG)
+{
+    float2 xy = InPackedRG * 2.0 - 1.0; // De-normalize
+    float z = sqrt(1 - dot(xy, xy)); // Calculate z component
+    float3 Normal = float3(xy, z); // Recover normal
+    return normalize(Normal);
+}
