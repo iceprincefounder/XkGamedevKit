@@ -12,10 +12,12 @@
 #include "TextureResource.h"
 #include "RenderingThread.h"
 #include "RenderTargetPool.h"
-
 #include "RenderCaptureInterface.h"
 #include "RenderGraphDefinitions.h"
 #include "ShaderParameterMetadata.h"
+#include "Materials/MaterialParameterCollection.h"
+#include "Materials/MaterialParameterCollectionInstance.h"
+
 
 static bool CaptureDrawCanvas = 0;
 static FAutoConsoleVariableRef CVarCaptureDrawCanvas(
@@ -29,6 +31,21 @@ UXkCanvasRendererComponent::UXkCanvasRendererComponent(const FObjectInitializer&
 	PrimaryComponentTick.bCanEverTick = true;
 	SetComponentTickEnabled(true);
 	bTickInEditor = true;
+
+	ConvolutionRangeX = 2;
+	ConvolutionRangeY = 1;
+	ConvolutionRangeZ = 4;
+
+	CanvasCenter = FVector4f::Zero();
+	CanvasExtent = FVector4f(204800.0/*WorldSize.X*/, 204800.0/*WorldSize.Y*/, -102400.0/*HeightRange MinZ*/, 102400.0/*HeightRange MaxZ*/);
+	HorizonHeight = 0.0f;
+
+	CanvasRT0 = CastChecked<UTextureRenderTarget2D>(
+		StaticLoadObject(UTextureRenderTarget2D::StaticClass(), NULL, TEXT("/XkGamedevKit/RenderTargets/RT_SphericalLandscapeHeight")));
+	CanvasRT1 = CastChecked<UTextureRenderTarget2D>(
+		StaticLoadObject(UTextureRenderTarget2D::StaticClass(), NULL, TEXT("/XkGamedevKit/RenderTargets/RT_SphericalLandscapeWeight")));
+	CanvasMPC = CastChecked<UMaterialParameterCollection>(
+		StaticLoadObject(UMaterialParameterCollection::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/MPC_CanvasRender")));
 }
 
 
@@ -70,6 +87,15 @@ void UXkCanvasRendererComponent::CreateBuffers(
 			InstancePositionBuffer->InitRHI();
 			InstanceWeightBuffer->InitRHI();
 		});
+
+	if (CanvasMPC && GetWorld())
+	{
+		UMaterialParameterCollectionInstance* MPC_Instance = GetWorld()->GetParameterCollectionInstance(CanvasMPC);
+		MPC_Instance->SetScalarParameterValue(FName(TEXT("HorizonHeight")), HorizonHeight);
+		MPC_Instance->SetVectorParameterValue(FName(TEXT("Center")), FLinearColor(CanvasCenter.X, CanvasCenter.Y, CanvasCenter.Z, CanvasCenter.W));
+		MPC_Instance->SetVectorParameterValue(FName(TEXT("Extent")), FLinearColor(CanvasExtent.X, CanvasExtent.Y, CanvasExtent.Z, CanvasExtent.W));
+	}
+
 }
 
 
@@ -77,8 +103,7 @@ void UXkCanvasRendererComponent::DrawCanvas(
 	FXkCanvasVertexBuffer* VertexBuffer, 
 	FXkCanvasIndexBuffer* IndexBuffer, 
 	FXkCanvasInstanceBuffer* InstancePositionBuffer, 
-	FXkCanvasInstanceBuffer* InstanceWeightBuffer,
-	const FVector4f& Center, const FVector4f& Extent)
+	FXkCanvasInstanceBuffer* InstanceWeightBuffer)
 {
 	if (!VertexBuffer || !IndexBuffer)
 	{
@@ -92,11 +117,16 @@ void UXkCanvasRendererComponent::DrawCanvas(
 
 	UTextureRenderTarget2D* Canvas0 = CanvasRT0;
 	UTextureRenderTarget2D* Canvas1 = CanvasRT1;
+	uint8 CRValueX = ConvolutionRangeX;
+	uint8 CRValueY = ConvolutionRangeY;
+	uint8 CRValueZ = ConvolutionRangeZ;
+	FVector4f Center = CanvasCenter;
+	FVector4f Extent = CanvasExtent;
 	FXkCanvasRenderVS::FParameters VertexShaderParamsToCopy;
 	FXkCanvasRenderPS::FParameters PixelShaderParamsToCopy;
 	FMatrix44f LocalToWorld = FMatrix44f(GetOwner()->GetTransform().ToMatrixWithScale());
 	RenderCaptureInterface::FScopedCapture RenderCapture(CaptureDrawCanvas, TEXT("CaptureDrawCanvas"));
-	ENQUEUE_RENDER_COMMAND(UXkRendererComponent_DrawCanvas)([Canvas0, Canvas1, LocalToWorld, Center, Extent,
+	ENQUEUE_RENDER_COMMAND(UXkRendererComponent_DrawCanvas)([Canvas0, Canvas1, CRValueX, CRValueY, CRValueZ, LocalToWorld, Center, Extent,
 		VertexShaderParamsToCopy, PixelShaderParamsToCopy, VertexBuffer, IndexBuffer, InstancePositionBuffer, InstanceWeightBuffer]
 		(FRHICommandListImmediate& RHICmdList)
 		{
@@ -107,7 +137,7 @@ void UXkCanvasRendererComponent::DrawCanvas(
 			InstancePositionBuffer->InitRHI();
 			InstanceWeightBuffer->InitRHI();
 
-			FRDGBuilder GraphBuilder(RHICmdList, RDG_EVENT_NAME("DrawCanvas"));
+			FRDGBuilder GraphBuilder(RHICmdList, RDG_EVENT_NAME("CaptureDrawCanvas"));
 
 			uint32 NumInstances = InstancePositionBuffer->Data.Num();
 			NumInstances = FMath::Max(NumInstances, (uint32)1);
@@ -122,18 +152,14 @@ void UXkCanvasRendererComponent::DrawCanvas(
 			FRDGTextureRef Canvas1_RDG = GraphBuilder.RegisterExternalTexture(Canvas1_RT);
 
 			FIntVector TextureSize = Canvas0_RDG->Desc.GetSize();
-			EPixelFormat TextureFormat = Canvas0_RDG->Desc.Format;
-			FClearValueBinding ClearValue = Canvas0_RDG->Desc.ClearValue;
-			FVector4f DefaultValue = FVector4f(1.0f, 1.0f, 1.0f, 1.0f);
 			FRHICopyTextureInfo CopyTextureInfo;
 			CopyTextureInfo.NumMips = 1;
 			CopyTextureInfo.Size = TextureSize;
 
 			const ETextureCreateFlags TextureFlags = TexCreate_ShaderResource | TexCreate_UAV | TexCreate_GenerateMipCapable | TexCreate_RenderTargetable;
 			const FRDGTextureDesc Desc = FRDGTextureDesc::Create2D(FIntPoint(TextureSize.X, TextureSize.Y),
-				TextureFormat, ClearValue, TextureFlags, 1 /*NumMips*/);
-			FRDGTextureRef CanvasTemp0_RDG = GraphBuilder.CreateTexture(Desc, TEXT("CanvasTemp0"));
-			FRDGTextureRef CanvasTemp1_RDG = GraphBuilder.CreateTexture(Desc, TEXT("CanvasTemp1"));
+				Canvas0_RDG->Desc.Format, Canvas0_RDG->Desc.ClearValue, TextureFlags, 1 /*NumMips*/);
+			FRDGTextureRef CanvasTemp_RDG = GraphBuilder.CreateTexture(Desc, TEXT("CanvasTemp"));
 
 			FXkCanvasRenderVS::FParameters* VertexShaderParams =
 				GraphBuilder.AllocParameters<FXkCanvasRenderVS::FParameters>();
@@ -148,9 +174,10 @@ void UXkCanvasRendererComponent::DrawCanvas(
 			{
 				// Object data
 				BuildParameters->LocalToWorld = FMatrix44f(LocalToWorld);
-				BuildParameters->Center = FVector4f(Center.X, Center.Y, Center.Z, Center.W);
-				BuildParameters->Extent = FVector4f(Extent.X, Extent.Y, Extent.Z, Extent.W);
-				BuildParameters->Color = DefaultValue;
+				BuildParameters->Center = Center;
+				// Extent.X : world size x, Extent.Y : world size y, Extent.Z : unscaled patch coverage, Extent.W : unscaled world size
+				BuildParameters->Extent = Extent;
+				BuildParameters->Color = FVector4f(1.0f, 1.0f, 1.0f, 1.0f);
 				PassUniformBuffer = GraphBuilder.CreateUniformBuffer(BuildParameters);
 			}
 			VertexShaderParams->Parameters = PassUniformBuffer;
@@ -164,21 +191,23 @@ void UXkCanvasRendererComponent::DrawCanvas(
 			XkCanvasRendererDraw(GraphBuilder, NumInstances, Viewport, VertexShaderParams, PixelShaderParams,
 				VertexBuffer, IndexBuffer);
 
-			//FXkApplyProcMeshPatchCS::FParameters* ComputerShaderParams =
-			//	GraphBuilder.AllocParameters<FXkApplyProcMeshPatchCS::FParameters>();
-			//ComputerShaderParams->TextureSize = FIntVector4(0, 0, TextureSize.X, TextureSize.Y);
-			//ComputerShaderParams->FilterParms = Params;
-			//ComputerShaderParams->DefaultValue = DefaultValue;
-			//ComputerShaderParams->SourceTexture = TextureAssetCanvas0_RDG;
-			//ComputerShaderParams->TargetTexture = GraphBuilder.CreateUAV(TextureAssetCanvas2_RDG);
-			//FIntVector GroupCount = FIntVector(
-			//	FMath::CeilToInt((float)TextureSize.X / FXkApplyProcMeshPatchCS::ThreadGroupSizeX),
-			//	FMath::CeilToInt((float)TextureSize.Y / FXkApplyProcMeshPatchCS::ThreadGroupSizeY),
-			//	1);
-			//FXkApplyProcMeshPatchCS::AddToRenderGraph(GraphBuilder, ComputerShaderParams, GroupCount);
-			//AddCopyTexturePass(GraphBuilder, TextureAssetCanvas2_RDG, TextureAssetTarget_RDG, CopyTextureInfo);
-			//AddCopyTexturePass(GraphBuilder, TextureAssetCanvas2_RDG, TextureAssetCanvas1_RDG, CopyTextureInfo);
-
+			FXkCanvasRenderCS::FParameters* ComputerShaderParams =
+				GraphBuilder.AllocParameters<FXkCanvasRenderCS::FParameters>();
+			ComputerShaderParams->TextureFilter = FIntVector4(CRValueX, CRValueY, CRValueZ, TextureSize.X);
+			ComputerShaderParams->Center = Center; // @TODO: just computer the pixel area which changed by game logic
+			ComputerShaderParams->Extent = Extent;
+			ComputerShaderParams->SourceTexture = Canvas0_RDG;
+			ComputerShaderParams->TargetTexture = GraphBuilder.CreateUAV(CanvasTemp_RDG);
+			FIntVector GroupCount = FIntVector(
+				FMath::CeilToInt((float)TextureSize.X / FXkCanvasRenderCS::ThreadGroupSizeX),
+				FMath::CeilToInt((float)TextureSize.Y / FXkCanvasRenderCS::ThreadGroupSizeY),
+				1);
+			XkCanvasComputeDispatch<FXkCanvasRenderHeightCS>(GraphBuilder, ComputerShaderParams, GroupCount);
+			AddCopyTexturePass(GraphBuilder, CanvasTemp_RDG, Canvas0_RDG, CopyTextureInfo);
+			XkCanvasComputeDispatch<FXkCanvasRenderNormalCS>(GraphBuilder, ComputerShaderParams, GroupCount);
+			AddCopyTexturePass(GraphBuilder, CanvasTemp_RDG, Canvas0_RDG, CopyTextureInfo);
+			XkCanvasComputeDispatch<FXkCanvasRenderSdfCS>(GraphBuilder, ComputerShaderParams, GroupCount);
+			AddCopyTexturePass(GraphBuilder, CanvasTemp_RDG, Canvas0_RDG, CopyTextureInfo);
 			GraphBuilder.Execute();
 		});
 }

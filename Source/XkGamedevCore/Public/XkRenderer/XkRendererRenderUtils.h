@@ -149,7 +149,7 @@ extern void XKGAMEDEVCORE_API XkCanvasRendererDraw(FRDGBuilder& GraphBuilder,
 	FXkCanvasIndexBuffer* InIndexBuffer);
 
 /**
- * Computer Shader that shrink/expend/blur patch texture.
+ * Computer shader to filter the canvas render targets.
  */
 class XKGAMEDEVCORE_API FXkCanvasRenderCS : public FGlobalShader
 {
@@ -157,12 +157,12 @@ class XKGAMEDEVCORE_API FXkCanvasRenderCS : public FGlobalShader
 	SHADER_USE_PARAMETER_STRUCT(FXkCanvasRenderCS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(FIntVector4, TextureSize)
-		SHADER_PARAMETER(FIntVector4, FilterParms) // #0 Expand #1 Shrink #3 Blur #4 Noise
-		SHADER_PARAMETER(FVector4f, DefaultValue)
+		SHADER_PARAMETER(FIntVector4, TextureFilter) // #0 ExpandSize #1 None #3 TextureSizeX #4 TextureSizeY
+		SHADER_PARAMETER(FVector4f, Center) // @TODO: just computer the pixel area which changed by game logic
+		SHADER_PARAMETER(FVector4f, Extent)
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SourceTexture)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, TargetTexture)
-		END_SHADER_PARAMETER_STRUCT()
+	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) { return true; };
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment);
@@ -172,5 +172,47 @@ class XKGAMEDEVCORE_API FXkCanvasRenderCS : public FGlobalShader
 };
 
 
-extern void XKGAMEDEVCORE_API XkCanvasMapComputeDispatch(FRDGBuilder& GraphBuilder,
-	FXkCanvasRenderCS::FParameters* InCSParameters, const FIntVector& DispatchCount);
+class XKGAMEDEVCORE_API FXkCanvasRenderHeightCS : public FXkCanvasRenderCS
+{
+	DECLARE_GLOBAL_SHADER(FXkCanvasRenderHeightCS);
+	SHADER_USE_PARAMETER_STRUCT(FXkCanvasRenderHeightCS, FXkCanvasRenderCS);
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) { return true; };
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FXkCanvasRenderCS::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+		OutEnvironment.SetDefine(TEXT("HEIGHT_FILTER"), 1);
+	}
+};
+
+
+class XKGAMEDEVCORE_API FXkCanvasRenderNormalCS : public FXkCanvasRenderCS
+{
+	DECLARE_GLOBAL_SHADER(FXkCanvasRenderNormalCS);
+	SHADER_USE_PARAMETER_STRUCT(FXkCanvasRenderNormalCS, FXkCanvasRenderCS);
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) { return true; };
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FXkCanvasRenderCS::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+		OutEnvironment.SetDefine(TEXT("NORMAL_FILTER"), 1);
+	}
+};
+
+
+class XKGAMEDEVCORE_API FXkCanvasRenderSdfCS : public FXkCanvasRenderCS
+{
+	DECLARE_GLOBAL_SHADER(FXkCanvasRenderSdfCS);
+	SHADER_USE_PARAMETER_STRUCT(FXkCanvasRenderSdfCS, FXkCanvasRenderCS);
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) { return true; };
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FXkCanvasRenderCS::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+		OutEnvironment.SetDefine(TEXT("SDF_FILTER"), 1);
+	}
+};
+
+
+template<typename T, typename P>
+extern void XKGAMEDEVCORE_API XkCanvasComputeDispatch(FRDGBuilder& GraphBuilder, P* InCSParameters, const FIntVector& DispatchCount);

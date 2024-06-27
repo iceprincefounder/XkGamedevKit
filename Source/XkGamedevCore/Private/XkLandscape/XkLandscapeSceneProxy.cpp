@@ -168,14 +168,29 @@ void BuildPatch(TArray<FVector4f>& PatchPosition, TArray<uint32>& PatchIndex, co
 
 FXkQuadtreeSceneProxy::FXkQuadtreeSceneProxy(const UXkQuadtreeComponent* InComponent, const FName ResourceName, FMaterialRenderProxy* InMaterialRenderProxy)
 	:FPrimitiveSceneProxy(InComponent, ResourceName)
-	, MaterialRelevance(InComponent->GetMaterialRelevance(GetScene().GetFeatureLevel()))
 {
 	OwnerComponent = const_cast<UXkQuadtreeComponent*>(InComponent);
-	MaterialRenderProxy = InMaterialRenderProxy;
 	VertexFactory = new FXkQuadtreeVertexFactory(GetScene().GetFeatureLevel());
 	Quadtree.Initialize(1024, 16);
+}
 
-	PatchSize = 33;
+
+FXkQuadtreeSceneProxy::~FXkQuadtreeSceneProxy()
+{
+	check(IsInRenderingThread());
+
+	VertexFactory->ReleaseResource();
+	OwnerComponent = nullptr;
+	VertexFactory = nullptr;
+}
+
+
+FXkLandscapeSceneProxy::FXkLandscapeSceneProxy(const UXkLandscapeComponent* InComponent, const FName ResourceName, FMaterialRenderProxy* InMaterialRenderProxy)
+	:FXkQuadtreeSceneProxy(InComponent, ResourceName, InMaterialRenderProxy),
+	MaterialRenderProxy(InMaterialRenderProxy),
+	MaterialRelevance(InComponent->GetMaterialRelevance(GetScene().GetFeatureLevel()))
+{
+	PatchSize = 65;
 	BuildPatch(PatchData.Vertices, PatchData.Indices, PatchSize);
 
 	// Enqueue initialization of render resource
@@ -188,36 +203,29 @@ FXkQuadtreeSceneProxy::FXkQuadtreeSceneProxy(const UXkQuadtreeComponent* InCompo
 }
 
 
-FXkQuadtreeSceneProxy::~FXkQuadtreeSceneProxy()
+FXkLandscapeSceneProxy::~FXkLandscapeSceneProxy()
 {
-	check(IsInRenderingThread());
-
-	VertexFactory->ReleaseResource();
-
 	VertexPositionBuffer_GPU.ReleaseResource();
 	InstancePositionBuffer_GPU.ReleaseResource();
 	InstanceMorphBuffer_GPU.ReleaseResource();
 	IndexBuffer_GPU.ReleaseResource();
-
-	OwnerComponent = nullptr;
-	VertexFactory = nullptr;
 }
 
 
-SIZE_T FXkQuadtreeSceneProxy::GetTypeHash() const
+SIZE_T FXkLandscapeSceneProxy::GetTypeHash() const
 {
 	static size_t UniquePointer;
 	return reinterpret_cast<size_t>(&UniquePointer);
 }
 
 
-uint32 FXkQuadtreeSceneProxy::GetMemoryFootprint(void) const
+uint32 FXkLandscapeSceneProxy::GetMemoryFootprint(void) const
 {
 	return(sizeof(*this) + GetAllocatedSize());
 }
 
 
-void FXkQuadtreeSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, class FMeshElementCollector& Collector) const
+void FXkLandscapeSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, class FMeshElementCollector& Collector) const
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::GetDynamicMeshElements);
 
@@ -246,7 +254,7 @@ void FXkQuadtreeSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView
 		int32 NunInst = Quadtree.GetVisibleNodes().Num();
 		if (NunInst > 0)
 		{
-			const_cast<FXkQuadtreeSceneProxy*>(this)->UpdateInstanceBuffer(FrameTag);
+			const_cast<FXkLandscapeSceneProxy*>(this)->UpdateInstanceBuffer(FrameTag);
 
 			// Draw the far mesh.
 			FMeshBatch& Mesh = Collector.AllocateMesh();
@@ -280,9 +288,9 @@ void FXkQuadtreeSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView
 }
 
 
-void FXkQuadtreeSceneProxy::CreateRenderThreadResources()
+void FXkLandscapeSceneProxy::CreateRenderThreadResources()
 {
-	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::CreateRenderThreadResources);
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeSceneProxy::CreateRenderThreadResources);
 	check(IsInRenderingThread());
 
 	VertexFactory->SetVertexStreams(&VertexPositionBuffer_GPU, &InstancePositionBuffer_GPU, &InstanceMorphBuffer_GPU);
@@ -290,7 +298,7 @@ void FXkQuadtreeSceneProxy::CreateRenderThreadResources()
 }
 
 
-FPrimitiveViewRelevance FXkQuadtreeSceneProxy::GetViewRelevance(const FSceneView* View) const
+FPrimitiveViewRelevance FXkLandscapeSceneProxy::GetViewRelevance(const FSceneView* View) const
 {
 	FPrimitiveViewRelevance Result;
 	Result.bDrawRelevance = IsShown(View);
@@ -309,9 +317,9 @@ FPrimitiveViewRelevance FXkQuadtreeSceneProxy::GetViewRelevance(const FSceneView
 }
 
 
-void FXkQuadtreeSceneProxy::GenerateBuffers()
+void FXkLandscapeSceneProxy::GenerateBuffers()
 {
-	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::GenerateBuffers);
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeSceneProxy::GenerateBuffers);
 
 	if (PatchData.Vertices.Num())
 	{
@@ -322,7 +330,7 @@ void FXkQuadtreeSceneProxy::GenerateBuffers()
 		PatchDataRef->Vertices = PatchData.Vertices;
 		PatchDataRef->Indices = PatchData.Indices;
 
-		FXkQuadtreeSceneProxy* SceneProxy = this;
+		FXkLandscapeSceneProxy* SceneProxy = this;
 
 		ENQUEUE_RENDER_COMMAND(GenerateBuffers)(
 			[PatchDataRef, SceneProxy](FRHICommandListImmediate& RHICmdList)
@@ -334,7 +342,7 @@ void FXkQuadtreeSceneProxy::GenerateBuffers()
 }
 
 
-void FXkQuadtreeSceneProxy::GenerateBuffers_Renderthread(FRHICommandListImmediate& RHICmdList, FPatchData* InPatchData)
+void FXkLandscapeSceneProxy::GenerateBuffers_Renderthread(FRHICommandListImmediate& RHICmdList, FPatchData* InPatchData)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::GenerateBuffers_Renderthread);
 
@@ -343,7 +351,7 @@ void FXkQuadtreeSceneProxy::GenerateBuffers_Renderthread(FRHICommandListImmediat
 	if (!InPatchData->Vertices.Num())
 		return;
 
-	FRHIResourceCreateInfo CreateInfo(TEXT("QuadtreeSceneProxy"));
+	FRHIResourceCreateInfo CreateInfo(TEXT("FXkLandscapeSceneProxy::GenerateBuffers_Renderthread"));
 
 	/** vertex buffer */
 	int32 NumSourceVerts = InPatchData->Vertices.Num();
@@ -444,14 +452,14 @@ void FXkQuadtreeSceneProxy::GenerateBuffers_Renderthread(FRHICommandListImmediat
 }
 
 
-void FXkQuadtreeSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
+void FXkLandscapeSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::UpdateInstanceBuffer);
 
 	check(IsInRenderingThread());
 
 	/** instance pos buffer */
-	FRHIResourceCreateInfo CreateInfo(TEXT("UpdateInstanceBuffer"));
+	FRHIResourceCreateInfo CreateInfo(TEXT("FXkLandscapeSceneProxy::UpdateInstanceBuffer"));
 	int iNunInst = Quadtree.GetVisibleNodes().Num();
 	TArray<FVector4f> InstancePositionData;
 	TArray<FVector4f> InstanceMorphData;
@@ -577,24 +585,12 @@ void FXkQuadtreeSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
 }
 
 
-FXkLandscapeSceneProxy::FXkLandscapeSceneProxy(const UXkLandscapeComponent* InComponent, const FName ResourceName, FMaterialRenderProxy* InMaterialRenderProxy)
-	:FXkQuadtreeSceneProxy(InComponent, ResourceName, InMaterialRenderProxy)
-{
-}
-
-
-FXkLandscapeSceneProxy::~FXkLandscapeSceneProxy()
-{
-}
-
-
 FXkLandscapeWithWaterSceneProxy::FXkLandscapeWithWaterSceneProxy(const UXkLandscapeWithWaterComponent* InComponent, const FName ResourceName, FMaterialRenderProxy* InMaterialRenderProxy, FMaterialRenderProxy* InWaterMaterialRenderProxy)
 	:FXkLandscapeSceneProxy(InComponent, ResourceName, InMaterialRenderProxy),
+	WaterMaterialRenderProxy(InWaterMaterialRenderProxy),
 	WaterMaterialRelevance(InComponent->GetWaterMaterialRelevance(GetScene().GetFeatureLevel()))
 {
 	WaterVertexFactory = new FXkQuadtreeVertexFactory(GetScene().GetFeatureLevel());
-
-	WaterMaterialRenderProxy = InWaterMaterialRenderProxy;
 
 	WaterPatchSize = 33;
 	BuildPatch(WaterPatchData.Vertices, WaterPatchData.Indices, WaterPatchSize);
@@ -628,10 +624,8 @@ void FXkLandscapeWithWaterSceneProxy::GetDynamicMeshElements(const TArray<const 
 
 	check(IsInRenderingThread());
 
-	if (!static_cast<UXkLandscapeWithWaterComponent*>(OwnerComponent)->bDisableLandscape)
-	{
-		FXkLandscapeSceneProxy::GetDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector);
-	}
+	FXkLandscapeSceneProxy::GetDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector);
+
 	if (static_cast<UXkLandscapeWithWaterComponent*>(OwnerComponent)->bDisableWaterBody)
 	{
 		return;
@@ -1015,18 +1009,18 @@ void FXkSphericalLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 
 	RHIUnlockBuffer(InstanceMorphBuffer_GPU.VertexBufferRHI);
 
 	/** instance position data */
-	void* RawInstancePositionData = RHILockBuffer(
+	void* RawWaterInstancePositionData = RHILockBuffer(
 		WaterInstancePositionBuffer_GPU.VertexBufferRHI, 0,
 		WaterInstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
 		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
+	FMemory::Memcpy((char*)RawWaterInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
 	RHIUnlockBuffer(WaterInstancePositionBuffer_GPU.VertexBufferRHI);
 
 	/** instance morph data */
-	void* RawInstanceMorphData = RHILockBuffer(
+	void* RawWaterInstanceMorphData = RHILockBuffer(
 		WaterInstanceMorphBuffer_GPU.VertexBufferRHI, 0,
 		WaterInstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
 		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstanceMorphData, InstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
+	FMemory::Memcpy((char*)RawWaterInstanceMorphData, InstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
 	RHIUnlockBuffer(WaterInstanceMorphBuffer_GPU.VertexBufferRHI);
 }

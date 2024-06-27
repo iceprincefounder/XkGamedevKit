@@ -9,20 +9,11 @@
 
 // when EXkHexagonType is greater that AVAILABLEMARK,
 // which mean that actor is unreachable!
-#define AVAILABLEMARK 2 // Frost for now
 #define BASE_SECTION_INDEX 0
 #define EDGE_SECTION_INDEX 1
 
 class UProceduralMeshComponent;
 
-UENUM(BlueprintType, Blueprintable)
-enum class EXkHexagonType : uint8
-{
-	Land = 0,
-	Road,
-	Forest,
-	Cliff
-};
 
 UCLASS(BlueprintType, Blueprintable)
 class XKGAMEDEVCORE_API AXkHexagonActor : public AActor
@@ -89,9 +80,6 @@ public:
 #endif
 
 public:
-	bool IsAccessible() const;
-	int32 CalcCostOffset() const;
-
 	//~ Begin AXkHexagonActor Interface
 	virtual float GetRadius() const { return Radius; };
 	virtual void SetRadius(float Input) { Radius = Input; };
@@ -182,29 +170,32 @@ public:
 	UPROPERTY(EditAnywhere, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]")
 	TArray<TObjectPtr<class AXkHexagonActor>> HexagonBlockers;
 
-	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXU GAMEDEV]")
 	uint32 GeneratingMaxStep;
 
-	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXU GAMEDEV]")
 	uint32 CenterFieldRange;
 
-	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXU GAMEDEV]")
 	FVector2D PositionRandom;
 
-	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXU GAMEDEV]")
 	float PositionScale;
 
-	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXU GAMEDEV]")
 	float FalloffRadius;
 
-	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXU GAMEDEV]")
 	FVector2D FalloffCenter;
 
-	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXU GAMEDEV]")
 	FVector2D FalloffExtent;
 
-	UPROPERTY(EditAnywhere, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXU GAMEDEV]")
 	float FalloffCornerRadii;
+
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXU GAMEDEV]")
+	TArray<FXkHexagonSplat> HexagonSplats;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
 	float Radius;
@@ -274,8 +265,8 @@ public:
 	UFUNCTION(CallInEditor, Category = "HexagonalWorld [KEVINTSUIXU GAMEDEV]")
 	void GenerateHexagons();
 
-	UFUNCTION(CallInEditor, Category = "MainlandGenerate [KEVINTSUIXU GAMEDEV]")
-	void GenerateNoise();
+	UFUNCTION(CallInEditor, Category = "MainWorldGenerate [KEVINTSUIXU GAMEDEV]")
+	void GenerateWorld();
 
 	UFUNCTION(CallInEditor, Category = "PathfindingDebug [KEVINTSUIXU GAMEDEV]")
 	void Pathfinding();
@@ -296,13 +287,16 @@ public:
 	* @brief Find a hexagon node by input coordinate
 	* @param InCoord The coordinate a hexagon pretend to be
 	*/
-	FORCEINLINE virtual FXkHexagonNode* GetHexagonNodeByCoord(const FIntVector& InCoord) const;
+	FORCEINLINE virtual FXkHexagonNode* GetHexagonNodeByCoord(const FIntVector& InCoord);
 
 	/**
 	* @brief Find a hexagon node by input position
 	* @param InPosition The position a hexagon node pretend to be
 	*/
-	FORCEINLINE virtual FXkHexagonNode* GetHexagonNodeByLocation(const FVector& InPosition) const;
+	FORCEINLINE virtual FXkHexagonNode* GetHexagonNodeByLocation(const FVector& InPosition);
+
+	FORCEINLINE virtual int32 GetHexagonManhattanDistance(const FVector& A, const FVector& B) const;
+	FORCEINLINE virtual int32 GetHexagonManhattanDistance(const AXkHexagonActor* A, const AXkHexagonActor* B) const;
 
 	/**
 	* @brief Find a hexagon by input coordinate
@@ -315,9 +309,6 @@ public:
 	* @param InPosition The position a hexagon pretend to be
 	*/
 	FORCEINLINE virtual AXkHexagonActor* GetHexagonActorByLocation(const FVector& InPosition) const;
-
-	FORCEINLINE virtual int32 GetHexagonManhattanDistance(const FVector& A, const FVector& B) const;
-	FORCEINLINE virtual int32 GetHexagonManhattanDistance(const AXkHexagonActor* A, const AXkHexagonActor* B) const;
 
 	/**
 	* @brief Find all valid neighbors of input hexagon
@@ -364,6 +355,8 @@ public:
 	virtual TArray<AXkHexagonActor*> PathfindingHexagonActors(const AXkHexagonActor* StartActor, const AXkHexagonActor* EndActor, const TArray<FIntVector>& BlockList);
 	virtual TArray<AXkHexagonActor*> PathfindingHexagonActors(const FVector& StartLocation, const FVector& EndLocation, const TArray<FIntVector>& BlockList);
 private:
+	UPROPERTY()
+	FXkHexagonNodeTable HexagonalWorldTable;
 	UPROPERTY()
 	FXkHexagonAStarPathfinding HexagonAStarPathfinding;
 };

@@ -144,20 +144,15 @@ FXkHexagonAStarPathfinding::~FXkHexagonAStarPathfinding()
 {
 	OpenList.Empty();
 	ClosedList.Empty();
-	HexagonalWorldTable.Empty();
+	HexagonalWorldTable = nullptr;
 }
 
-void FXkHexagonAStarPathfinding::Init(UWorld* InWorld)
+
+void FXkHexagonAStarPathfinding::Init(FXkHexagonNodeTable* InTable)
 {
-	check(InWorld)
 	OpenList.Empty();
 	ClosedList.Empty();
-	HexagonalWorldTable.Empty();
-	for (TActorIterator<AXkHexagonActor> It(InWorld); It; ++It)
-	{
-		AXkHexagonActor* HexagonActor = (*It);
-		HexagonalWorldTable.Add(HexagonActor->GetCoord(), FXkHexagonNode(HexagonActor));
-	}
+	HexagonalWorldTable = InTable;
 }
 
 
@@ -178,11 +173,12 @@ bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, co
 {
 	TheStartPoint = StartingPoint;
 	TheTargetPoint = TargetPoint;
+	TMap<FIntVector, FXkHexagonNode>& NodeMap = HexagonalWorldTable->Nodes;
 
 	FIntVector ConsideredPoint = StartingPoint;
 	OpenList.Add(StartingPoint);
 	ClosedList.Add(StartingPoint);
-	HexagonalWorldTable[StartingPoint].Cost = CalcPathCostValue(StartingPoint, StartingPoint, TargetPoint);
+	NodeMap[StartingPoint].Cost = CalcPathCostValue(StartingPoint, StartingPoint, TargetPoint);
 	int32 StepIndex = 0;
 	while (StepIndex < MaxStep && !ClosedList.Contains(TargetPoint))
 	{
@@ -196,23 +192,22 @@ bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, co
 			{
 				continue;
 			}
-			if (HexagonalWorldTable.Contains(NearPoint))
+			if (NodeMap.Contains(NearPoint))
 			{
 				// Make sure near point not in BlockList which XkHexagon might be occupied by a character
 				if (!BlockList.Contains(NearPoint))
 				{
-					FXkHexagonNode* XkHexagonNode = HexagonalWorldTable.Find(NearPoint);
+					FXkHexagonNode* XkHexagonNode = NodeMap.Find(NearPoint);
 					if (XkHexagonNode && XkHexagonNode->Actor.IsValid())
 					{
 						TWeakObjectPtr<AXkHexagonActor> Actor = XkHexagonNode->Actor;
-						if (Actor.IsValid() && Actor->IsAccessible())
+						if (Actor.IsValid())
 						{
 							NearPoints.Add(NearPoint);
 							if (!OpenList.Contains(NearPoint))
 							{
 								OpenList.Add(NearPoint);
-								int32 Offset = Actor->CalcCostOffset();
-								XkHexagonNode->Cost = CalcPathCostValue(StartingPoint, NearPoint, TargetPoint, Offset);
+								XkHexagonNode->Cost = CalcPathCostValue(StartingPoint, NearPoint, TargetPoint);
 							}
 						}
 					}
@@ -227,7 +222,7 @@ bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, co
 		{
 			for (const FIntVector& NearPoint : NearPoints)
 			{
-				FXkPathCostValue Cost = HexagonalWorldTable[NearPoint].Cost;
+				FXkPathCostValue Cost = NodeMap[NearPoint].Cost;
 				MinimalF = FMath::Min(MinimalF, Cost.F);
 				ConsideredPoints.Add(NearPoint);
 			}
@@ -238,7 +233,7 @@ bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, co
 			{
 				if (!ClosedList.Contains(NextPoint))
 				{
-					FXkPathCostValue Cost = HexagonalWorldTable[NextPoint].Cost;
+					FXkPathCostValue Cost = NodeMap[NextPoint].Cost;
 					MinimalF = FMath::Min(MinimalF, Cost.F);
 					ConsideredPoints.Add(NextPoint);
 				}
@@ -250,9 +245,9 @@ bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, co
 		TMap<FIntVector, FXkPathCostValue> ConsideredPointsResort;
 		for (const FIntVector& CurrentPoint : ConsideredPoints)
 		{
-			if (HexagonalWorldTable[CurrentPoint].Cost.F == MinimalF)
+			if (NodeMap[CurrentPoint].Cost.F == MinimalF)
 			{
-				ConsideredPointsResort.Add(CurrentPoint, HexagonalWorldTable[CurrentPoint].Cost);
+				ConsideredPointsResort.Add(CurrentPoint, NodeMap[CurrentPoint].Cost);
 			}
 		}
 		/////////////////////////////////////////////////////
@@ -277,6 +272,8 @@ bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, co
 
 TArray<FIntVector> FXkHexagonAStarPathfinding::Backtracking(const int32 MaxStep) const
 {
+	TMap<FIntVector, FXkHexagonNode>& NodeMap = HexagonalWorldTable->Nodes;
+
 	TArray<FIntVector> BackTrackingList;
 	BackTrackingList.Add(TheTargetPoint);
 	TArray<FIntVector> ConsideredPointsList;
@@ -323,7 +320,7 @@ TArray<FIntVector> FXkHexagonAStarPathfinding::Backtracking(const int32 MaxStep)
 				ConsideredPoint = NearPoint;
 			}
 			// Compare G between ConsideredPoint and NearPoint
-			if (HexagonalWorldTable[ConsideredPoint].Cost.G > HexagonalWorldTable[NearPoint].Cost.G)
+			if (NodeMap[ConsideredPoint].Cost.G > NodeMap[NearPoint].Cost.G)
 			{
 				ConsideredPoint = NearPoint;
 			}
@@ -363,9 +360,11 @@ TArray<class AXkHexagonActor*> FXkHexagonAStarPathfinding::FindHexagonActors(con
 
 AXkHexagonActor* FXkHexagonAStarPathfinding::FindHexagonActor(const FIntVector& Input) const
 {
-	if (HexagonalWorldTable.Contains(Input))
+	TMap<FIntVector, FXkHexagonNode>& NodeMap = HexagonalWorldTable->Nodes;
+
+	if (NodeMap.Contains(Input))
 	{
-		return HexagonalWorldTable[Input].Actor.Get();
+		return NodeMap[Input].Actor.Get();
 	}
 	return nullptr;
 }

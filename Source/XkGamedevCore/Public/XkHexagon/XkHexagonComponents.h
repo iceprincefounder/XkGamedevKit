@@ -78,11 +78,6 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalPrimitive [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	int32 MaxManhattanDistance;
-
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonalPrimitive [KEVINTSUIXU GAMEDEV]")
-	UPROPERTY()
-	TMap<FIntVector, FXkHexagonNode> HexagonalWorldNodes;
-
 	UPROPERTY(EditAnywhere, Category = "HexagonalPrimitive [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	bool bShowBaseMesh;
 
@@ -112,7 +107,12 @@ public:
 	virtual void GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials = false) const override;
 	//~ End UPrimitiveComponent interface
 
+	virtual void InitHexagonalWorldTable(FXkHexagonNodeTable* Input) { HexagonalWorldTable = Input; };
+	const TMap<FIntVector, FXkHexagonNode>& GetHexagonalWorldNodes() const { check(HexagonalWorldTable); return HexagonalWorldTable->Nodes; };
 	virtual void FetchHexagonData(TArray<FVector4f>& OutVertices, TArray<uint32>& OutIndices);
 	virtual FVector2D GetHexagonalWorldExtent() const;
 	virtual FVector2D GetFullUnscaledWorldSize(const FVector2D& UnscaledPatchCoverage, const FVector2D& Resolution) const;
+
+private:
+	FXkHexagonNodeTable* HexagonalWorldTable;
 };

@@ -8,6 +8,8 @@
 #include "LandscapeStreamingProxy.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
+#include <random>
+
 static const TArray<FLinearColor> GXkHexagonColor = {
 	FLinearColor(0.5, 0.5, 0.5),
 	FLinearColor(0.0, 0.15, 0.15),
@@ -98,18 +100,6 @@ void AXkHexagonActor::PostEditMove(bool bFinished)
 #endif
 
 
-bool AXkHexagonActor::IsAccessible() const
-{
-	return ((int32)HexagonType <= AVAILABLEMARK);
-}
-
-
-int32 AXkHexagonActor::CalcCostOffset() const
-{
-	return (HexagonType == EXkHexagonType::Road) ? -1 : 0;
-}
-
-
 void AXkHexagonActor::SetHexagonWorld(class AXkHexagonalWorldActor* Input)
 {
 	CachedHexagonalWorld = MakeWeakObjectPtr<AXkHexagonalWorldActor>(Input);
@@ -185,10 +175,6 @@ void AXkHexagonActor::UpdateMaterial()
 		{
 			BaseMID->SetVectorParameterValue(FName("Color"), BaseColor);
 		}
-		else
-		{
-			BaseMID->SetVectorParameterValue(FName("Color"), GXkHexagonColor[(int32)HexagonType]);
-		}
 	}
 	if (!EdgeMID && CachedHexagonalWorld.IsValid() && CachedHexagonalWorld->EdgeMaterial)
 	{
@@ -230,6 +216,7 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 
 	HexagonalWorldComponent = CreateDefaultSubobject<UXkHexagonalWorldComponent>(TEXT("HexagonalWorld"));
 	HexagonalWorldComponent->SetupAttachment(RootComponent);
+	HexagonalWorldComponent->InitHexagonalWorldTable(&HexagonalWorldTable);
 
 	UObject* BaseMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonBase"));
 	BaseMaterial = CastChecked<UMaterialInterface>(BaseMaterialObject);
@@ -282,7 +269,8 @@ void AXkHexagonalWorldActor::GenerateHexagons()
 		HexagonActor->Destroy();
 	}
 
-	HexagonalWorldComponent->HexagonalWorldNodes.Empty();
+	HexagonalWorldTable.Nodes.Empty();
+
 	for (int32 X = -XAxisCount; X < (XAxisCount + 1); X++)
 	{
 		for (int32 Y = -YAxisCount; Y < (YAxisCount + 1); Y++)
@@ -300,8 +288,8 @@ void AXkHexagonalWorldActor::GenerateHexagons()
 			FVector Location = FVector(Pos.X, Pos.Y, 0.0);
 			FVector4f Position = FVector4f(Pos.X, Pos.Y, 0.0, 1.0);
 
-			FXkHexagonNode HexagonNode = FXkHexagonNode(Position, FLinearColor::White, 0, HexagonCoord);
-			HexagonalWorldComponent->HexagonalWorldNodes.Add(HexagonCoord, HexagonNode);
+			FXkHexagonNode HexagonNode = FXkHexagonNode(EXkHexagonType::DeepWater | EXkHexagonType::Unavailable, Position, BaseColor, EdgeColor, 0, HexagonCoord);
+			HexagonalWorldTable.Nodes.Add(HexagonCoord, HexagonNode);
 			if (bSpawnActors && ManhattanDistanceToCenter < SpawnActorsMaxMhtDist)
 			{
 				FActorSpawnParameters ActorSpawnParameters;
@@ -329,12 +317,14 @@ void AXkHexagonalWorldActor::GenerateHexagons()
 			}
 		}
 	}
-	HexagonAStarPathfinding.Init(GetWorld());
+	HexagonAStarPathfinding.Init(&HexagonalWorldTable);
 }
 
 
-void AXkHexagonalWorldActor::GenerateNoise()
+void AXkHexagonalWorldActor::GenerateWorld()
 {
+	TMap<FIntVector, FXkHexagonNode>& HexagonalWorldNodes = HexagonalWorldTable.Nodes;
+
 	auto RectangleFalloff = [](FVector2D Position, FVector2D Center, FVector2D Extent, float Radius, float CornerRadii) -> float
 	{
 		FVector2D SafeExtent = Extent - FVector2D(CornerRadii);
@@ -355,6 +345,13 @@ void AXkHexagonalWorldActor::GenerateNoise()
 		return 0.0;
 	};
 
+	auto RandRangeMT = [](float seed, int min, int max) -> float
+		{
+			std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
+			std::uniform_int_distribution<> dis(min, max); // Define a uniform distribution from min to max
+			return dis(gen); // Generate random number
+		};
+
 	auto NotInsideNumber = [](const TArray<FIntVector>& AllNodes, const TArray<FIntVector>& CheckNodes) -> int32
 	{
 		int32 Result = 0;
@@ -368,27 +365,95 @@ void AXkHexagonalWorldActor::GenerateNoise()
 		return Result;
 	};
 
+	auto FindBoundary = [](const TArray<FIntVector>& AllNodes) -> TArray<FIntVector>
+		{
+			TArray<FIntVector> Results;
+			for (const FIntVector& NodeCoord : AllNodes)
+			{
+				TArray<FIntVector> NeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NodeCoord);
+				for (const FIntVector& NeighborNodeCoord : NeighborNodeCoords)
+				{
+					if (!AllNodes.Contains(NeighborNodeCoord))
+					{
+						Results.AddUnique(NodeCoord);
+					}
+				}
+			}
+			return Results;
+		};
+
+	auto FindBoundaryExpanded = [](const TArray<FIntVector>& AllNodes) -> TArray<FIntVector>
+		{
+			TArray<FIntVector> Results;
+			for (const FIntVector& NodeCoord : AllNodes)
+			{
+				TArray<FIntVector> NeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NodeCoord);
+				for (const FIntVector& NeighborNodeCoord : NeighborNodeCoords)
+				{
+					if (!AllNodes.Contains(NeighborNodeCoord))
+					{
+						Results.AddUnique(NeighborNodeCoord);
+					}
+				}
+			}
+			return Results;
+		};
+
+	auto FindBoundaryExpandedWithNoise = [HexagonalWorldNodes, RandRangeMT](const TArray<FIntVector>& AllNodes) -> TArray<FIntVector>
+		{
+			TArray<FIntVector> Results;
+			for (const FIntVector& NodeCoord : AllNodes)
+			{
+				TArray<FIntVector> NeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NodeCoord);
+				for (const FIntVector& NeighborNodeCoord : NeighborNodeCoords)
+				{
+					if (!AllNodes.Contains(NeighborNodeCoord))
+					{
+						const FXkHexagonNode Node = HexagonalWorldNodes[NeighborNodeCoord];
+						if (RandRangeMT(FVector2D(Node.Position.X, Node.Position.Y).Length(), 0, 1))
+						{
+							Results.AddUnique(NeighborNodeCoord);
+						}
+					}
+				}
+			}
+			return Results;
+		};
+
 	if (!GetWorld())
 	{
 		return;
 	}
 
-	TMap<FIntVector, FXkHexagonNode>& HexagonalWorldNodes = HexagonalWorldComponent->HexagonalWorldNodes;
 	uint32 CurrentGeneratingStep = 0;
 
 	TArray<FIntVector> AllNodes;
 	HexagonalWorldNodes.GenerateKeyArray(AllNodes);
 
 	TArray<FIntVector> AllLandNodes;
-	TArray<FIntVector> TempLandNodes;
+	TArray<FIntVector> AllGrassNodes;
+	TArray<FIntVector> AllForestNodes;
+	TArray<FIntVector> AllBeachNodes;
+	TArray<FIntVector> AllBeachNearLandNodes; // beach near land node has same height as land node
+	TArray<FIntVector> AllShallowWaterNodes;
+	TArray<FIntVector> AllDeepWaterNodes;
+	TArray<FIntVector> AllUnavailableNodes;
 
-	TArray<FIntVector> BeachNodes;
+	TArray<FIntVector> AllTempNodes;
 
 	FVector2D RandomOffset = FVector2D(FMath::RandRange(PositionRandom.X, PositionRandom.Y), FMath::RandRange(PositionRandom.X, PositionRandom.Y));
 	for (const FIntVector& NodeCoord : AllNodes)
 	{
 		FXkHexagonNode& Node = HexagonalWorldNodes[NodeCoord];
-		Node.Color = FLinearColor::Black;
+		for (const FXkHexagonSplat& HexagonSplat : HexagonSplats)
+		{
+			if (Node.Type == HexagonSplat.TargetType)
+			{
+				Node.Position.Z = HexagonSplat.Height;
+				Node.BaseColor = HexagonSplat.Color;
+				Node.Splatmap = HexagonSplat.Splats[RandRangeMT(FVector2D(Node.Position.X, Node.Position.Y).Length(), 0, HexagonSplat.Splats.Num() - 1)];
+			}
+		}
 		FVector4f Position = Node.Position;
 
 		FVector Location = FVector(Position.X, Position.Y, Position.Z);
@@ -426,16 +491,16 @@ void AXkHexagonalWorldActor::GenerateNoise()
 						continue;
 					}
 					FXkHexagonNode& Node = HexagonalWorldNodes[NeighborNodeCoord];
-					TempLandNodes.AddUnique(NeighborNodeCoord);
+					AllTempNodes.AddUnique(NeighborNodeCoord);
 				}
 			}
 			else
 			{
-				TempLandNodes.AddUnique(NodeCoord);
+				AllTempNodes.AddUnique(NodeCoord);
 			}
 		}
-		AllLandNodes = TempLandNodes;
-		TempLandNodes.Empty();
+		AllLandNodes = AllTempNodes;
+		AllTempNodes.Empty();
 		CurrentGeneratingStep++;
 	}
 
@@ -445,7 +510,7 @@ void AXkHexagonalWorldActor::GenerateNoise()
 		// 2. noise the border
 		for (FIntVector NodeCoord : AllLandNodes)
 		{
-			TempLandNodes.AddUnique(NodeCoord);
+			AllTempNodes.AddUnique(NodeCoord);
 			TArray<FIntVector> NeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NodeCoord);
 			if (NotInsideNumber(AllLandNodes, NeighborNodeCoords) > 0)
 			{
@@ -462,87 +527,48 @@ void AXkHexagonalWorldActor::GenerateNoise()
 					Noise = FMath::CeilToFloat(Noise);
 					if (Noise)
 					{
-						TempLandNodes.AddUnique(NeighborNodeCoord);
+						AllTempNodes.AddUnique(NeighborNodeCoord);
 					}
 				}
 			}
 		}
-		AllLandNodes = TempLandNodes;
-		TempLandNodes.Empty();
+		AllLandNodes = AllTempNodes;
+		AllTempNodes.Empty();
 		CurrentGeneratingStep++;
 	}
 
 
+	// 3. find the beach and shallow water
 	if (CurrentGeneratingStep < GeneratingMaxStep)
 	{
-		// 3. find the beach
-		for (FIntVector NodeCoord : AllLandNodes)
-		{
-			TempLandNodes.Add(NodeCoord);
-			TArray<FIntVector> NeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NodeCoord);
-			if (NotInsideNumber(AllLandNodes, NeighborNodeCoords) != 6)
-			{
-				for (const FIntVector& NeighborNodeCoord : NeighborNodeCoords)
-				{
-					if (!AllLandNodes.Contains(NeighborNodeCoord))
-					{
-						if (!HexagonalWorldNodes.Contains(NeighborNodeCoord))
-						{
-							continue;
-						}
-						FXkHexagonNode& Node = HexagonalWorldNodes[NeighborNodeCoord];
-						TArray<FIntVector> NeighborsNeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NeighborNodeCoord);
+		AllBeachNearLandNodes = FindBoundaryExpanded(AllLandNodes);
 
-						TempLandNodes.Add(NeighborNodeCoord);
-						if (NotInsideNumber(AllLandNodes, NeighborsNeighborNodeCoords) != 0)
-						{
-							BeachNodes.Add(NeighborNodeCoord);
-						}
-					}
-				}
+		TArray<FIntVector> AllBeachTempNodes = AllBeachNearLandNodes;
+		AllBeachTempNodes.Append(FindBoundaryExpanded(AllBeachTempNodes));
+		AllBeachTempNodes.Append(FindBoundaryExpanded(AllBeachTempNodes));
+		for (const FIntVector& NodeCoord : AllBeachTempNodes)
+		{
+			if (!AllLandNodes.Contains(NodeCoord))
+			{
+				AllBeachNodes.AddUnique(NodeCoord);
 			}
 		}
-		AllLandNodes = TempLandNodes;
-		TempLandNodes.Empty();
+		TArray<FIntVector> AllShallowWaterTempNodes = AllBeachNodes;
+		AllShallowWaterTempNodes.Append(FindBoundaryExpanded(AllShallowWaterTempNodes));
+		AllShallowWaterTempNodes.Append(FindBoundaryExpandedWithNoise(AllShallowWaterTempNodes));
+		AllShallowWaterTempNodes.Append(FindBoundaryExpandedWithNoise(AllShallowWaterTempNodes));
+		for (const FIntVector& NodeCoord : AllShallowWaterTempNodes)
+		{
+			if (!AllLandNodes.Contains(NodeCoord) && !AllBeachNodes.Contains(NodeCoord))
+			{
+				AllShallowWaterNodes.AddUnique(NodeCoord);
+			}
+		}
 		CurrentGeneratingStep++;
 	}
 
-
-	// 4. noise the beach
-	if (CurrentGeneratingStep < GeneratingMaxStep)
-	{
-		for (FIntVector NodeCoord : BeachNodes)
-		{
-			TempLandNodes.AddUnique(NodeCoord);
-			TArray<FIntVector> NeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NodeCoord);
-			if (NotInsideNumber(AllLandNodes, NeighborNodeCoords) > 0)
-			{
-				for (const FIntVector& NeighborNodeCoord : NeighborNodeCoords)
-				{
-					if (!HexagonalWorldNodes.Contains(NeighborNodeCoord))
-					{
-						continue;
-					}
-					FXkHexagonNode& Node = HexagonalWorldNodes[NeighborNodeCoord];
-					FVector4f Position = Node.Position;
-					FVector2D RandomLocation = (FVector2D(Position.X, Position.Y) + RandomOffset);
-					float Noise = FMath::PerlinNoise2D(RandomLocation);
-					Noise = FMath::CeilToFloat(Noise);
-					if (Noise)
-					{
-						TempLandNodes.AddUnique(NeighborNodeCoord);
-						AllLandNodes.AddUnique(NeighborNodeCoord);
-					}
-				}
-			}
-		}
-		BeachNodes = TempLandNodes;
-		TempLandNodes.Empty();
-		CurrentGeneratingStep++;
-	}
-
-
-	// visualize nodes
+	// final deal with nodes
+	float LandHeight = 0.0;
 	for (const FIntVector& NodeCoord : AllLandNodes)
 	{
 		if (!HexagonalWorldNodes.Contains(NodeCoord))
@@ -550,18 +576,61 @@ void AXkHexagonalWorldActor::GenerateNoise()
 			continue;
 		}
 		FXkHexagonNode& Node = HexagonalWorldNodes[NodeCoord];
-		Node.Position.Z = (100.0);
-		Node.Color = FLinearColor::White;
+		Node.Type = EXkHexagonType::Land;
+		float RandomSeed = FVector2D(Node.Position.X, Node.Position.Y).Length();
+		for (const FXkHexagonSplat& HexagonSplat : HexagonSplats)
+		{
+			if (Node.Type == HexagonSplat.TargetType)
+			{
+				Node.Position.Z = HexagonSplat.Height;
+				Node.BaseColor = HexagonSplat.Color;
+				Node.Splatmap = HexagonSplat.Splats[RandRangeMT(RandomSeed, 0, HexagonSplat.Splats.Num() - 1)];
+				LandHeight = HexagonSplat.Height;
+			}
+		}
 	}
-	for (const FIntVector& NodeCoord : BeachNodes)
+	for (const FIntVector& NodeCoord : AllBeachNodes)
 	{
 		if (!HexagonalWorldNodes.Contains(NodeCoord))
 		{
 			continue;
 		}
 		FXkHexagonNode& Node = HexagonalWorldNodes[NodeCoord];
-		Node.Position.Z = (50.0);
-		Node.Color = FLinearColor::Yellow;
+		Node.Type = EXkHexagonType::Sand | EXkHexagonType::Unavailable;
+		float RandomSeed = FVector2D(Node.Position.X, Node.Position.Y).Length();
+		for (const FXkHexagonSplat& HexagonSplat : HexagonSplats)
+		{
+			if (Node.Type == HexagonSplat.TargetType)
+			{
+				Node.Position.Z = HexagonSplat.Height;
+				if (AllBeachNearLandNodes.Contains(NodeCoord))
+				{
+					Node.Position.Z = LandHeight;
+				}
+				Node.BaseColor = HexagonSplat.Color;
+				Node.Splatmap = HexagonSplat.Splats[RandRangeMT(RandomSeed, 0, HexagonSplat.Splats.Num() - 1)];
+			}
+		}
+	}
+
+	for (const FIntVector& NodeCoord : AllShallowWaterNodes)
+	{
+		if (!HexagonalWorldNodes.Contains(NodeCoord))
+		{
+			continue;
+		}
+		FXkHexagonNode& Node = HexagonalWorldNodes[NodeCoord];
+		Node.Type = EXkHexagonType::ShallowWater | EXkHexagonType::Unavailable;
+		float RandomSeed = FVector2D(Node.Position.X, Node.Position.Y).Length();
+		for (const FXkHexagonSplat& HexagonSplat : HexagonSplats)
+		{
+			if (Node.Type == HexagonSplat.TargetType)
+			{
+				Node.Position.Z = HexagonSplat.Height;
+				Node.BaseColor = HexagonSplat.Color;
+				Node.Splatmap = HexagonSplat.Splats[RandRangeMT(RandomSeed, 0, HexagonSplat.Splats.Num() - 1)];
+			}
+		}
 	}
 }
 
@@ -589,7 +658,7 @@ void AXkHexagonalWorldActor::Pathfinding()
 	}
 
 	TArray<class AXkHexagonActor*> XkHexagonPath;
-	HexagonAStarPathfinding.Init(GetWorld());
+	HexagonAStarPathfinding.Init(&HexagonalWorldTable);
 	HexagonAStarPathfinding.Blocking(BlockArea);
 	if (HexagonAStarPathfinding.Pathfinding(HexagonStarter->GetCoord(), HexagonTargeter->GetCoord(), PathfindingMaxStep))
 	{
@@ -618,7 +687,7 @@ void AXkHexagonalWorldActor::VisBoundary()
 	{
 		BlockArea.Add(HexagonActor->GetCoord());
 	}
-	HexagonAStarPathfinding.Init(GetWorld());
+	HexagonAStarPathfinding.Init(&HexagonalWorldTable);
 	HexagonAStarPathfinding.Blocking(BlockArea);
 	TArray<AXkHexagonActor*> Boundary = GetHexagonalWorldBoundary();
 	for (AXkHexagonActor* HexagonActor : Boundary)
@@ -635,7 +704,7 @@ void AXkHexagonalWorldActor::BeginPlay()
 		return;
 	}
 
-	HexagonAStarPathfinding.Init(GetWorld());
+	HexagonAStarPathfinding.Init(&HexagonalWorldTable);
 	Super::BeginPlay();
 }
 
@@ -700,18 +769,13 @@ bool AXkHexagonalWorldActor::IsHexagonActorsNeighboring(const AXkHexagonActor* A
 }
 
 
-FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNodeByCoord(const FIntVector& InCoord) const
+FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNodeByCoord(const FIntVector& InCoord)
 {
-	FXkHexagonNode* Result = nullptr;
-	if (HexagonalWorldComponent->HexagonalWorldNodes.Contains(InCoord))
-	{
-		Result = &HexagonalWorldComponent->HexagonalWorldNodes[InCoord];
-	}	
-	return Result;
+	return HexagonalWorldTable.Nodes.Find(InCoord);;
 }
 
 
-FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNodeByLocation(const FVector& InPosition) const
+FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNodeByLocation(const FVector& InPosition)
 {
 	FIntVector InputCoord = HexagonAStarPathfinding.CalcHexagonCoord(
 		InPosition.X, InPosition.Y, (Radius + GapWidth));

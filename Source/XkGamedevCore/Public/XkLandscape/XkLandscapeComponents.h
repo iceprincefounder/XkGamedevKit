@@ -10,15 +10,22 @@ UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, meta = (Bluepri
 class XKGAMEDEVCORE_API UXkQuadtreeComponent : public UPrimitiveComponent
 {
 	GENERATED_BODY()
+};
+
+
+UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, meta = (BlueprintSpawnableComponent, DisplayName = "XkLandscapeComponent"))
+class XKGAMEDEVCORE_API UXkLandscapeComponent : public UXkQuadtreeComponent
+{
+	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Quadtree Mesh[KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Landscape [KEVINTSUIXU GAMEDEV]")
 	UMaterialInterface *Material;
 
 	UPROPERTY(Transient)
 	UMaterialInstanceDynamic* MaterialDyn;
 
-	UXkQuadtreeComponent(const FObjectInitializer& ObjectInitializer);
+	UXkLandscapeComponent(const FObjectInitializer& ObjectInitializer);
 
 	//~ Begin UPrimitiveComponent interface
 	virtual void PostLoad() override;
@@ -33,29 +40,19 @@ public:
 };
 
 
-UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, meta = (BlueprintSpawnableComponent, DisplayName = "XkLandscapeComponent"))
-class XKGAMEDEVCORE_API UXkLandscapeComponent : public UXkQuadtreeComponent
-{
-	GENERATED_BODY()
-};
-
-
 UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, meta = (BlueprintSpawnableComponent, DisplayName = "XkLandscapeWithWaterComponent"))
 class XKGAMEDEVCORE_API UXkLandscapeWithWaterComponent : public UXkLandscapeComponent
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SphericalLandscapeWithWater [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXU GAMEDEV]")
 	UMaterialInterface* WaterMaterial;
 
 	UPROPERTY(Transient)
 	UMaterialInstanceDynamic* WaterMaterialDyn;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SphericalLandscapeWithWater [KEVINTSUIXU GAMEDEV]")
-	bool bDisableLandscape;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SphericalLandscapeWithWater [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXU GAMEDEV]")
 	bool bDisableWaterBody;
 
 	FMaterialRelevance GetWaterMaterialRelevance(ERHIFeatureLevel::Type InFeatureLevel) const;

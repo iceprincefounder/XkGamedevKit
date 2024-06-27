@@ -79,7 +79,75 @@ public:
 	}
 };
 
+/**
+ * Hexagon Type
+ */
+UENUM(meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
+enum class EXkHexagonType : uint32
+{
+	Land = 1 << 0,
+	Grass = 1 << 1,
+	Forest = 1 << 2,
+	Sand = 1 << 3,
+	Mountain = 1 << 4,
+	Frost = 1 << 5,
+	ShallowWater = 1 << 6,
+	DeepWater = 1 << 7,
+	Unavailable = 1 << 8
+};
 
+inline EXkHexagonType operator|(EXkHexagonType lhs, EXkHexagonType rhs)
+{
+	return static_cast<EXkHexagonType>(static_cast<uint32>(lhs) | static_cast<uint32>(rhs));
+}
+
+inline EXkHexagonType operator|=(EXkHexagonType& lhs, EXkHexagonType rhs)
+{
+	return lhs = static_cast<EXkHexagonType>(static_cast<uint32>(lhs) | static_cast<uint32>(rhs));
+}
+
+inline EXkHexagonType operator&(EXkHexagonType lhs, EXkHexagonType rhs)
+{
+	return static_cast<EXkHexagonType>(static_cast<uint32>(lhs) & static_cast<uint32>(rhs));
+}
+
+inline EXkHexagonType operator&=(EXkHexagonType& lhs, EXkHexagonType rhs)
+{
+	return rhs = static_cast<EXkHexagonType>(static_cast<uint32>(lhs) & static_cast<uint32>(rhs));
+}
+
+inline bool operator==(EXkHexagonType lhs, EXkHexagonType rhs)
+{
+	return ((static_cast<uint32>(lhs) & static_cast<uint32>(rhs))) == static_cast<uint32>(rhs);
+}
+
+
+/**
+ * Hexagon Splat
+ */
+USTRUCT(BlueprintType, Blueprintable)
+struct FXkHexagonSplat
+{
+	GENERATED_BODY()
+
+	FXkHexagonSplat() : TargetType(EXkHexagonType::Unavailable), Height(0.0f), Color(FLinearColor::White), Splats() {};
+public:
+	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXU GAMEDEV]")
+	EXkHexagonType TargetType;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXU GAMEDEV]")
+	float Height;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXU GAMEDEV]")
+	FLinearColor Color;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXU GAMEDEV]")
+	TArray<uint8> Splats;
+};
+
+/**
+ * Hexagon Node
+ */
 USTRUCT(BlueprintType, Blueprintable)
 struct XKGAMEDEVCORE_API FXkHexagonNode
 {
@@ -88,16 +156,19 @@ struct XKGAMEDEVCORE_API FXkHexagonNode
 public:
 	FXkHexagonNode()
 	{
+		Type = EXkHexagonType::Unavailable;
 		Position = FVector4f::Zero();
-		Color = FLinearColor::Black;
+		BaseColor = FLinearColor::Black;
+		EdgeColor = FLinearColor::Black;
 		Splatmap = 0;
 		Coord = FIntVector::ZeroValue;
 	};
 	FXkHexagonNode(
-		const FVector4f& InPosition, const FLinearColor& InColor, const uint8 InSplatmap, const FIntVector& InCoord)
-		:
+		const EXkHexagonType InType, const FVector4f& InPosition, const FLinearColor& InBaseColor, const FLinearColor& InEdgeColor, const uint8 InSplatmap, const FIntVector& InCoord):
+		Type(InType),
 		Position(InPosition),
-		Color(InColor),
+		BaseColor(InBaseColor),
+		EdgeColor(InEdgeColor),
 		Splatmap(InSplatmap),
 		Coord(InCoord) {};
 	FXkHexagonNode(AXkHexagonActor* InActor)
@@ -110,10 +181,16 @@ public:
 	};
 
 	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
+	EXkHexagonType Type;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
 	FVector4f Position;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
-	FLinearColor Color;
+	FLinearColor BaseColor;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
+	FLinearColor EdgeColor;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
 	uint8 Splatmap;
@@ -129,8 +206,10 @@ public:
 
 	FXkHexagonNode& operator= (const FXkHexagonNode& rhs)
 	{
+		Type = rhs.Type;
 		Position = rhs.Position;
-		Color = rhs.Color;
+		BaseColor = rhs.BaseColor;
+		EdgeColor = rhs.EdgeColor;
 		Splatmap = rhs.Splatmap;
 		Coord = rhs.Coord;
 		Actor = rhs.Actor;
@@ -141,8 +220,22 @@ public:
 
 
 /**
+ * Hexagon Node Table
+ */
+USTRUCT(BlueprintType, Blueprintable)
+struct XKGAMEDEVCORE_API FXkHexagonNodeTable
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, Category = "HexagonTable [KEVINTSUIXU GAMEDEV]")
+	TMap<FIntVector, FXkHexagonNode> Nodes;
+};
+
+
+/**
  * Hexagon AStar Pathfinding Algorithm
- * https://blog.theknightsofunity.com/pathfinding-on-a-hexagonal-grid-a-algorithm/
+ * https://blog.theknightsofunity.com/pathfinding-on-lhs-hexagonal-grid-lhs-algorithm/
  */
 USTRUCT(BlueprintType, Blueprintable)
 struct XKGAMEDEVCORE_API FXkHexagonAStarPathfinding
@@ -154,7 +247,7 @@ public:
 	~FXkHexagonAStarPathfinding();
 
 public:
-	void Init(UWorld* InWorld);
+	void Init(FXkHexagonNodeTable* InNodeTable);
 	void Reinit();
 	void Blocking(const TArray<FIntVector>& Input);
 	bool Pathfinding(const FIntVector& StartingPoint, const FIntVector& TargetPoint, int32 MaxStep = 9999);
@@ -163,7 +256,6 @@ public:
 
 	TArray<class AXkHexagonActor*> FindHexagonActors(const TArray<FIntVector>& Inputs) const;
 	class AXkHexagonActor* FindHexagonActor(const FIntVector& Input) const;
-
 public:
 	static FXkPathCostValue CalcPathCostValue(const FIntVector& StartingPoint,
 		const FIntVector& ConsideredPoint, const FIntVector& TargetPoint, int32 Offset = 0);
@@ -185,11 +277,11 @@ protected:
 	UPROPERTY(Transient)
 	TArray<FIntVector> BlockList;
 	UPROPERTY(Transient)
-	TMap<FIntVector, FXkHexagonNode> HexagonalWorldTable;
-	UPROPERTY(Transient)
 	FIntVector TheStartPoint; // starting point
 	UPROPERTY(Transient)
 	FIntVector TheTargetPoint; // target point
+
+	FXkHexagonNodeTable* HexagonalWorldTable;
 };
 
 
