@@ -16,24 +16,24 @@ class XKGAMEDEVCORE_API UXkMovement : public UActorComponent
 {
 	GENERATED_UCLASS_BODY()
 
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
 	float MaxVelocity;
 
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0"))
 	float MaxAcceleration;
 
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	FRotator RotationRate;
 
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
 	FOnMovementBaseBeginEvent OnMovementBaseBeginEvent;
 
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
 	FOnMovementBaseFinishEvent OnMovementBaseFinishEvent;
 public:
-	UFUNCTION(BlueprintCallable, Category = "Movement [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Movement [KEVINTSUIXUGAMEDEV]")
 	FORCEINLINE FVector GetVelocity() const { return Velocity; };
-	UFUNCTION(BlueprintCallable, Category = "Movement [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Movement [KEVINTSUIXUGAMEDEV]")
 	FORCEINLINE FVector GetAcceleration() const { return Acceleration; };
 
 	FORCEINLINE virtual bool ShouldMove() const { return bShouldMove; }
@@ -76,24 +76,24 @@ class XKGAMEDEVCORE_API UXkTargetMovement : public UXkMovement
 	GENERATED_BODY()
 
 	/** Move to target very fast mode.*/
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	bool bBlinkMode;
 
 	/** The max move point of hexagon in one turn.*/
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	uint8 MovementPoint;
 
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	FVector CurrentMovementTarget;
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TArray<FVector> PendingMovementTargets;
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	FRotator CurrentRotationTarget;
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TArray<FVector> PendingRotationTargets;
 
 public:
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
 	FOnMovementTargetFinishEvent OnMovementTargetFinishEvent;
 
 	/** Default UObject constructor. */

@@ -159,6 +159,53 @@ FXkHexagonalWorldSceneProxy::~FXkHexagonalWorldSceneProxy()
 }
 
 
+//void FXkHexagonalWorldSceneProxy::DrawStaticElements(FStaticPrimitiveDrawInterface* PDI)
+//{
+//	FMeshBatch MeshBatch;
+//	MeshBatch.LODIndex = 0;
+//	MeshBatch.SegmentIndex = 0;
+//
+//	MeshBatch.VertexFactory = BaseVertexFactory;
+//	MeshBatch.Type = PT_TriangleList;
+//
+//	MeshBatch.LODIndex = 0;
+//	MeshBatch.SegmentIndex = 0;
+//
+//	MeshBatch.bDitheredLODTransition = false;
+//	MeshBatch.bWireframe = false;
+//	MeshBatch.CastShadow = false;
+//	MeshBatch.bUseForDepthPass = false;
+//	MeshBatch.bUseAsOccluder = false;
+//	MeshBatch.bUseForMaterial = false;
+//	MeshBatch.bRenderToVirtualTexture = true;
+//	MeshBatch.RuntimeVirtualTextureMaterialType = (int32)ERuntimeVirtualTextureMaterialType::BaseColor;
+//	MeshBatch.MaterialRenderProxy = BaseMaterialRenderProxy;
+//	MeshBatch.ReverseCulling = IsLocalToWorldDeterminantNegative();
+//
+//	MeshBatch.DepthPriorityGroup = SDPG_World;
+//	MeshBatch.bCanApplyViewModeOverrides = false;
+//
+//	MeshBatch.Elements.Empty(1);
+//	FMeshBatchElement BatchElement;
+//
+//	int32 NunInst = VisibleNodes.Num();
+//
+//	BatchElement.NumInstances = NunInst;
+//	BatchElement.IndexBuffer = &BaseIndexBuffer_GPU;
+//
+//	// We need the uniform buffer of this primitive because it stores the proper value for the bOutputVelocity flag.
+//	// The identity primitive uniform buffer simply stores false for this flag which leads to missing motion vectors.
+//	BatchElement.PrimitiveUniformBuffer = GetUniformBuffer();
+//
+//	BatchElement.FirstIndex = 0;
+//	BatchElement.NumPrimitives = BaseIndexBuffer_GPU.IndexBufferRHI->GetSize() / (3 * sizeof(uint32));
+//	BatchElement.MinVertexIndex = 0;
+//	BatchElement.MaxVertexIndex = HexagonData.BaseVertices.Num() - 1;
+//
+//	PDI->DrawMesh(MeshBatch, FLT_MAX);
+//}
+
+
 SIZE_T FXkHexagonalWorldSceneProxy::GetTypeHash() const
 {
 	static size_t UniquePointer;
@@ -214,6 +261,8 @@ void FXkHexagonalWorldSceneProxy::GetDynamicMeshElements(const TArray<const FSce
 				Mesh.Type = PT_TriangleList;
 				Mesh.DepthPriorityGroup = SDPG_World;
 				Mesh.bCanApplyViewModeOverrides = false;
+				Mesh.bRenderToVirtualTexture = true;
+				Mesh.RuntimeVirtualTextureMaterialType = (int32)ERuntimeVirtualTextureMaterialType::BaseColor;
 
 				FMeshBatchElement& BatchElement = Mesh.Elements[0];
 				BatchElement.NumInstances = NunInst;
@@ -245,6 +294,8 @@ void FXkHexagonalWorldSceneProxy::GetDynamicMeshElements(const TArray<const FSce
 				Mesh.Type = PT_TriangleList;
 				Mesh.DepthPriorityGroup = SDPG_World;
 				Mesh.bCanApplyViewModeOverrides = false;
+				Mesh.bRenderToVirtualTexture = true;
+				Mesh.RuntimeVirtualTextureMaterialType = (int32)ERuntimeVirtualTextureMaterialType::BaseColor;
 
 				FMeshBatchElement& BatchElement = Mesh.Elements[0];
 				BatchElement.NumInstances = NunInst;

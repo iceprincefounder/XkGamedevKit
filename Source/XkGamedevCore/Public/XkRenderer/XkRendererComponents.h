@@ -15,35 +15,35 @@ class XKGAMEDEVCORE_API UXkCanvasRendererComponent : public UActorComponent
 
 public:
 	/* The canvas render target 0 for landscape normal and height.*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	class UTextureRenderTarget2D* CanvasRT0;
 
 	/* The canvas render target 2 for landscape hexagon base&edge color and splat map.*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	class UTextureRenderTarget2D* CanvasRT1;
 
 	/* Height convolution range (aka Filter).*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	uint8 ConvolutionRangeX;
 
 	/* Normal convolution range (aka Filter).*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	uint8 ConvolutionRangeY;
 
 	/* SDF convolution range (aka Filter).*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	uint8 ConvolutionRangeZ;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	FVector4f CanvasCenter;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	FVector4f CanvasExtent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	float HorizonHeight;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	UMaterialParameterCollection* CanvasMPC;
 
 	UXkCanvasRendererComponent(const FObjectInitializer& ObjectInitializer);

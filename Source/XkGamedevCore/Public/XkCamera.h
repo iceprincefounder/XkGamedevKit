@@ -22,15 +22,15 @@ class XKGAMEDEVCORE_API AXkTopDownCamera : public AXkCamera
 	GENERATED_BODY()
 
 	/** The CapsuleComponent being used for movement collision (by CharacterMovement). Always treated as being vertically aligned in simple collision check functions. */
-	UPROPERTY(Category="Character [KEVINTSUIXU GAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category="Character [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCapsuleComponent> CapsuleComponent;
 
 	/** Top down camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* TopDownCameraComponent;
 
 	/** Camera boom positioning the camera above the character */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
 
 #if WITH_EDITORONLY_DATA
@@ -39,26 +39,26 @@ class XKGAMEDEVCORE_API AXkTopDownCamera : public AXkCamera
 	TObjectPtr<UArrowComponent> ArrowComponent;
 #endif
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	bool bCameraInvisibleWall;
 	/** Camera boom positioning the camera above the character */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	FBox2D CameraInvisibleWall;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	bool bCameraRotationLock;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	FVector2D CameraRotationLock;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	float CameraZoomArmLength;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	FVector2D CameraZoomArmRange;
 
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
 	float MaxVelocity;
 
-	UPROPERTY(Category = "Movement [KEVINTSUIXU GAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0"))
 	float MaxAcceleration;
 public:
 	/** Default UObject constructor. */

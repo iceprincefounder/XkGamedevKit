@@ -22,21 +22,21 @@ public:
 	AXkGameState(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	/** We add all buttons into a list for Gamepad controls, switch and press in GameState. */
-	UPROPERTY(BlueprintAssignable, Category = "Gameplay Button Press [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(BlueprintAssignable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
 	FGameButtonPressedEvent OnGameButtonPressedEvent;
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
 	virtual void AddButtonWidgetIntoMap(class UUserWidget* InWidget, const int32 ButtonIndex);
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
 	virtual void ResetButtonWidgetIntoMap();
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
 	virtual TArray<int32> GetButtonWidgetsValidIndex() const;
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
 	virtual void OnSwitchToNextButton();
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
 	virtual void OnSwitchToLastButton();
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
 	virtual void OnCallCurrentButton();
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
 	virtual int32 GetCurrentButtonIndex() const;
 
 protected:

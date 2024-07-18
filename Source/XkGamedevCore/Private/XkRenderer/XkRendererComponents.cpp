@@ -37,7 +37,8 @@ UXkCanvasRendererComponent::UXkCanvasRendererComponent(const FObjectInitializer&
 	ConvolutionRangeZ = 4;
 
 	CanvasCenter = FVector4f::Zero();
-	CanvasExtent = FVector4f(204800.0/*WorldSize.X*/, 204800.0/*WorldSize.Y*/, -102400.0/*HeightRange MinZ*/, 102400.0/*HeightRange MaxZ*/);
+	CanvasCenter.W = 120.0f; // CanvasCenter.W for land height, to calculate ocean SDF
+	CanvasExtent = FVector4f(204800.0/*WorldSize.X*/, 204800.0/*WorldSize.Y*/, -2048.0/*HeightRange MinZ*/, 2048.0/*HeightRange MaxZ*/);
 	HorizonHeight = 0.0f;
 
 	CanvasRT0 = CastChecked<UTextureRenderTarget2D>(

@@ -73,6 +73,7 @@ public:
 	typedef FXkHexagonalWorldSceneProxy Super;
 
 	//~ Begin FPrimitiveSceneProxy Interface
+	//virtual void DrawStaticElements(FStaticPrimitiveDrawInterface* PDI) override;
 	virtual SIZE_T GetTypeHash() const override;
 	virtual uint32 GetMemoryFootprint(void) const override;
 	virtual uint32 GetAllocatedSize(void) const { return(FPrimitiveSceneProxy::GetAllocatedSize()); }
