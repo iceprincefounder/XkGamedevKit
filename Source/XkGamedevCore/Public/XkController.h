@@ -37,7 +37,7 @@ class XKGAMEDEVCORE_API AXkGamepadCursor : public ADecalActor
 	GENERATED_BODY()
 
 	/** Time Threshold to know if it was a short press */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	float Radius;
 
 public:
@@ -47,9 +47,9 @@ public:
 	FORCEINLINE virtual void AddMovement(const FVector2D& InputValue, const FRotator& ForwardRotator, const float Speed);
 	FORCEINLINE virtual void AddMovement(const FVector& InputValue, const FRotator& ForwardRotator, const float Speed);
 
-	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXU GAMEDEV]", meta = (bTraceComplex = true))
+	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (bTraceComplex = true))
 	bool GetHitResultUnderGamepadCursor(ECollisionChannel TraceChannel, bool bTraceComplex, FHitResult& HitResult) const;
-	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	void SetVisibility(const bool Input);
 
 private:
@@ -67,74 +67,74 @@ public:
 	AXkController(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	/** Time Threshold to know if it was a short press */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float ShortPressThreshold;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float CameraScrollingSpeed;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float CameraDraggingSpeed;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float CameraRotatingSpeed;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float CameraZoomingSpeed;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float MouseDraggingSensibility;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float MouseRotatingSensibility;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float GamepadCursorMovingSpeed;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Strategic Chess Input [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Strategic Chess Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UMaterialInterface* GamepadCursorMaterial;
 
 	/** MappingContext */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta=(AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta=(AllowPrivateAccess = "true"))
 	class UInputMappingContext* DefaultMappingContext;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta=(AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta=(AllowPrivateAccess = "true"))
 	class UInputAction* SetSelectionClickAction;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta=(AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta=(AllowPrivateAccess = "true"))
 	class UInputAction* SetSelectionTouchAction;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetDeselectionClickAction;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetDeselectionTouchAction;
 
 	/** Camera Dragging Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetCameraDraggingAction;
 
 	/** Camera Dragging Press Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetCameraDraggingPressAction;
 
 	/** Camera Rotating Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetCameraRotatingAction;
 
 	/** Camera Rotating Press Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetCameraRotatingPressAction;
 
 	/** Camera Scrolling Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetCameraZoomingAction;
 
 	/** Camera Scrolling Input Action */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetGamepadCursorMovementAction;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXU GAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetGamepadMenuSwitchAction;
 
 	/** Event delegate for when the controls flavor for the UI has changed. */
@@ -142,17 +142,17 @@ public:
 	FControlsFlavorChangedEvent& OnControlsFlavorChanged() { return ControlsFlavorChangedEvent; };
 
 	/** Returns the current controls flavor of the UI, if applicable. */
-	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	virtual EXkControlsFlavor GetControlsFlavor() const { return ControlsFlavor; };
 
 	/** Sets the current controls flavor of the UI, if applicable. */
-	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	virtual EXkControlsFlavor SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor);
 
-	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	virtual FVector2D GetControlsCursorPositionOnScreen() const;
 
-	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXU GAMEDEV]")
+	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	virtual EXkControlsCursorArea GetControlsCursorArea() const { return ControlsCursorArea; };
 
 protected:

@@ -148,7 +148,7 @@ FXkHexagonAStarPathfinding::~FXkHexagonAStarPathfinding()
 }
 
 
-void FXkHexagonAStarPathfinding::Init(FXkHexagonNodeTable* InTable)
+void FXkHexagonAStarPathfinding::Init(FXkHexagonalWorldNodeTable* InTable)
 {
 	OpenList.Empty();
 	ClosedList.Empty();
@@ -198,17 +198,13 @@ bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, co
 				if (!BlockList.Contains(NearPoint))
 				{
 					FXkHexagonNode* XkHexagonNode = NodeMap.Find(NearPoint);
-					if (XkHexagonNode && XkHexagonNode->Actor.IsValid())
+					if (XkHexagonNode)
 					{
-						TWeakObjectPtr<AXkHexagonActor> Actor = XkHexagonNode->Actor;
-						if (Actor.IsValid())
+						NearPoints.Add(NearPoint);
+						if (!OpenList.Contains(NearPoint))
 						{
-							NearPoints.Add(NearPoint);
-							if (!OpenList.Contains(NearPoint))
-							{
-								OpenList.Add(NearPoint);
-								XkHexagonNode->Cost = CalcPathCostValue(StartingPoint, NearPoint, TargetPoint);
-							}
+							OpenList.Add(NearPoint);
+							XkHexagonNode->Cost = CalcPathCostValue(StartingPoint, NearPoint, TargetPoint);
 						}
 					}
 				}
@@ -341,32 +337,6 @@ TArray<FIntVector> FXkHexagonAStarPathfinding::Backtracking(const int32 MaxStep)
 TArray<FIntVector> FXkHexagonAStarPathfinding::SearchArea() const
 {
 	return ClosedList;
-}
-
-
-TArray<class AXkHexagonActor*> FXkHexagonAStarPathfinding::FindHexagonActors(const TArray<FIntVector>& Inputs) const
-{
-	TArray<class AXkHexagonActor*> Ret;
-	for (const FIntVector& CurrentPoint : Inputs)
-	{
-		if (AXkHexagonActor* HexagonActor = FindHexagonActor(CurrentPoint))
-		{
-			Ret.Insert(HexagonActor, 0);
-		}
-	}
-	return Ret;
-}
-
-
-AXkHexagonActor* FXkHexagonAStarPathfinding::FindHexagonActor(const FIntVector& Input) const
-{
-	TMap<FIntVector, FXkHexagonNode>& NodeMap = HexagonalWorldTable->Nodes;
-
-	if (NodeMap.Contains(Input))
-	{
-		return NodeMap[Input].Actor.Get();
-	}
-	return nullptr;
 }
 
 

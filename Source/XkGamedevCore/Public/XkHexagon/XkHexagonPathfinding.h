@@ -132,16 +132,16 @@ struct FXkHexagonSplat
 
 	FXkHexagonSplat() : TargetType(EXkHexagonType::Unavailable), Height(0.0f), Color(FLinearColor::White), Splats() {};
 public:
-	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
 	EXkHexagonType TargetType;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
 	float Height;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
 	FLinearColor Color;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
 	TArray<uint8> Splats;
 };
 
@@ -171,35 +171,27 @@ public:
 		EdgeColor(InEdgeColor),
 		Splatmap(InSplatmap),
 		Coord(InCoord) {};
-	FXkHexagonNode(AXkHexagonActor* InActor)
-	{
-		Actor = MakeWeakObjectPtr(InActor);
-	};
 	~FXkHexagonNode()
 	{
-		Actor.Reset();
 	};
 
-	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	EXkHexagonType Type;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	FVector4f Position;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	FLinearColor BaseColor;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	FLinearColor EdgeColor;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	uint8 Splatmap;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	FIntVector Coord;
-
-	UPROPERTY(Transient)
-	TWeakObjectPtr<class AXkHexagonActor> Actor;
 
 	UPROPERTY(Transient)
 	FXkPathCostValue Cost;
@@ -212,7 +204,6 @@ public:
 		EdgeColor = rhs.EdgeColor;
 		Splatmap = rhs.Splatmap;
 		Coord = rhs.Coord;
-		Actor = rhs.Actor;
 		Cost = rhs.Cost;
 		return *this;
 	};
@@ -223,12 +214,12 @@ public:
  * Hexagon Node Table
  */
 USTRUCT(BlueprintType, Blueprintable)
-struct XKGAMEDEVCORE_API FXkHexagonNodeTable
+struct XKGAMEDEVCORE_API FXkHexagonalWorldNodeTable
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, Category = "HexagonTable [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonTable [KEVINTSUIXUGAMEDEV]")
 	TMap<FIntVector, FXkHexagonNode> Nodes;
 };
 
@@ -247,15 +238,12 @@ public:
 	~FXkHexagonAStarPathfinding();
 
 public:
-	void Init(FXkHexagonNodeTable* InNodeTable);
+	void Init(FXkHexagonalWorldNodeTable* InNodeTable);
 	void Reinit();
 	void Blocking(const TArray<FIntVector>& Input);
 	bool Pathfinding(const FIntVector& StartingPoint, const FIntVector& TargetPoint, int32 MaxStep = 9999);
 	TArray<FIntVector> Backtracking(const int32 MaxStep = 9999) const;
 	TArray<FIntVector> SearchArea() const;
-
-	TArray<class AXkHexagonActor*> FindHexagonActors(const TArray<FIntVector>& Inputs) const;
-	class AXkHexagonActor* FindHexagonActor(const FIntVector& Input) const;
 public:
 	static FXkPathCostValue CalcPathCostValue(const FIntVector& StartingPoint,
 		const FIntVector& ConsideredPoint, const FIntVector& TargetPoint, int32 Offset = 0);
@@ -281,7 +269,7 @@ protected:
 	UPROPERTY(Transient)
 	FIntVector TheTargetPoint; // target point
 
-	FXkHexagonNodeTable* HexagonalWorldTable;
+	FXkHexagonalWorldNodeTable* HexagonalWorldTable;
 };
 
 

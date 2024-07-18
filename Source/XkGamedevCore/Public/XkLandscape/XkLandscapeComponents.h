@@ -6,7 +6,7 @@
 #include "XkLandscapeComponents.generated.h"
 
 
-UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, meta = (BlueprintSpawnableComponent, DisplayName = "XkQuadtreeComponent"))
+UCLASS(BlueprintType, Blueprintable, ShowCategories = (VirtualTexture), ClassGroup = XkGamedevCore, meta = (BlueprintSpawnableComponent, DisplayName = "XkQuadtreeComponent"))
 class XKGAMEDEVCORE_API UXkQuadtreeComponent : public UPrimitiveComponent
 {
 	GENERATED_BODY()
@@ -19,7 +19,7 @@ class XKGAMEDEVCORE_API UXkLandscapeComponent : public UXkQuadtreeComponent
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Landscape [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Landscape [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface *Material;
 
 	UPROPERTY(Transient)
@@ -46,13 +46,13 @@ class XKGAMEDEVCORE_API UXkLandscapeWithWaterComponent : public UXkLandscapeComp
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* WaterMaterial;
 
 	UPROPERTY(Transient)
 	UMaterialInstanceDynamic* WaterMaterialDyn;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXU GAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXUGAMEDEV]")
 	bool bDisableWaterBody;
 
 	FMaterialRelevance GetWaterMaterialRelevance(ERHIFeatureLevel::Type InFeatureLevel) const;

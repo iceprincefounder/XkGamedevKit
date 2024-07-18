@@ -24,6 +24,10 @@
 #define ARROW_HEAD_FACTOR	(0.2f)
 #define ARROW_HEAD_ANGLE	(20.f)
 
+UInterface_HexagonalWorld::UInterface_HexagonalWorld(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+}
 
 void BuildXkHexagonConeVerts(float Angle1, float Angle2, float Scale, float XOffset, uint32 NumSides, TArray<FDynamicMeshVertex>& OutVerts, TArray<uint32>& OutIndices)
 {
@@ -447,21 +451,21 @@ UXkHexagonalWorldComponent::UXkHexagonalWorldComponent(const FObjectInitializer&
 	SetComponentTickEnabled(true);
 	bTickInEditor = true;
 
-	BaseMaterial = CastChecked<UMaterialInterface>(
-		StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/Engine/EngineMaterials/WorldGridMaterial")));
-
-	EdgeMaterial = CastChecked<UMaterialInterface>(
-		StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/Engine/EngineMaterials/WorldGridMaterial")));
+	UObject* BaseMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonBaseSpherical"));
+	BaseMaterial = CastChecked<UMaterialInterface>(BaseMaterialObject);
+	UObject* EdgeMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonEdgeSpherical"));
+	EdgeMaterial = CastChecked<UMaterialInterface>(EdgeMaterialObject);
 
 	Radius = 100.0;
 	Height = 10.0;
 	GapWidth = 0.0;
-	BaseInnerGap = 5.0;
+	BaseInnerGap = 0.0;
 	BaseOuterGap = 0.0;
 	EdgeInnerGap = 9.0;
 	EdgeOuterGap = 1.0;
+	MaxManhattanDistance = 64;
 
-	bShowBaseMesh = true;
+	bShowBaseMesh = false;
 	bShowEdgeMesh = true;
 }
 
@@ -549,4 +553,12 @@ FVector2D UXkHexagonalWorldComponent::GetFullUnscaledWorldSize(const FVector2D& 
 	// That distance in pixels is Resolution-1.
 	FVector2D TargetPixelSize(UnscaledPatchCoverage / FVector2D::Max(Resolution - 1, FVector2D(1, 1)));
 	return TargetPixelSize * Resolution;
+}
+
+
+UXkInstancedHexagonComponent::UXkInstancedHexagonComponent(const FObjectInitializer& ObjectInitializer)
+{
+	UObject* Object = StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/XkGamedevKit/Meshes/SM_StandardHexagonWithUV.SM_StandardHexagonWithUV"));
+	UStaticMesh* StaticMeshObject = CastChecked<UStaticMesh>(Object);
+	SetStaticMesh(StaticMeshObject);
 }
