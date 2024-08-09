@@ -29,7 +29,7 @@ UInterface_HexagonalWorld::UInterface_HexagonalWorld(const FObjectInitializer& O
 {
 }
 
-void BuildXkHexagonConeVerts(float Angle1, float Angle2, float Scale, float XOffset, uint32 NumSides, TArray<FDynamicMeshVertex>& OutVerts, TArray<uint32>& OutIndices)
+void BuildXkHexagonConeVerts(float Angle1, float Angle2, float Scale, float Length, float ZOffset, uint32 NumSides, TArray<FDynamicMeshVertex>& OutVerts, TArray<uint32>& OutIndices)
 {
 	TArray<FVector> ConeVerts;
 	ConeVerts.AddUninitialized(NumSides);
@@ -38,7 +38,7 @@ void BuildXkHexagonConeVerts(float Angle1, float Angle2, float Scale, float XOff
 	{
 		float Fraction = (float)i / (float)(NumSides);
 		float Azi = 2.f * UE_PI * Fraction;
-		ConeVerts[i] = (CalcConeVert(Angle1, Angle2, Azi) * Scale) + FVector(XOffset, 0, 0);
+		ConeVerts[i] = (CalcConeVert(Angle1, Angle2, Azi) * Scale) + FVector(Length, 0, 0);
 	}
 
 	for (uint32 i = 0; i < NumSides; i++)
@@ -51,10 +51,11 @@ void BuildXkHexagonConeVerts(float Angle1, float Angle2, float Scale, float XOff
 
 		FDynamicMeshVertex V0, V1, V2;
 
-		V0.Position = FVector3f(0) + FVector3f(XOffset, 0, 0);
+		V0.Position = FVector3f(0) + FVector3f(Length, 0, 0);
 		V0.TextureCoordinate[0].X = 0.0f;
 		V0.TextureCoordinate[0].Y = (float)i / NumSides;
 		V0.SetTangents((FVector3f)TriTangentX, (FVector3f)TriTangentY, (FVector3f)FVector(-1, 0, 0));
+		V0.Position.Z += ZOffset;
 		int32 I0 = OutVerts.Add(V0);
 
 		V1.Position = (FVector3f)ConeVerts[i];
@@ -62,6 +63,7 @@ void BuildXkHexagonConeVerts(float Angle1, float Angle2, float Scale, float XOff
 		V1.TextureCoordinate[0].Y = (float)i / NumSides;
 		FVector TriTangentZPrev = ConeVerts[i] ^ ConeVerts[i == 0 ? NumSides - 1 : i - 1]; // Normal of the previous face connected to this face
 		V1.SetTangents((FVector3f)TriTangentX, (FVector3f)TriTangentY, (FVector3f)(TriTangentZPrev + TriTangentZ).GetSafeNormal());
+		V1.Position.Z += ZOffset;
 		int32 I1 = OutVerts.Add(V1);
 
 		V2.Position = (FVector3f)ConeVerts[(i + 1) % NumSides];
@@ -69,6 +71,7 @@ void BuildXkHexagonConeVerts(float Angle1, float Angle2, float Scale, float XOff
 		V2.TextureCoordinate[0].Y = (float)((i + 1) % NumSides) / NumSides;
 		FVector TriTangentZNext = ConeVerts[(i + 2) % NumSides] ^ ConeVerts[(i + 1) % NumSides]; // Normal of the next face connected to this face
 		V2.SetTangents((FVector3f)TriTangentX, (FVector3f)TriTangentY, (FVector3f)(TriTangentZNext + TriTangentZ).GetSafeNormal());
+		V2.Position.Z += ZOffset;
 		int32 I2 = OutVerts.Add(V2);
 
 		// Flip winding for negative scale
@@ -88,7 +91,7 @@ void BuildXkHexagonConeVerts(float Angle1, float Angle2, float Scale, float XOff
 }
 
 
-void BuildXkHexagonCylinderVerts(const FVector& Base, const FVector& XAxis, const FVector& YAxis, const FVector& ZAxis, double Radius, double HalfHeight, uint32 Sides, TArray<FDynamicMeshVertex>& OutVerts, TArray<uint32>& OutIndices)
+void BuildXkHexagonCylinderVerts(const FVector& Base, const FVector& XAxis, const FVector& YAxis, const FVector& ZAxis, double Radius, double HalfHeight, float ZOffset, uint32 Sides, TArray<FDynamicMeshVertex>& OutVerts, TArray<uint32>& OutIndices)
 {
 	const float	AngleDelta = 2.0f * UE_PI / Sides;
 	FVector	LastVertex = Base + XAxis * Radius;
@@ -118,6 +121,7 @@ void BuildXkHexagonCylinderVerts(const FVector& Base, const FVector& XAxis, cons
 			(FVector3f)Normal
 		);
 
+		MeshVertex.Position.Z += ZOffset;
 		OutVerts.Add(MeshVertex); //Add bottom vertex
 
 		LastVertex = Vertex;
@@ -145,6 +149,7 @@ void BuildXkHexagonCylinderVerts(const FVector& Base, const FVector& XAxis, cons
 			(FVector3f)Normal
 		);
 
+		MeshVertex.Position.Z += ZOffset;
 		OutVerts.Add(MeshVertex); //Add top vertex
 
 		LastVertex = Vertex;
@@ -241,14 +246,14 @@ public:
 		const FVector ShaftCenter = FVector(0, 0, 0);
 
 		TArray<FDynamicMeshVertex> OutVerts;
-		BuildXkHexagonConeVerts(HeadAngle, HeadAngle, -HeadLength, TotalLength, 32, OutVerts, IndexBuffer.Indices);
+		BuildXkHexagonConeVerts(HeadAngle, HeadAngle, -HeadLength, TotalLength, ArrowZOffset, 32, OutVerts, IndexBuffer.Indices);
 		// build axis mark verts.
 		for (int32 i = 1; i < floor(TotalLength / (ArrowMarkStep * 1.5)); i++)
 		{
-			BuildXkHexagonCylinderVerts(-FVector(ArrowMarkStep * i * 1.5, 0, 0), FVector(0, 0, 1), FVector(0, 1, 0), FVector(1, 0, 0), ShaftRadius * 2.0, ArrowMarkWidth, 16, OutVerts, IndexBuffer.Indices);
-			BuildXkHexagonCylinderVerts(FVector(ArrowMarkStep * i * 1.5, 0, 0), FVector(0, 0, 1), FVector(0, 1, 0), FVector(1, 0, 0), ShaftRadius * 2.0, ArrowMarkWidth, 16, OutVerts, IndexBuffer.Indices);
+			BuildXkHexagonCylinderVerts(-FVector(ArrowMarkStep * i * 1.5, 0, 0), FVector(0, 0, 1), FVector(0, 1, 0), FVector(1, 0, 0), ShaftRadius * 2.0, ArrowMarkWidth, ArrowZOffset, 16, OutVerts, IndexBuffer.Indices);
+			BuildXkHexagonCylinderVerts(FVector(ArrowMarkStep * i * 1.5, 0, 0), FVector(0, 0, 1), FVector(0, 1, 0), FVector(1, 0, 0), ShaftRadius * 2.0, ArrowMarkWidth, ArrowZOffset, 16, OutVerts, IndexBuffer.Indices);
 		}
-		BuildXkHexagonCylinderVerts(ShaftCenter, FVector(0, 0, 1), FVector(0, 1, 0), FVector(1, 0, 0), ShaftRadius, ShaftLength, 16, OutVerts, IndexBuffer.Indices);
+		BuildXkHexagonCylinderVerts(ShaftCenter, FVector(0, 0, 1), FVector(0, 1, 0), FVector(1, 0, 0), ShaftRadius, ShaftLength, ArrowZOffset, 16, OutVerts, IndexBuffer.Indices);
 
 		VertexBuffers.InitFromDynamicVertex(&VertexFactory, OutVerts);
 
@@ -528,7 +533,7 @@ void UXkHexagonalWorldComponent::GetUsedMaterials(TArray<UMaterialInterface*>& O
 }
 
 
-void UXkHexagonalWorldComponent::FetchHexagonData(TArray<FVector4f>& OutVertices, TArray<uint32>& OutIndices)
+void UXkHexagonalWorldComponent::BuildHexagonData(TArray<FVector4f>& OutVertices, TArray<uint32>& OutIndices)
 {
 	if (FXkHexagonalWorldSceneProxy* HexagonalWorldSceneProxy = static_cast<FXkHexagonalWorldSceneProxy*>(SceneProxy))
 	{

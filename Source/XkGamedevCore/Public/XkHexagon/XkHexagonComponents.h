@@ -122,8 +122,8 @@ public:
 	//~ End UPrimitiveComponent interface
 
 	virtual void InitHexagonalWorldTable(FXkHexagonalWorldNodeTable* Input) { HexagonalWorldTable = Input; };
-	const TMap<FIntVector, FXkHexagonNode>& GetHexagonalWorldNodes() const { check(HexagonalWorldTable); return HexagonalWorldTable->Nodes; };
-	virtual void FetchHexagonData(TArray<FVector4f>& OutVertices, TArray<uint32>& OutIndices);
+	const TMap<FIntVector, FXkHexagonNode>& ModifyHexagonalWorldNodes() const { check(HexagonalWorldTable); return HexagonalWorldTable->Nodes; };
+	virtual void BuildHexagonData(TArray<FVector4f>& OutVertices, TArray<uint32>& OutIndices);
 	virtual FVector2D GetHexagonalWorldExtent() const;
 	virtual FVector2D GetFullUnscaledWorldSize(const FVector2D& UnscaledPatchCoverage, const FVector2D& Resolution) const;
 

@@ -2,6 +2,9 @@
 
 #pragma once
 
+// STL
+#include <random>
+
 #include "CoreMinimal.h"
 #include "XkHexagonPathfinding.generated.h"
 
@@ -12,8 +15,6 @@ template<typename T0, typename T1>
 extern void BuildHexagon(TArray<T0>& OutBaseVertices, TArray<T1>& OutBaseIndices, TArray<T0>& OutEdgeVertices, TArray<T1>& OutEdgeIndices,
 	float Radius, float Height, float BaseInnerGap, float BaseOuterGap, float EdgeInnerGap, float EdgeOuterGap);
 
-extern void CullHexagonalWorld(TArray<FXkHexagonNode*> OutHexagonNodes, const TMap<FIntVector, FXkHexagonNode>& HexagonalWorldNodes, const FSceneView& View, const float Distance);
-
 static float Sin30 = FMath::Sin(UE_DOUBLE_PI / (180.0) * 30.0);
 static float Cos30 = FMath::Cos(UE_DOUBLE_PI / (180.0) * 30.0);
 static float XkSin30 = 0.5;
@@ -23,6 +24,27 @@ static float XkCos30x2 = 1.7320508075688772935274463415059;
 static float XkCos45 = 0.70710678118654752440084436210485;
 static float XkCos60 = 0.5;
 static float XkCos30xCos45x2 = 1.224744871391589049098642037353;
+
+static int RandRangeIntMT (float seed, int min, int max)
+{
+	std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
+	std::uniform_int_distribution<> dis(min, max); // Define a uniform distribution from min to max
+	return dis(gen); // Generate random number
+};
+
+static float RandRangeFloatMT(float seed, float min, float max)
+{
+	std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
+	std::uniform_real_distribution<> dis(min, max); // Define a uniform distribution from min to max
+	return dis(gen); // Generate random number
+};
+
+static bool RandRangeBoolMT(float seed)
+{
+	std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
+	std::uniform_int_distribution<> dis(0, 1); // Define a uniform distribution from 0 to 1
+	return dis(gen) == 1; // Generate random number
+};
 
 class AXkHexagonActor;
 
@@ -82,45 +104,39 @@ public:
 /**
  * Hexagon Type
  */
-UENUM(meta = (Bitflags, UseEnumValuesAsMaskValuesInEditor = "true"))
-enum class EXkHexagonType : uint32
+//UENUM(BlueprintType, meta = (Bitflags))
+UENUM()
+enum class EXkHexagonType : uint8
 {
-	Land = 1 << 0,
-	Grass = 1 << 1,
-	Forest = 1 << 2,
+	Unavailable = 1 << 0,
+	Land = 1 << 1,
+	Desert = 1 << 2,
 	Sand = 1 << 3,
 	Mountain = 1 << 4,
 	Frost = 1 << 5,
 	ShallowWater = 1 << 6,
 	DeepWater = 1 << 7,
-	Unavailable = 1 << 8
 };
 
-inline EXkHexagonType operator|(EXkHexagonType lhs, EXkHexagonType rhs)
+inline EXkHexagonType operator|(const EXkHexagonType lhs, const EXkHexagonType rhs)
 {
 	return static_cast<EXkHexagonType>(static_cast<uint32>(lhs) | static_cast<uint32>(rhs));
 }
 
-inline EXkHexagonType operator|=(EXkHexagonType& lhs, EXkHexagonType rhs)
-{
-	return lhs = static_cast<EXkHexagonType>(static_cast<uint32>(lhs) | static_cast<uint32>(rhs));
-}
-
-inline EXkHexagonType operator&(EXkHexagonType lhs, EXkHexagonType rhs)
+inline EXkHexagonType operator&(const EXkHexagonType lhs, const EXkHexagonType rhs)
 {
 	return static_cast<EXkHexagonType>(static_cast<uint32>(lhs) & static_cast<uint32>(rhs));
 }
 
-inline EXkHexagonType operator&=(EXkHexagonType& lhs, EXkHexagonType rhs)
-{
-	return rhs = static_cast<EXkHexagonType>(static_cast<uint32>(lhs) & static_cast<uint32>(rhs));
-}
-
-inline bool operator==(EXkHexagonType lhs, EXkHexagonType rhs)
+inline bool operator==(const EXkHexagonType lhs, const EXkHexagonType rhs)
 {
 	return ((static_cast<uint32>(lhs) & static_cast<uint32>(rhs))) == static_cast<uint32>(rhs);
 }
 
+inline bool operator!=(const EXkHexagonType lhs, const EXkHexagonType rhs)
+{
+	return ((static_cast<uint32>(lhs) & static_cast<uint32>(rhs))) != static_cast<uint32>(rhs);
+}
 
 /**
  * Hexagon Splat
@@ -130,16 +146,13 @@ struct FXkHexagonSplat
 {
 	GENERATED_BODY()
 
-	FXkHexagonSplat() : TargetType(EXkHexagonType::Unavailable), Height(0.0f), Color(FLinearColor::White), Splats() {};
+	FXkHexagonSplat() : TargetType(EXkHexagonType::Unavailable), Height(0.0f), Splats() {};
 public:
 	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
 	EXkHexagonType TargetType;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
 	float Height;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
-	FLinearColor Color;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
 	TArray<uint8> Splats;
@@ -158,39 +171,35 @@ public:
 	{
 		Type = EXkHexagonType::Unavailable;
 		Position = FVector4f::Zero();
-		BaseColor = FLinearColor::Black;
-		EdgeColor = FLinearColor::Black;
+		CustomData = FVector4f::Zero();
 		Splatmap = 0;
 		Coord = FIntVector::ZeroValue;
 	};
 	FXkHexagonNode(
-		const EXkHexagonType InType, const FVector4f& InPosition, const FLinearColor& InBaseColor, const FLinearColor& InEdgeColor, const uint8 InSplatmap, const FIntVector& InCoord):
+		const EXkHexagonType InType, const FVector4f& InPosition, const uint8 InSplatmap, const FIntVector& InCoord) :
 		Type(InType),
 		Position(InPosition),
-		BaseColor(InBaseColor),
-		EdgeColor(InEdgeColor),
+		CustomData(FVector4f::Zero()),
 		Splatmap(InSplatmap),
 		Coord(InCoord) {};
 	~FXkHexagonNode()
 	{
 	};
 
-	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	EXkHexagonType Type;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	FVector4f Position;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
-	FLinearColor BaseColor;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
+	FVector4f CustomData;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
-	FLinearColor EdgeColor;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
+	/* Material texture id.*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	uint8 Splatmap;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	FIntVector Coord;
 
 	UPROPERTY(Transient)
@@ -200,13 +209,14 @@ public:
 	{
 		Type = rhs.Type;
 		Position = rhs.Position;
-		BaseColor = rhs.BaseColor;
-		EdgeColor = rhs.EdgeColor;
+		CustomData = rhs.CustomData;
 		Splatmap = rhs.Splatmap;
 		Coord = rhs.Coord;
 		Cost = rhs.Cost;
 		return *this;
 	};
+
+	FVector GetLocation() const { return FVector(Position.X, Position.Y, Position.Z); }
 };
 
 
@@ -245,18 +255,28 @@ public:
 	TArray<FIntVector> Backtracking(const int32 MaxStep = 9999) const;
 	TArray<FIntVector> SearchArea() const;
 public:
-	static FXkPathCostValue CalcPathCostValue(const FIntVector& StartingPoint,
-		const FIntVector& ConsideredPoint, const FIntVector& TargetPoint, int32 Offset = 0);
+	static FXkPathCostValue CalcPathCostValue(const FIntVector& StartingPoint, const FIntVector& ConsideredPoint, const FIntVector& TargetPoint, int32 Offset = 0);
 	static int32 CalcManhattanDistance(const FIntVector& PointA, const FIntVector& PointB);
 	static FIntVector CalcHexagonCoord(const float PositionX, const float PositionY, const float XkHexagonRadius);
 	/** 
 	* @brief Calculate hexagon actor position by Cartesian coordinate XY index number
 	* @param IndexX Cartesian coordinate X index
 	* @param IndexY Cartesian coordinate Y index
-	* @Distance Distance between two hexagons
+	* @return Distance between two hexagons
 	*/
 	static FVector2D CalcHexagonPosition(const int32 IndexX, const int32 IndexY, const float Distance);
+	/**
+	* @brief Calculate hexagon neighbors coords
+	* @param InputCoord hexagon coord to calculate
+	* @return Array of hexagon neighbors coords
+	*/
 	static TArray<FIntVector> CalcHexagonNeighboringCoord(const FIntVector& InputCoord);
+	/**
+	* @brief Calculate hexagon surrounding coords
+	* @param InputCoords hexagon coords to calculate
+	* @return Array of hexagon surrounding coords
+	*/
+	static TArray<FIntVector> CalcHexagonSurroundingCoord(const TArray<FIntVector>& InputCoords);
 protected:
 	UPROPERTY(Transient)
 	TArray<FIntVector> OpenList;
@@ -278,4 +298,5 @@ protected:
  */
 class XkHexagonDStarPathfinding
 {
+	// TODO
 };

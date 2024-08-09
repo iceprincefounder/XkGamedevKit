@@ -23,7 +23,7 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 	}
 	const uint2 PixelCoord = uint2(DispatchThreadId.x, DispatchThreadId.y);
 #if HEIGHT_FILTER
-	int Range = (int) TextureFilter.x;
+	const int Range = (int) TextureFilter.x;
 
 	float Sum = 0.0f;       // values sum of height which store in z component
 	int SumCount = 0;
@@ -47,9 +47,9 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 #endif
 	
 #if NORMAL_FILTER
-	int Range = (int) TextureFilter.y;
+	const int Range = (int) TextureFilter.y;
+	const float HeightScale = Extent.w - Extent.z;
 	float4 Source = SourceTexture.Load(uint3(PixelCoord, 0));
-	float HeightScale = Extent.w - Extent.z;
 	float2 WorldSizePrePixel = Extent.xy / TextureFilter.ww;
 	const uint2 PixelCoordOffsetX = uint2(DispatchThreadId.x + Range, DispatchThreadId.y);
 	const uint2 PixelCoordOffsetY = uint2(DispatchThreadId.x, DispatchThreadId.y + Range);
@@ -66,14 +66,16 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 #endif
 
 #if SDF_FILTER
-	float LandHeight = Center.w;
-	int Range = (int) TextureFilter.z;
+	const float LandHeight = Center.w;
+	const int MaxRange = 64;
+	const int Range = (int) TextureFilter.z;
+	const int Stripe = int(MaxRange / Range);
 	float4 Source = SourceTexture.Load(uint3(PixelCoord, 0));
 	float HeightScale = Extent.w - Extent.z;
 	float CurrentHeight = (Source.w - 0.5f) * 2.0f * HeightScale;
 	float2 WorldSizePrePixel = Extent.xy / TextureFilter.ww;
 	float MaxDistance = length(float2((float)Range, (float)Range)) * WorldSizePrePixel;
-	float MinialDistance = 1000.0f;
+	float MinimalDistance = 1000.0f;
 	BRANCH
 	if	(CurrentHeight >= LandHeight)
 	{
@@ -84,7 +86,7 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 	{
 		for (int y = -Range; y <= Range; y++)
 		{
-			const uint2 PixelCoordOffset = uint2(DispatchThreadId.x + x, DispatchThreadId.y + y);
+			const uint2 PixelCoordOffset = uint2(DispatchThreadId.x + Stripe * x, DispatchThreadId.y + Stripe * y);
 			BRANCH
 			if (any(PixelCoordOffset <= TextureFilter.ww))
 			{
@@ -97,11 +99,11 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 					float2 WorldOffset = PixelOffset * WorldSizePrePixel;
 					float2 Distance = WorldOffset - float2(0.0, 0.0);
 					float DistanceValue = length(Distance);
-					MinialDistance = min(MinialDistance, DistanceValue);
+					MinimalDistance = min(MinimalDistance, DistanceValue);
 				}
 			}
 		}
 	}
-	TargetTexture[PixelCoord] = float4(Source.x, Source.y, saturate(MinialDistance / MaxDistance), Source.w);
+	TargetTexture[PixelCoord] = float4(Source.x, Source.y, saturate(MinimalDistance / MaxDistance), Source.w);
 #endif
 }

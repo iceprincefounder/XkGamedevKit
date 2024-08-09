@@ -50,12 +50,6 @@ UXkTargetMovement::UXkTargetMovement(const FObjectInitializer& ObjectInitializer
 
 void UXkTargetMovement::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	SCOPED_NAMED_EVENT(UXkMovement_TickComponent, FColor::Red);
-	QUICK_SCOPE_CYCLE_COUNTER(STAT_UXkMovement_TickComponent);
-	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_UXkMovement_TickComponent);
-
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
 	auto IsMovementJobFinished = [this]() -> bool
 	{
 		bool bMovementJobFinished = PendingMovementTargets.Num() == 0 || MovementPoint == 0;
@@ -73,15 +67,24 @@ void UXkTargetMovement::TickComponent(float DeltaTime, enum ELevelTick TickType,
 		return IsRotationJobFinished() && IsMovementJobFinished();
 	};
 
+	SCOPED_NAMED_EVENT(UXkMovement_TickComponent, FColor::Red);
+	QUICK_SCOPE_CYCLE_COUNTER(STAT_UXkMovement_TickComponent);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_UXkMovement_TickComponent);
+
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (!bShouldMove)
+	{
+		return Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	}
+
 	if (AActor* MovingActor = GetMovingActor())
 	{
-		if (!bShouldMove)
-		{
-			return;
-		}
-
 		FVector Location = MovingActor->GetActorLocation();
 		FRotator Rotation = MovingActor->GetActorRotation();
+
+		////////////////////////////////////////////////////////////////////////////////
+		// Sliding -> Moving -> Jumping -> Rotating
 
 		// If no PendingMovementTargets, execute PendingRotationTargets
 		if (!bIsMoving && IsMovementJobFinished())
@@ -230,6 +233,16 @@ void UXkTargetMovement::OnMoving()
 			CurrentRotationTarget = MovingActor->GetActorRotation();
 			bShouldMove = true;
 		}
+		if (PendingMovementJumpTargets.Num() > 0)
+		{
+			CurrentMovementJumpTarget = MovingActor->GetActorLocation();
+			bShouldMove = true;
+		}
+		if (PendingMovementSlideTargets.Num() > 0)
+		{
+			CurrentMovementSlideTarget = MovingActor->GetActorLocation();
+			bShouldMove = true;
+		}
 	}
 }
 
@@ -238,12 +251,6 @@ void UXkTargetMovement::AddMovementPoint(const uint8 Input)
 {
 	// Extra add one, for character currently standing hexagon target
 	MovementPoint += Input;
-}
-
-
-void UXkTargetMovement::AddMovementTarget(const FVector& Target)
-{
-	PendingMovementTargets.Insert(Target, 0);
 }
 
 
@@ -259,6 +266,7 @@ TArray<FVector> UXkTargetMovement::GetValidMovementTargets() const
 	return Results;
 }
 
+
 FVector UXkTargetMovement::GetFinalMovementTarget() const
 {
 	FVector Result = FVector::ZeroVector;
@@ -267,7 +275,13 @@ FVector UXkTargetMovement::GetFinalMovementTarget() const
 		Result = MovingActor->GetActorLocation();
 	}
 
-	TArray<FVector> ValidMovementTargets = GetValidMovementTargets();
+	TArray<FVector> ValidMovementTargets;
+	TArray<FVector> CheckTargets = PendingMovementTargets;
+	for (uint8 Index = 0; ((Index < MovementPoint + 1) && (Index < PendingMovementTargets.Num())); Index++)
+	{
+		FVector Location = CheckTargets.Pop(true /* Shrink*/);
+		ValidMovementTargets.Insert(Location, 0);
+	}
 	if (ValidMovementTargets.Num() > 0)
 	{
 		Result = ValidMovementTargets.Last();

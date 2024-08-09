@@ -51,16 +51,17 @@ public:
 	};
 protected:
 	/** Should move but might not be moving currently*/
-	UPROPERTY()
 	bool bShouldMove;
-	/** Is on moving, tick component is working*/
-	UPROPERTY()
+	/** Is on moving, work during tick.*/
 	bool bIsMoving;
-	UPROPERTY()
+	/** Is on rotating, work during tick.*/
 	bool bIsRotating;
-	UPROPERTY()
+	/** Is on jumping, work during tick.*/
+	bool bIsJumping;
+	/** Is on sliding, work during tick.*/
+	bool bIsSliding;
+
 	FVector Velocity;
-	UPROPERTY()
 	FVector Acceleration;
 };
 
@@ -85,13 +86,27 @@ class XKGAMEDEVCORE_API UXkTargetMovement : public UXkMovement
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	FVector CurrentMovementTarget;
+
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TArray<FVector> PendingMovementTargets;
+
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	FRotator CurrentRotationTarget;
+
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TArray<FVector> PendingRotationTargets;
 
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	FVector CurrentMovementJumpTarget;
+
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TArray<FVector> PendingMovementJumpTargets;
+
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	FVector CurrentMovementSlideTarget;
+
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TArray<FVector> PendingMovementSlideTargets;
 public:
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
 	FOnMovementTargetFinishEvent OnMovementTargetFinishEvent;
@@ -112,18 +127,19 @@ public:
 	FORCEINLINE virtual void ClearMovementPoint() { MovementPoint = 0; };
 	FORCEINLINE virtual uint8 GetMovementPoint() const { return MovementPoint; };
 	FORCEINLINE virtual void SetMovementPoint(const uint8 Input) { MovementPoint = Input; };
-	/**
-	* Add movement targets should from start target to final target.
-	* @param Target The location which should move to
-	*/
-	FORCEINLINE virtual void AddMovementTarget(const FVector& Target);
+
+	FORCEINLINE virtual void AddMovementTarget(const FVector& Target) { PendingMovementTargets.Insert(Target, 0); };
 	FORCEINLINE virtual void ClearMovementTargets() { PendingMovementTargets.Empty(); };
-	FORCEINLINE virtual TArray<FVector> GetMovementTargets() const { return PendingMovementTargets; };
-	FORCEINLINE virtual void SetMovementTargets(const TArray<FVector>& Inputs) { PendingMovementTargets = Inputs; };
 	FORCEINLINE virtual void AddRotationTarget(const FVector& Target) { PendingRotationTargets.Insert(Target, 0); };
 	FORCEINLINE virtual void ClearRotationTargets() { PendingRotationTargets.Empty(); };
-	FORCEINLINE virtual TArray<FVector> GetRotationTargets() const { return PendingRotationTargets; };
-	FORCEINLINE virtual void SetRotationTargets(const TArray<FVector>& Inputs) { PendingRotationTargets = Inputs; };
+
+	// Jump is a special movement
+	FORCEINLINE virtual void AddMovementJumpTarget(const FVector& Target) { PendingMovementJumpTargets.Insert(Target, 0); };
+	FORCEINLINE virtual void ClearMovementJumpTargets() { PendingMovementJumpTargets.Empty(); };
+	// Slide is a special movement
+	FORCEINLINE virtual void AddMovementSlideTarget(const FVector& Target) { PendingMovementSlideTargets.Insert(Target, 0); };
+	FORCEINLINE virtual void ClearMovementSlideTargets() { PendingMovementSlideTargets.Empty(); };
+
 	/** Valid movement targets base on current movement point.*/
 	FORCEINLINE virtual TArray<FVector> GetValidMovementTargets() const;
 	/** Final movement target base on current movement point.*/

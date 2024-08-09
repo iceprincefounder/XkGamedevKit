@@ -470,7 +470,7 @@ void FXkHexagonalWorldSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
 	FRHIResourceCreateInfo CreateInfo(TEXT("UpdateInstanceBuffer"));
 	// @TODO Cull
 	TArray<FXkHexagonNode> AllHexagonalWorldNodes;
-	OwnerComponent->GetHexagonalWorldNodes().GenerateValueArray(AllHexagonalWorldNodes);
+	OwnerComponent->ModifyHexagonalWorldNodes().GenerateValueArray(AllHexagonalWorldNodes);
 	VisibleNodes.Empty();
 	for (int i = 0; i < AllHexagonalWorldNodes.Num(); i++)
 	{
@@ -494,10 +494,10 @@ void FXkHexagonalWorldSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
 	for (int i = 0; i < VisibleNodes.Num(); i++)
 	{
 		FIntVector Coord = VisibleNodes[i];
-		const FXkHexagonNode& Node = OwnerComponent->GetHexagonalWorldNodes()[Coord];
+		const FXkHexagonNode& Node = OwnerComponent->ModifyHexagonalWorldNodes()[Coord];
 		FVector4f InstancePositionValue = Node.Position;
-		FVector4f InstanceBaseColorValue = FVector4f(Node.BaseColor.R, Node.BaseColor.G, Node.BaseColor.B, Node.BaseColor.A);
-		FVector4f InstanceEdgeColorValue = FVector4f(Node.EdgeColor.R, Node.EdgeColor.G, Node.EdgeColor.B, Node.EdgeColor.A);
+		FVector4f InstanceBaseColorValue = FVector4f(1.0);
+		FVector4f InstanceEdgeColorValue = FVector4f(1.0);
 
 		InstancePositionData.Add(InstancePositionValue);
 		InstanceBaseColorData.Add(InstanceBaseColorValue);

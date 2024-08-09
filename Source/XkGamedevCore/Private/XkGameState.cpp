@@ -15,7 +15,7 @@ AXkGameState::AXkGameState(const FObjectInitializer& ObjectInitializer)
 }
 
 
-void AXkGameState::AddButtonWidgetIntoMap(class UUserWidget* InWidget, const int32 ButtonIndex)
+void AXkGameState::AddButtonWidgetIntoMap(class UUserWidget* InWidget, const int32 ButtonIndex) const
 {
 	if (InWidget && IsValid(InWidget))
 	{
@@ -24,7 +24,7 @@ void AXkGameState::AddButtonWidgetIntoMap(class UUserWidget* InWidget, const int
 }
 
 
-void AXkGameState::ResetButtonWidgetIntoMap()
+void AXkGameState::ResetButtonWidgetIntoMap() const
 {
 	APlayerController* PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 	if (AXkController* Controller = Cast<AXkController>(PlayerController))
@@ -64,7 +64,7 @@ TArray<int32> AXkGameState::GetButtonWidgetsValidIndex() const
 }
 
 
-void AXkGameState::OnSwitchToNextButton()
+void AXkGameState::OnSwitchToNextButton() const
 {
 	TArray<int32> ButtonWidgetsValidIndex = GetButtonWidgetsValidIndex();
 	if (!ButtonWidgetsValidIndex.IsEmpty())
@@ -74,7 +74,7 @@ void AXkGameState::OnSwitchToNextButton()
 }
 
 
-void AXkGameState::OnSwitchToLastButton()
+void AXkGameState::OnSwitchToLastButton() const
 {
 	TArray<int32> ButtonWidgetsValidIndex = GetButtonWidgetsValidIndex();
 	if (!ButtonWidgetsValidIndex.IsEmpty())
@@ -84,7 +84,7 @@ void AXkGameState::OnSwitchToLastButton()
 }
 
 
-void AXkGameState::OnCallCurrentButton()
+void AXkGameState::OnCallCurrentButton() const
 {
 	OnGameButtonPressedEvent.Broadcast(GetCurrentButtonIndex());
 }

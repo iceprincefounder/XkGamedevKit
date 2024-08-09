@@ -141,6 +141,13 @@ public:
 	DECLARE_EVENT_OneParam(AXkController, FControlsFlavorChangedEvent, const EXkControlsFlavor);
 	FControlsFlavorChangedEvent& OnControlsFlavorChanged() { return ControlsFlavorChangedEvent; };
 
+	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
+	virtual FVector2D GetControlsCursorPositionOnScreen() const;
+
+	/** Returns the mouse area to switch mouse cursor. */
+	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
+	virtual EXkControlsCursorArea GetControlsCursorArea() const { return ControlsCursorArea; };
+
 	/** Returns the current controls flavor of the UI, if applicable. */
 	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	virtual EXkControlsFlavor GetControlsFlavor() const { return ControlsFlavor; };
@@ -148,12 +155,6 @@ public:
 	/** Sets the current controls flavor of the UI, if applicable. */
 	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	virtual EXkControlsFlavor SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor);
-
-	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
-	virtual FVector2D GetControlsCursorPositionOnScreen() const;
-
-	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
-	virtual EXkControlsCursorArea GetControlsCursorArea() const { return ControlsCursorArea; };
 
 protected:
 	virtual void SetupInputComponent() override;
