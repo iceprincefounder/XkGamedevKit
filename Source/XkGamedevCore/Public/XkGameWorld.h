@@ -23,89 +23,73 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "SphericalWorldWithOcean [KEVINTSUIXUGAMEDEV]")
 	TObjectPtr<class UXkCanvasRendererComponent> CanvasRendererComponent;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	uint32 GeneratingMaxStep;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	uint32 CenterFieldRange;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	FVector2D PositionRandom;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	float PositionScale;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	float FalloffRadius;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	FVector2D FalloffCenter;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	FVector2D FalloffExtent;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	float FalloffCornerRadii;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	TArray<FXkHexagonSplat> HexagonSplats;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	UMaterialParameterCollection* HexagonMPC;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	bool bSpawnActors;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	int32 SpawnActorsMaxMhtDist;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	int32 XAxisCount;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	int32 YAxisCount;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	bool bShowSpawnedActorBaseMesh;
 
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]|MainWorldGenerate")
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	bool bShowSpawnedActorEdgeMesh;
 
 	AXkSphericalWorldWithOceanActor();
 
 	//~ Begin Actor Interface
-	void PostLoad() override;
-	void BeginPlay() override;
 	void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 	void OnConstruction(const FTransform& Transform) override;
 	//~ End Actor Interface
 
-	//~ Begin AXkHexagonalWorldActor Interface
-	virtual void UpdateHexagonalWorld() override;
-	virtual TArray<AXkHexagonActor*> PathfindingToTargetAlways(const AXkHexagonActor* StartActor, const AXkHexagonActor* TargetActor, const TArray<FIntVector>& BlockList);
-	//~ End AXkHexagonalWorldActor Interface
+	UFUNCTION(BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	virtual void GenerateHexagons();
 
-	UFUNCTION(CallInEditor, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]")
-	void GenerateHexagons();
+	UFUNCTION(BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	virtual void GenerateHexagonalWorld();
 
-	UFUNCTION(CallInEditor, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]")
-	void GenerateWorld();
+	UFUNCTION(BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	virtual void GenerateGameWorld();
 
-	UFUNCTION(CallInEditor, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]")
-	void GenerateInstancedHexagons();
+	UFUNCTION(BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	virtual void GenerateCanvas();
 
-	UFUNCTION(CallInEditor, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]")
-	void GenerateCanvas();
-
-	UFUNCTION(CallInEditor, Category = "HexagonalWorld[KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(CallInEditor, BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	void RegenerateAll();
-private:
-	/* Vertex buffer for hexagonal world nodes*/
-	FXkCanvasVertexBuffer VertexBuffer;
-	/* Index buffer for hexagonal world nodes*/
-	FXkCanvasIndexBuffer IndexBuffer;
-	/* Vertex instance buffer for hexagonal world nodes*/
-	FXkCanvasInstanceBuffer InstancePositionBuffer;
-	/* Vertex instance buffer for hexagonal world nodes*/
-	FXkCanvasInstanceBuffer InstanceWeightBuffer;
 };

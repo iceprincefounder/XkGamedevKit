@@ -38,6 +38,11 @@ class XKGAMEDEVCORE_API AXkTopDownCamera : public AXkCamera
 	UPROPERTY()
 	TObjectPtr<UArrowComponent> ArrowComponent;
 #endif
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	class UMaterialInterface* PostProcessMaterial;
+
+	UPROPERTY(Transient)
+	class UMaterialInstanceDynamic* PostProcessMaterialDyn;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	bool bCameraInvisibleWall;
@@ -65,6 +70,7 @@ public:
 	AXkTopDownCamera(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	// Called every frame.
+	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void Tick(float DeltaSeconds) override;
 
 	/** Returns TopDownCameraComponent subobject **/

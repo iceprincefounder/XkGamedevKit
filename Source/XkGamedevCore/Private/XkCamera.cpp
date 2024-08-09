@@ -56,12 +56,14 @@ AXkTopDownCamera::AXkTopDownCamera(const FObjectInitializer& ObjectInitializer)
 	TopDownCameraComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	TopDownCameraComponent->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 	TopDownCameraComponent->FieldOfView = 55.0f;
-	
+
 	// Don't rotate character to camera direction
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
+	UObject* PostProcessMaterialObject = StaticLoadObject(UMaterial::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_CameraPostProcess"));
+	PostProcessMaterial = Cast<UMaterialInterface>(PostProcessMaterialObject);
 	bCameraInvisibleWall = false;
 	CameraInvisibleWall = FBox2D(FVector2D(-1000.0, -1000.0), FVector2D(1000.0, 1000.0));
 	bCameraRotationLock = false;
@@ -74,6 +76,18 @@ AXkTopDownCamera::AXkTopDownCamera(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
 }
+
+
+void AXkTopDownCamera::OnConstruction(const FTransform& Transform)
+{
+	if (PostProcessMaterial)
+	{
+		PostProcessMaterialDyn = UMaterialInstanceDynamic::Create(PostProcessMaterial, this);
+		TopDownCameraComponent->PostProcessSettings.AddBlendable(PostProcessMaterialDyn, 1.0f);
+	}
+	Super::OnConstruction(Transform);
+}
+
 
 void AXkTopDownCamera::Tick(float DeltaSeconds)
 {

@@ -122,20 +122,6 @@ void BuildHexagon(TArray<T0>& OutBaseVertices, TArray<T1>& OutBaseIndices, TArra
 }
 
 
-void CullHexagonalWorld(TArray<FXkHexagonNode*> OutHexagonNodes, const TMap<FIntVector, FXkHexagonNode>& HexagonalWorldNodes, const FSceneView& View, const float Distance)
-{
-}
-
-static const TArray<FIntVector> GXkHexagonNearVectors = {
-	FIntVector(1, 1, 0),
-	FIntVector(0, 1, 1),
-	FIntVector(-1, 0, 1),
-	FIntVector(-1, -1, 0),
-	FIntVector(0, -1, -1),
-	FIntVector(1, 0, -1)
-};
-
-
 FXkHexagonAStarPathfinding::FXkHexagonAStarPathfinding()
 {
 }
@@ -148,11 +134,11 @@ FXkHexagonAStarPathfinding::~FXkHexagonAStarPathfinding()
 }
 
 
-void FXkHexagonAStarPathfinding::Init(FXkHexagonalWorldNodeTable* InTable)
+void FXkHexagonAStarPathfinding::Init(FXkHexagonalWorldNodeTable* InNodeTable)
 {
 	OpenList.Empty();
 	ClosedList.Empty();
-	HexagonalWorldTable = InTable;
+	HexagonalWorldTable = InNodeTable;
 }
 
 
@@ -185,9 +171,8 @@ bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, co
 		/////////////////////////////////////
 		// Add all near point into open list
 		TArray<FIntVector> NearPoints;
-		for (const FIntVector& NearVector : GXkHexagonNearVectors)
+		for (const FIntVector& NearPoint : CalcHexagonNeighboringCoord(ConsideredPoint))
 		{
-			FIntVector NearPoint = ConsideredPoint + NearVector;
 			if (ClosedList.Contains(NearPoint))
 			{
 				continue;
@@ -197,14 +182,14 @@ bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, co
 				// Make sure near point not in BlockList which XkHexagon might be occupied by a character
 				if (!BlockList.Contains(NearPoint))
 				{
-					FXkHexagonNode* XkHexagonNode = NodeMap.Find(NearPoint);
-					if (XkHexagonNode)
+					FXkHexagonNode* HexagonNode = NodeMap.Find(NearPoint);
+					if (HexagonNode && HexagonNode->Type != EXkHexagonType::Unavailable)
 					{
 						NearPoints.Add(NearPoint);
 						if (!OpenList.Contains(NearPoint))
 						{
 							OpenList.Add(NearPoint);
-							XkHexagonNode->Cost = CalcPathCostValue(StartingPoint, NearPoint, TargetPoint);
+							HexagonNode->Cost = CalcPathCostValue(StartingPoint, NearPoint, TargetPoint);
 						}
 					}
 				}
@@ -281,9 +266,8 @@ TArray<FIntVector> FXkHexagonAStarPathfinding::Backtracking(const int32 MaxStep)
 		TArray<FIntVector> NearPoints;
 		while (NearPoints.IsEmpty() && !BackTrackingList.IsEmpty())
 		{
-			for (const FIntVector& NearVector : GXkHexagonNearVectors)
+			for (const FIntVector& NearPoint : CalcHexagonNeighboringCoord(ConsideredPoint))
 			{
-				FIntVector NearPoint = ConsideredPoint + NearVector;
 				// Skip the point not in ClosedList
 				if (!ClosedList.Contains(NearPoint))
 				{
@@ -295,7 +279,6 @@ TArray<FIntVector> FXkHexagonAStarPathfinding::Backtracking(const int32 MaxStep)
 					NearPoints.Add(NearPoint);
 				}
 			}
-
 			// if couldn't find available neighborhood,
 			// go back to the last ConsideredPoint and check neighborhood again,
 			// ConsideredPointsList would make it switch to the new road
@@ -357,22 +340,25 @@ int32 FXkHexagonAStarPathfinding::CalcManhattanDistance(const FIntVector& PointA
 
 FIntVector FXkHexagonAStarPathfinding::CalcHexagonCoord(const float PositionX, const float PositionY, const float XkHexagonRadius)
 {
+	float HexagonUnitLength = XkHexagonRadius + XkHexagonRadius * XkCos60;
 	FIntVector XkHexagonCoord = FIntVector(0, 0, 0);
 	FVector XkHexagonVec = FVector(PositionX, PositionY, 0.0);
 	float Length = XkHexagonVec.Size();
 	XkHexagonVec.Normalize();
-	FVector YAxis = FRotator(0, 60, 0).RotateVector(FVector(1, 0, 0));
+	FVector XAxis = FVector(1.0, 0.0, 0.0);
+	XAxis.Normalize();
+	FVector YAxis = FRotator(0, 60, 0).RotateVector(XAxis);
 	YAxis.Normalize();
-	FVector ZAxis = FRotator(0, 120, 0).RotateVector(FVector(1, 0, 0));
+	FVector ZAxis = FRotator(0, 120, 0).RotateVector(XAxis);
 	ZAxis.Normalize();
 	float YProjectionLength = Length * FVector::DotProduct(XkHexagonVec, YAxis);
 	float ZProjectionLength = Length * FVector::DotProduct(XkHexagonVec, ZAxis);
-	float X = PositionX / (XkHexagonRadius * 1.5);
-	float Y = YProjectionLength / (XkHexagonRadius * 1.5);
-	float Z = ZProjectionLength / (XkHexagonRadius * 1.5);
-	XkHexagonCoord.X = round(X);
-	XkHexagonCoord.Y = round(Y);
-	XkHexagonCoord.Z = round(Z);
+	float X = PositionX / HexagonUnitLength;
+	float Y = YProjectionLength / HexagonUnitLength;
+	float Z = ZProjectionLength / HexagonUnitLength;
+	XkHexagonCoord.X = FMath::RoundToInt(X);
+	XkHexagonCoord.Y = FMath::RoundToInt(Y);
+	XkHexagonCoord.Z = FMath::RoundToInt(Z);
 	return XkHexagonCoord;
 }
 
@@ -391,10 +377,50 @@ FVector2D FXkHexagonAStarPathfinding::CalcHexagonPosition(const int32 IndexX, co
 
 TArray<FIntVector> FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(const FIntVector& InputCoord)
 {
+	//	x
+	//	| Neighboring Coords
+	//	|  5/ \0
+	//	| 4|   |1
+	//	|  3\ /2
+	//	| Clockwise (C.W.)
+	//	---------y
+
+	const TArray<FIntVector> HexagonNearVectors = {
+		FIntVector(1, 1, 0),
+		FIntVector(0, 1, 1),
+		FIntVector(-1, 0, 1),
+		FIntVector(-1, -1, 0),
+		FIntVector(0, -1, -1),
+		FIntVector(1, 0, -1)
+	};
 	TArray<FIntVector> Ret;
-	for (const FIntVector NearVector : GXkHexagonNearVectors)
+	for (const FIntVector NearVector : HexagonNearVectors)
 	{
-		Ret.Add(InputCoord + NearVector);
+		Ret.AddUnique(InputCoord + NearVector);
 	}
 	return Ret;
+}
+
+
+TArray<FIntVector> FXkHexagonAStarPathfinding::CalcHexagonSurroundingCoord(const TArray<FIntVector>& InputCoords)
+{
+	TArray<FIntVector> AllNeighbors;
+	for (const FIntVector& CurrCorrds : InputCoords)
+	{
+		TArray<FIntVector> Neighbors = CalcHexagonNeighboringCoord(CurrCorrds);
+		for (const FIntVector& Neighbor : Neighbors)
+		{
+			AllNeighbors.AddUnique(Neighbor);
+		}
+	}
+
+	TArray<FIntVector> Results;
+	for (const FIntVector& Neighbor : AllNeighbors)
+	{
+		if (!InputCoords.Contains(Neighbor))
+		{
+			Results.Add(Neighbor);
+		}
+	}
+	return Results;
 }

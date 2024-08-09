@@ -7,6 +7,7 @@
 #include "GenericPlatform/GenericPlatformMath.h"
 #include "LandscapeStreamingProxy.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "VT/RuntimeVirtualTexture.h"
 
 static const TArray<FLinearColor> GXkHexagonColor = {
 	FLinearColor(0.5, 0.5, 0.5),
@@ -18,46 +19,23 @@ static const TArray<FLinearColor> GXkHexagonColor = {
 
 AXkHexagonActor::AXkHexagonActor()
 {
-	StaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
-	StaticMesh->SetCollisionProfileName(FName(TEXT("BlockAll")));
-	StaticMesh->SetCastShadow(false);
+	StaticProcMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticProcMesh"));
+	StaticProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	StaticProcMesh->SetCollisionProfileName(FName(TEXT("NoCollision")));
+	StaticProcMesh->SetCastShadow(false);
 	UObject* Object = StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/XkGamedevKit/Meshes/SM_StandardHexagonWithUV.SM_StandardHexagonWithUV"));
 	UStaticMesh* StaticMeshObject = CastChecked<UStaticMesh>(Object);
-	StaticMesh->SetStaticMesh(StaticMeshObject);
-	SetRootComponent(StaticMesh);
+	StaticProcMesh->SetStaticMesh(StaticMeshObject);
+	SetRootComponent(StaticProcMesh);
 
 #if WITH_EDITORONLY_DATA
 	ProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProcMesh"));
+	ProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ProcMesh->SetCollisionProfileName(FName(TEXT("NoCollision")));
 	ProcMesh->SetVisibility(false);
 	ProcMesh->SetCastShadow(false);
 	ProcMesh->SetupAttachment(RootComponent);
 #endif
-}
-
-
-void AXkHexagonActor::SnapToLandscape()
-{
-	// Snap spline point to landscape with a Y-axis offset.
-	FVector StartVector = GetActorLocation() + FVector(0, 0, 1) * HALF_WORLD_MAX;
-	FVector EndVector = GetActorLocation() + FVector(0, 0, -1) * HALF_WORLD_MAX;
-	// Shot a Z-Axis ray in the scene.
-	FCollisionObjectQueryParams QueryParams(FCollisionObjectQueryParams::AllObjects);
-	TArray<FHitResult> Results;
-	bool bHitWorld = GetWorld()->LineTraceMultiByObjectType(Results, StartVector, EndVector, QueryParams);
-	if (bHitWorld)
-	{
-		for (const FHitResult& HitResult : Results)
-		{
-			AActor* HitActor = HitResult.GetActor();
-			if (HitActor->IsA(ALandscapeStreamingProxy::StaticClass()))
-			{
-				FVector HitLocation = HitResult.Location;
-				FVector HitNormal = HitResult.ImpactNormal;
-				SetActorLocation(HitLocation + FVector(0, 0, 25));
-			}
-		}
-	}
 }
 
 
@@ -84,16 +62,16 @@ void AXkHexagonActor::PostEditMove(bool bFinished)
 	Super::PostEditMove(bFinished);
 
 	FVector Location = GetActorLocation();
-	if (bFinished && CachedHexagonalWorld.IsValid())
+	if (bFinished && ParentHexagonalWorld.IsValid())
 	{	
-		HexagonNode = CachedHexagonalWorld->GetHexagonNodeByLocation(Location);
+		FXkHexagonNode* HexagonNode = ParentHexagonalWorld->GetHexagonNode(Location);
 		if (HexagonNode)
 		{
 			FVector4f Position = HexagonNode->Position;
 			FVector NewLocation = FVector(Position.X, Position.Y, Location.Z);
 			HexagonNode->Position = FVector4f(NewLocation.X, NewLocation.Y, NewLocation.Z, 1.0f);
 			SetActorLocation(NewLocation, true);
-			CachedHexagonalWorld->UpdateHexagonalWorld();
+			ParentHexagonalWorld->RegenerateHexagonalWorldContext();
 		}
 	}
 }
@@ -102,97 +80,56 @@ void AXkHexagonActor::PostEditMove(bool bFinished)
 
 void AXkHexagonActor::SetHexagonWorld(class AXkHexagonalWorldActor* Input)
 {
-	CachedHexagonalWorld = MakeWeakObjectPtr<AXkHexagonalWorldActor>(Input);
+	ParentHexagonalWorld = MakeWeakObjectPtr<AXkHexagonalWorldActor>(Input);
 }
 
 
-void AXkHexagonActor::OnBaseSelecting(bool bSelecting, const FLinearColor& SelectingColor)
+void AXkHexagonActor::OnBaseHighlight(const FLinearColor& InColor)
 {
-	if (IsValid(BaseMID) && CachedHexagonalWorld.IsValid())
+	if (IsValid(BaseMID))
 	{
-		if (bSelecting)
-		{
-			BaseMID->SetVectorParameterValue(FName("Color"), SelectingColor);
-		}
-		else
-		{
-			BaseMID->SetVectorParameterValue(FName("Color"), bCachedBaseHighlight ? CachedBaseHighlightColor : 
-				CachedHexagonalWorld->BaseColor);
-		}
+		BaseMID->SetVectorParameterValue(FName("Color"), InColor);
 	}
 }
 
 
-void AXkHexagonActor::OnBaseHighlight(bool bHighlight, const FLinearColor& HighlightColor)
+void AXkHexagonActor::OnEdgeHighlight(const FLinearColor& InColor)
 {
-	if (IsValid(BaseMID) && CachedHexagonalWorld.IsValid())
+	if (IsValid(EdgeMID))
 	{
-		bCachedBaseHighlight = bHighlight;
-		CachedBaseHighlightColor = HighlightColor;
-		BaseMID->SetVectorParameterValue(FName("Color"), bHighlight ? HighlightColor : 
-			CachedHexagonalWorld->BaseColor);
-	}
-}
-
-
-void AXkHexagonActor::OnEdgeSelecting(bool bSelecting, const FLinearColor& SelectingColor)
-{
-	if (IsValid(EdgeMID) && CachedHexagonalWorld.IsValid())
-	{
-		if (bSelecting)
-		{
-			EdgeMID->SetVectorParameterValue(FName("Color"), SelectingColor);
-		}
-		else
-		{
-			EdgeMID->SetVectorParameterValue(FName("Color"), bCachedEdgeHighlight ? CachedEdgeHighlightColor : 
-				CachedHexagonalWorld->EdgeColor);
-		}
-	}
-}
-
-
-void AXkHexagonActor::OnEdgeHighlight(bool bHighlight, const FLinearColor& HighlightColor)
-{
-	if (IsValid(EdgeMID) && CachedHexagonalWorld.IsValid())
-	{
-		bCachedEdgeHighlight = bHighlight;
-		CachedEdgeHighlightColor = HighlightColor;
-		EdgeMID->SetVectorParameterValue(FName("Color"), bHighlight ? HighlightColor : 
-			CachedHexagonalWorld->EdgeColor);
+		EdgeMID->SetVectorParameterValue(FName("Color"), InColor);
 	}
 }
 
 
 void AXkHexagonActor::UpdateMaterial()
 {
-	if (!BaseMID && CachedHexagonalWorld.IsValid() && CachedHexagonalWorld.IsValid())
+	if (!BaseMID)
 	{
-		BaseMID = UMaterialInstanceDynamic::Create(CachedHexagonalWorld->HexagonBaseMaterial, this);
+		UObject* BaseMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonBase"));
+		BaseMID = UMaterialInstanceDynamic::Create(CastChecked<UMaterialInterface>(BaseMaterialObject), this);
 	}
-	if (BaseMID && IsValid(BaseMID) && CachedHexagonalWorld.IsValid())
+	if (BaseMID && IsValid(BaseMID) && ParentHexagonalWorld.IsValid())
 	{
-		if (CachedHexagonalWorld->BaseColor != FLinearColor::White)
-		{
-			BaseMID->SetVectorParameterValue(FName("Color"), CachedHexagonalWorld->BaseColor);
-		}
+		BaseMID->SetVectorParameterValue(FName("Color"), ParentHexagonalWorld->BaseColor);
 	}
-	if (!EdgeMID && CachedHexagonalWorld.IsValid() && CachedHexagonalWorld.IsValid())
+	if (!EdgeMID)
 	{
-		EdgeMID = UMaterialInstanceDynamic::Create(CachedHexagonalWorld->HexagonEdgeMaterial, this);
+		UObject* EdgeMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonEdge"));
+		EdgeMID = UMaterialInstanceDynamic::Create(CastChecked<UMaterialInterface>(EdgeMaterialObject), this);
 	}
-	if (EdgeMID && IsValid(EdgeMID) && CachedHexagonalWorld.IsValid())
+	if (EdgeMID && IsValid(EdgeMID) && ParentHexagonalWorld.IsValid())
 	{
-		EdgeMID->SetVectorParameterValue(FName("Color"), CachedHexagonalWorld->EdgeColor);
+		EdgeMID->SetVectorParameterValue(FName("Color"), ParentHexagonalWorld->EdgeColor);
 	}
-	StaticMesh->SetMaterial(0, BaseMID);
-	StaticMesh->SetMaterial(1, EdgeMID);
+	StaticProcMesh->SetMaterial(0, BaseMID);
+	StaticProcMesh->SetMaterial(1, EdgeMID);
 }
 
 #if WITH_EDITOR
 void AXkHexagonActor::UpdateProcMesh()
 {
-	if (CachedHexagonalWorld.IsValid())
+	if (ParentHexagonalWorld.IsValid())
 	{
 		TArray<FVector> BaseVertices;
 		TArray<int32> BaseIndices;
@@ -201,12 +138,12 @@ void AXkHexagonActor::UpdateProcMesh()
 		TArray<int32> EdgeIndices;
 
 		BuildHexagon(BaseVertices, BaseIndices, EdgeVertices, EdgeIndices, 
-			CachedHexagonalWorld->Radius, 
-			CachedHexagonalWorld->Height, 
-			CachedHexagonalWorld->BaseInnerGap, 
-			CachedHexagonalWorld->BaseOuterGap, 
-			CachedHexagonalWorld->EdgeInnerGap, 
-			CachedHexagonalWorld->EdgeOuterGap);
+			ParentHexagonalWorld->Radius, 
+			ParentHexagonalWorld->Height, 
+			ParentHexagonalWorld->BaseInnerGap, 
+			ParentHexagonalWorld->BaseOuterGap, 
+			ParentHexagonalWorld->EdgeInnerGap, 
+			ParentHexagonalWorld->EdgeOuterGap);
 
 		auto GenerateUV = [](const TArray<FVector>& Vertices, const float Radius) -> TArray<FVector2D>
 			{
@@ -221,17 +158,49 @@ void AXkHexagonActor::UpdateProcMesh()
 				}
 				return UV0s;
 			};
-		TArray<FVector2D> BaseUV0s = GenerateUV(BaseVertices, CachedHexagonalWorld->Radius);
+		TArray<FVector2D> BaseUV0s = GenerateUV(BaseVertices, ParentHexagonalWorld->Radius);
 		ProcMesh->CreateMeshSection(BASE_SECTION_INDEX, BaseVertices, BaseIndices, TArray<FVector>(), BaseUV0s, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
 		ProcMesh->SetMaterial(BASE_SECTION_INDEX, BaseMID);
 		ProcMesh->Bounds = FBoxSphereBounds(BaseVertices, BaseVertices.Num());
 
-		TArray<FVector2D> EdgeUV0s = GenerateUV(EdgeVertices, CachedHexagonalWorld->Radius);
+		TArray<FVector2D> EdgeUV0s = GenerateUV(EdgeVertices, ParentHexagonalWorld->Radius);
 		ProcMesh->CreateMeshSection(EDGE_SECTION_INDEX, EdgeVertices, EdgeIndices, TArray<FVector>(), EdgeUV0s, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
 		ProcMesh->SetMaterial(EDGE_SECTION_INDEX, EdgeMID);
 	}
 }
 #endif
+
+
+void AXkHexagonActor::InitHexagon(const FIntVector& InCoord)
+{
+	Coord = InCoord;
+	if (ParentHexagonalWorld.IsValid())
+	{
+		FXkHexagonNode* HexagonNode = ParentHexagonalWorld->GetHexagonNode(Coord);
+		if (HexagonNode)
+		{
+			FVector4f Position = HexagonNode->Position;
+			FVector NewLocation = FVector(Position.X, Position.Y, Position.Z + 1.0 /* Fix Z-Fighting*/);
+			SetActorLocation(NewLocation, true);
+		}
+	}
+	StaticProcMesh->SetVisibility(true);
+	StaticProcMesh->MarkRenderStateDirty();
+}
+
+
+void AXkHexagonActor::FreeHexagon()
+{
+	StaticProcMesh->SetVisibility(false);
+	SetActorLocation(FVector(0.0, 0.0, -HALF_WORLD_MAX));
+	// Clear hight light colors
+	if (BaseMID && IsValid(BaseMID) && EdgeMID && IsValid(EdgeMID))
+	{
+		BaseMID->SetVectorParameterValue(FName("Color"), FLinearColor(1.0, 1.0, 1.0, 0.0));
+		EdgeMID->SetVectorParameterValue(FName("Color"), FLinearColor(1.0, 1.0, 1.0, 0.0));
+	}
+}
+
 
 AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -241,11 +210,13 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 
 	InstancedHexagonComponent = CreateDefaultSubobject<UXkInstancedHexagonComponent>(TEXT("InstancedHexagons"));
 	InstancedHexagonComponent->SetupAttachment(RootComponent);
+	InstancedHexagonComponent->bRenderInMainPass = false;
+	InstancedHexagonComponent->bRenderInDepthPass = false;
+	UObject* Object = StaticLoadObject(URuntimeVirtualTexture::StaticClass(), NULL, TEXT("/XkGamedevKit/Textures/RVT_InstancedHexagons.RVT_InstancedHexagons"));
+	URuntimeVirtualTexture* RVT = CastChecked<URuntimeVirtualTexture>(Object);
+	InstancedHexagonComponent->RuntimeVirtualTextures.Empty();
+	InstancedHexagonComponent->RuntimeVirtualTextures.Add(RVT);
 
-	UObject* BaseMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonBase"));
-	HexagonBaseMaterial = CastChecked<UMaterialInterface>(BaseMaterialObject);
-	UObject* EdgeMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonEdge"));
-	HexagonEdgeMaterial = CastChecked<UMaterialInterface>(EdgeMaterialObject);
 	Radius = 100.0;
 	Height = 10.0;
 	GapWidth = 0.0;
@@ -253,6 +224,8 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 	BaseOuterGap = 0.0;
 	EdgeInnerGap = 9.0;
 	EdgeOuterGap = 1.0;
+	BaseColor = FLinearColor(1.0, 1.0, 1.0, 0.0);
+	EdgeColor = FLinearColor(1.0, 1.0, 1.0, 0.0);
 	MaxManhattanDistance = 64;
 
 	PathfindingMaxStep = 9999;
@@ -260,8 +233,35 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 }
 
 
-void AXkHexagonalWorldActor::Pathfinding()
+void AXkHexagonalWorldActor::DebugPathfinding()
 {
+#if WITH_EDITOR
+	auto FindHexagonActor = [this](const FIntVector& Input) -> AXkHexagonActor*
+		{
+			for (TActorIterator<AXkHexagonActor> It(GetWorld()); It; ++It)
+			{
+				AXkHexagonActor* HexagonActor = *It;
+				if (HexagonActor->GetCoord() == Input)
+				{
+					return HexagonActor;
+				}
+			}
+			return nullptr;
+		};
+
+	auto FindHexagonActors = [FindHexagonActor](const TArray<FIntVector>& Inputs) -> TArray<AXkHexagonActor*>
+		{
+			TArray<class AXkHexagonActor*> Ret;
+			for (const FIntVector& CurrentPoint : Inputs)
+			{
+				if (AXkHexagonActor* HexagonActor = FindHexagonActor(CurrentPoint))
+				{
+					Ret.Insert(HexagonActor, 0);
+				}
+			}
+			return Ret;
+		};
+
 	if (!IsValid(HexagonStarter) || !IsValid(HexagonTargeter))
 	{
 		return;
@@ -270,11 +270,10 @@ void AXkHexagonalWorldActor::Pathfinding()
 	for (TActorIterator<AXkHexagonActor> It(GetWorld()); It; ++It)
 	{
 		AXkHexagonActor* XkHexagonActor = (*It);
-		XkHexagonActor->OnBaseSelecting(false);
-		XkHexagonActor->OnBaseHighlight(false);
+		XkHexagonActor->OnBaseHighlight();
 	}
-	HexagonStarter->OnBaseHighlight(true, FLinearColor::Yellow);
-	HexagonTargeter->OnBaseHighlight(true, FLinearColor::Yellow);
+	HexagonStarter->OnBaseHighlight(FLinearColor::Yellow);
+	HexagonTargeter->OnBaseHighlight(FLinearColor::Yellow);
 
 	TArray<FIntVector> BlockArea;
 	for (AXkHexagonActor* HexagonActor : HexagonBlockers)
@@ -300,22 +299,24 @@ void AXkHexagonalWorldActor::Pathfinding()
 	{
 		float Fade = (float)(i + 1) / (float)FindingPathHexagonActors.Num();
 		AXkHexagonActor* XkHexagonActor = FindingPathHexagonActors[i];
-		XkHexagonActor->OnBaseHighlight(true, FLinearColor(0.0, 0.0, Fade, 1.0));
+		XkHexagonActor->OnBaseHighlight(FLinearColor(0.0, 0.0, Fade, 1.0));
 	}
+#endif
+}
+
+
+void AXkHexagonalWorldActor::DebugUpdateWorld()
+{
+	UpdateHexagonalWorldCustomData();
+	RegenerateHexagonalWorldContext();
 }
 
 
 void AXkHexagonalWorldActor::BeginPlay()
 {
-	if (!ensure(GetWorld()))
-	{
-		return;
-	}
-
 	HexagonAStarPathfinding.Init(&HexagonalWorldTable);
 	Super::BeginPlay();
 }
-
 
 void AXkHexagonalWorldActor::OnConstruction(const FTransform& Transform)
 {
@@ -327,226 +328,114 @@ void AXkHexagonalWorldActor::OnConstruction(const FTransform& Transform)
 
 	if (IsValid(HexagonStarter))
 	{
-		HexagonStarter->OnBaseHighlight(true, FLinearColor::Red);
-		HexagonStarter->UpdateMaterial();
+		HexagonStarter->OnBaseHighlight(FLinearColor::Red);
+		HexagonStarter->RerunConstructionScripts();
 	}
 	if (IsValid(HexagonTargeter))
 	{
-		HexagonTargeter->OnBaseHighlight(true, FLinearColor::Green);
-		HexagonTargeter->UpdateMaterial();
+		HexagonTargeter->OnBaseHighlight(FLinearColor::Green);
+		HexagonTargeter->RerunConstructionScripts();
 	}
 #endif
 	Super::OnConstruction(Transform);
 }
 
 
-void AXkHexagonalWorldActor::UpdateHexagonalWorld()
-{
-}
-
-bool AXkHexagonalWorldActor::IsHexagonActorsNeighboring(const AXkHexagonActor* A, const AXkHexagonActor* B) const
-{
-	FIntVector APoint = A->GetCoord();
-	FIntVector BPoint = B->GetCoord();
-	int32 ManhattanDistance = FXkHexagonAStarPathfinding::CalcManhattanDistance(APoint, BPoint);
-	if (ManhattanDistance <= 1)
-	{
-		return true;
-	}
-	return false;
-}
-
-
-FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNodeByCoord(const FIntVector& InCoord)
+FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNode(const FIntVector& InCoord) const
 {
 	return HexagonalWorldTable.Nodes.Find(InCoord);;
 }
 
 
-FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNodeByLocation(const FVector& InPosition)
+FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNode(const FVector& InPosition) const
 {
 	FIntVector InputCoord = HexagonAStarPathfinding.CalcHexagonCoord(
 		InPosition.X, InPosition.Y, (Radius + GapWidth));
-	return GetHexagonNodeByCoord(InputCoord);
+	return GetHexagonNode(InputCoord);
 }
 
 
-AXkHexagonActor* AXkHexagonalWorldActor::GetHexagonActorByCoord(const FIntVector& InCoord) const
+TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeNeighbors(const FIntVector& InCoord) const
 {
-	return FindHexagonActor(InCoord);
-}
-
-
-AXkHexagonActor* AXkHexagonalWorldActor::GetHexagonActorByLocation(const FVector& InPosition) const
-{
-	FIntVector InputCoord = HexagonAStarPathfinding.CalcHexagonCoord(
-		InPosition.X, InPosition.Y, (Radius + GapWidth));
-	return GetHexagonActorByCoord(InputCoord);
-}
-
-
-int32 AXkHexagonalWorldActor::GetHexagonManhattanDistance(const FVector& A, const FVector& B) const
-{
-	AXkHexagonActor* HexagonA = GetHexagonActorByLocation(A);
-	AXkHexagonActor* HexagonB = GetHexagonActorByLocation(B);
-	return GetHexagonManhattanDistance(HexagonA, HexagonB);
-}
-
-
-int32 AXkHexagonalWorldActor::GetHexagonManhattanDistance(const AXkHexagonActor* A, const AXkHexagonActor* B) const
-{
-	if (IsValid(A) && IsValid(B))
+	TArray<FXkHexagonNode*> HexagonNodeNeighbors;
+	TArray<FIntVector> NeighborCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(InCoord);
+	for (const FIntVector& NeighborCoord : NeighborCoords)
 	{
-		return FXkHexagonAStarPathfinding::CalcManhattanDistance(A->GetCoord(), B->GetCoord());
-	}
-	return -1;
-}
-
-
-TArray<AXkHexagonActor*> AXkHexagonalWorldActor::GetHexagonActorNeighbors(const AXkHexagonActor* InputActor) const
-{
-	TArray<AXkHexagonActor*> Ret;
-	TArray<FIntVector> NeighboringXkHexagonCoords = HexagonAStarPathfinding.CalcHexagonNeighboringCoord(InputActor->GetCoord());
-	for (const FIntVector NeighboringCoord : NeighboringXkHexagonCoords)
-	{
-		AXkHexagonActor* HexagonActor = FindHexagonActor(NeighboringCoord);
-		if (IsValid(HexagonActor))
+		FXkHexagonNode* HexagonNode = GetHexagonNode(NeighborCoord);
+		if (HexagonNode)
 		{
-			Ret.Add(HexagonActor);
+			HexagonNodeNeighbors.AddUnique(HexagonNode);
 		}
 	}
-	return Ret;
+	return HexagonNodeNeighbors;
 }
 
 
-TArray<AXkHexagonActor*> AXkHexagonalWorldActor::GetHexagonActorNeighbors(const AXkHexagonActor* InputActor, const uint8 NeighborDistance) const
+TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeSurrounders(const TArray<FIntVector>& InCoords) const
 {
-	TArray<AXkHexagonActor*> Results = GetHexagonActorNeighbors(InputActor);
-	for (uint8 Index = 1; Index < NeighborDistance; Index++)
+	TArray<FXkHexagonNode*> HexagonNodeSurrounders;
+	TArray<FIntVector> SurroundersCoords = FXkHexagonAStarPathfinding::CalcHexagonSurroundingCoord(InCoords);
+	for (const FIntVector& NeighborCoord : SurroundersCoords)
 	{
-		TArray<AXkHexagonActor*> CachedNeighbors = Results;
-		for (AXkHexagonActor* CachedNeighbor : CachedNeighbors)
+		FXkHexagonNode* HexagonNode = GetHexagonNode(NeighborCoord);
+		if (HexagonNode)
 		{
-			TArray<AXkHexagonActor*> NewNeighbors = GetHexagonActorNeighbors(CachedNeighbor);
-			for (AXkHexagonActor* NewNeighbor : NewNeighbors)
-			{
-				if (!Results.Contains(NewNeighbor))
-				{
-					Results.Add(NewNeighbor);
-				}
-			}
+			HexagonNodeSurrounders.AddUnique(HexagonNode);
+		}
+	}
+	return HexagonNodeSurrounders;
+}
+
+
+TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodesPathfinding(const FIntVector& StartCoord, const FIntVector& EndCoord, const TArray<FIntVector>& BlockList)
+{
+	TArray<FXkHexagonNode*> FindingNodes;
+	TArray<FIntVector> FindingPaths;
+	HexagonAStarPathfinding.Reinit();
+	HexagonAStarPathfinding.Blocking(BlockList);
+	if (HexagonAStarPathfinding.Pathfinding(StartCoord, EndCoord))
+	{
+		TArray<FIntVector> BacktrackingList = HexagonAStarPathfinding.Backtracking(BacktrackingMaxStep);
+		FindingPaths = BacktrackingList;
+	}
+
+	// It is Backtrack, reverse the order
+	for (int32 Index = FindingPaths.Num() - 1; Index >= 0; --Index)
+	{
+		FIntVector FindingCoord = FindingPaths[Index];
+		FXkHexagonNode* HexagonNode = GetHexagonNode(FindingCoord);
+		if (HexagonNode)
+		{
+			FindingNodes.AddUnique(HexagonNode);
+		}
+	}
+	return FindingNodes;
+}
+
+
+TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonalWorldNodes(const EXkHexagonType HexagonType) const
+{
+	TArray<FXkHexagonNode*> Results;
+	for (TPair<FIntVector, FXkHexagonNode>& NodePair: HexagonalWorldTable.Nodes)
+	{
+		if (NodePair.Value.Type == HexagonType)
+		{
+			Results.AddUnique(&NodePair.Value);
 		}
 	}
 	return Results;
 }
 
 
-TArray<AXkHexagonActor*> AXkHexagonalWorldActor::GetHexagonActorNeighborsRecursively(const AXkHexagonActor* InputActor, const TArray<FIntVector>& BlockList) const
+int32 AXkHexagonalWorldActor::GetHexagonManhattanDistance(const FVector& A, const FVector& B) const
 {
-	TArray<AXkHexagonActor*> Result;
-	TArray<const AXkHexagonActor*> PendingSearchTargets;
-	PendingSearchTargets.Add(InputActor);
-	while (Result.Num() == 0)
+	FXkHexagonNode* HexagonA = GetHexagonNode(A);
+	FXkHexagonNode* HexagonB = GetHexagonNode(B);
+	if (HexagonA && HexagonB)
 	{
-		TArray<const AXkHexagonActor*> NextPendingSearchTargets;
-		for (const AXkHexagonActor* SearchTarget : PendingSearchTargets)
-		{
-			TArray<AXkHexagonActor*> Neighbors = GetHexagonActorNeighbors(SearchTarget);
-			// all neighbors must not in block list
-			for (AXkHexagonActor* Neighbor : Neighbors)
-			{
-				NextPendingSearchTargets.Add(Neighbor);
-				FIntVector NeighborCoord = Neighbor->GetCoord();
-				if (!BlockList.Contains(NeighborCoord))
-				{
-					Result.Add(Neighbor);
-				}
-			}
-		}
-		PendingSearchTargets = NextPendingSearchTargets;
+		return FXkHexagonAStarPathfinding::CalcManhattanDistance(HexagonA->Coord, HexagonB->Coord);
 	}
-	return Result;
-}
-
-
-AXkHexagonActor* AXkHexagonalWorldActor::GetHexagonActorRandomNeighbor(const AXkHexagonActor* InputActor, const TArray<FIntVector>& BlockList) const
-{
-	AXkHexagonActor* Result = nullptr;
-	TArray<AXkHexagonActor*> Neighbors = GetHexagonActorNeighborsRecursively(InputActor, BlockList);
-	TArray<AXkHexagonActor*> PendingMovementTargets;
-	for (AXkHexagonActor* Neighbor : Neighbors)
-	{
-		FIntVector NeighborCoord = Neighbor->GetCoord();
-		if (!BlockList.Contains(NeighborCoord))
-		{
-			PendingMovementTargets.Add(Neighbor);
-		}
-	}
-	if (PendingMovementTargets.Num() > 0)
-	{
-		Result = PendingMovementTargets[FMath::RandRange(0, PendingMovementTargets.Num() - 1)];
-	}
-	return Result;
-}
-
-
-AXkHexagonActor* AXkHexagonalWorldActor::GetHexagonActorNearestNeighbor(const AXkHexagonActor* InputActor, const AXkHexagonActor* TargetActor, const TArray<FIntVector>& BlockList) const
-{
-	TArray<AXkHexagonActor*> PendingMovementTargets = GetHexagonActorNeighborsRecursively(TargetActor, BlockList);
-	AXkHexagonActor* Result = nullptr;
-	FIntVector StartPoint = InputActor->GetCoord();
-	int32 MaxDist = 9999;
-	for (AXkHexagonActor* Target : PendingMovementTargets)
-	{
-		FIntVector EndPoint = Target->GetCoord();
-		int32 ManhattanDistance = FXkHexagonAStarPathfinding::CalcManhattanDistance(StartPoint, EndPoint);
-		if (ManhattanDistance < MaxDist)
-		{
-			Result = Target;
-			MaxDist = ManhattanDistance;
-		}
-	}
-	return Result;
-}
-
-
-TArray<AXkHexagonActor*> AXkHexagonalWorldActor::PathfindingHexagonActors(const FIntVector& StartCoord, const FIntVector& EndCoord, const TArray<FIntVector>& BlockList)
-{
-	HexagonAStarPathfinding.Reinit();
-	HexagonAStarPathfinding.Blocking(BlockList);
-	if (HexagonAStarPathfinding.Pathfinding(StartCoord, EndCoord))
-	{
-		TArray<FIntVector> BacktrackingList = HexagonAStarPathfinding.Backtracking(BacktrackingMaxStep);
-		return FindHexagonActors(BacktrackingList);
-	}
-	return TArray<AXkHexagonActor*>();
-}
-
-
-TArray<AXkHexagonActor*> AXkHexagonalWorldActor::PathfindingHexagonActors(const AXkHexagonActor* StartActor, const AXkHexagonActor* EndActor, const TArray<FIntVector>& BlockList)
-{
-	return PathfindingHexagonActors(StartActor->GetCoord(), EndActor->GetCoord(), BlockList);
-}
-
-
-TArray<AXkHexagonActor*> AXkHexagonalWorldActor::PathfindingHexagonActors(const FVector& StartLocation, const FVector& EndLocation, const TArray<FIntVector>& BlockList)
-{
-	AXkHexagonActor* StartActor = GetHexagonActorByLocation(StartLocation);
-	AXkHexagonActor* EndActor = GetHexagonActorByLocation(EndLocation);
-	if (IsValid(StartActor) && IsValid(EndActor))
-	{
-		return PathfindingHexagonActors(StartActor, EndActor, BlockList);
-	}
-	return TArray<AXkHexagonActor*>();
-}
-
-
-void AXkHexagonalWorldActor::FetchHexagonData(TArray<FVector4f>& OutVertices, TArray<uint32>& OutIndices)
-{
-	TArray<FVector4f> EdgeVertices;
-	TArray<uint32> EdgeIndices;
-	BuildHexagon(OutVertices, OutIndices, EdgeVertices, EdgeIndices,
-		Radius, Height, BaseInnerGap, BaseOuterGap, EdgeInnerGap, EdgeOuterGap);
+	return -1;
 }
 
 
@@ -568,29 +457,10 @@ FVector2D AXkHexagonalWorldActor::GetFullUnscaledWorldSize(const FVector2D& Unsc
 }
 
 
-TArray<class AXkHexagonActor*> AXkHexagonalWorldActor::FindHexagonActors(const TArray<FIntVector>& Inputs) const
+void AXkHexagonalWorldActor::BuildHexagonData(TArray<FVector4f>& OutVertices, TArray<uint32>& OutIndices)
 {
-	TArray<class AXkHexagonActor*> Ret;
-	for (const FIntVector& CurrentPoint : Inputs)
-	{
-		if (AXkHexagonActor* HexagonActor = FindHexagonActor(CurrentPoint))
-		{
-			Ret.Insert(HexagonActor, 0);
-		}
-	}
-	return Ret;
-}
-
-
-AXkHexagonActor* AXkHexagonalWorldActor::FindHexagonActor(const FIntVector& Input) const
-{
-	for (TActorIterator<AXkHexagonActor> It(GetWorld()); It; ++It)
-	{
-		AXkHexagonActor* HexagonActor = *It;
-		if (HexagonActor->GetCoord() == Input)
-		{
-			return HexagonActor;
-		}
-	}
-	return nullptr;
+	TArray<FVector4f> EdgeVertices;
+	TArray<uint32> EdgeIndices;
+	BuildHexagon(OutVertices, OutIndices, EdgeVertices, EdgeIndices,
+		Radius, Height, BaseInnerGap, BaseOuterGap, EdgeInnerGap, EdgeOuterGap);
 }

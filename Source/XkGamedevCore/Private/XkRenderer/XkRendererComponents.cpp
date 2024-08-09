@@ -37,9 +37,9 @@ UXkCanvasRendererComponent::UXkCanvasRendererComponent(const FObjectInitializer&
 	ConvolutionRangeZ = 4;
 
 	CanvasCenter = FVector4f::Zero();
-	CanvasCenter.W = 120.0f; // CanvasCenter.W for land height, to calculate ocean SDF
+	CanvasCenter.W = 200.0f; // CanvasCenter.W for land height range, to calculate ocean SDF
 	CanvasExtent = FVector4f(204800.0/*WorldSize.X*/, 204800.0/*WorldSize.Y*/, -2048.0/*HeightRange MinZ*/, 2048.0/*HeightRange MaxZ*/);
-	HorizonHeight = 0.0f;
+	HorizonHeight = 100.0f;
 
 	CanvasRT0 = CastChecked<UTextureRenderTarget2D>(
 		StaticLoadObject(UTextureRenderTarget2D::StaticClass(), NULL, TEXT("/XkGamedevKit/RenderTargets/RT_SphericalLandscapeHeight")));
@@ -47,6 +47,15 @@ UXkCanvasRendererComponent::UXkCanvasRendererComponent(const FObjectInitializer&
 		StaticLoadObject(UTextureRenderTarget2D::StaticClass(), NULL, TEXT("/XkGamedevKit/RenderTargets/RT_SphericalLandscapeWeight")));
 	CanvasMPC = CastChecked<UMaterialParameterCollection>(
 		StaticLoadObject(UMaterialParameterCollection::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/MPC_CanvasRender")));
+}
+
+
+UXkCanvasRendererComponent::~UXkCanvasRendererComponent()
+{
+	VertexBuffer.ReleaseResource();
+	IndexBuffer.ReleaseResource();
+	InstancePositionBuffer.ReleaseResource();
+	InstanceWeightBuffer.ReleaseResource();
 }
 
 
@@ -73,21 +82,37 @@ FVector2D UXkCanvasRendererComponent::GetCanvasSize() const
 	return FVector2D(1);
 }
 
-void UXkCanvasRendererComponent::CreateBuffers(
-	FXkCanvasVertexBuffer* VertexBuffer, 
-	FXkCanvasIndexBuffer* IndexBuffer, 
-	FXkCanvasInstanceBuffer* InstancePositionBuffer, 
-	FXkCanvasInstanceBuffer* InstanceWeightBuffer)
+
+bool UXkCanvasRendererComponent::IsBuffersValid() const
 {
-	ENQUEUE_RENDER_COMMAND(UXkCanvasRendererComponent_CreateBuffers)([VertexBuffer, IndexBuffer, InstancePositionBuffer, InstanceWeightBuffer]
-		(FRHICommandListImmediate& RHICmdList)
+	if (VertexBuffer.IsInitialized() && IndexBuffer.IsInitialized() && InstancePositionBuffer.IsInitialized() && InstanceWeightBuffer.IsInitialized())
+	{
+			return true;
+	}
+	return false;
+}
+
+
+void UXkCanvasRendererComponent::CreateBuffers(const TArray<FVector4f> Vertices, const TArray<uint32> Indices, const TArray<FVector4f> Positions, const TArray<FVector4f> Weights)
+{
+	VertexBuffer.Positions = Vertices;
+	TArray<FVector2f> UVs; UVs.Init(FVector2f(), Vertices.Num());
+	VertexBuffer.UVs = UVs;
+	IndexBuffer.Indices = Indices;
+
+	InstancePositionBuffer.Data = Positions;
+	InstanceWeightBuffer.Data = Weights;
+
+	ENQUEUE_RENDER_COMMAND(UXkCanvasRendererComponent_CreateBuffers)([&]
+	(FRHICommandListImmediate& RHICmdList)
 		{
 			TRACE_CPUPROFILER_EVENT_SCOPE(UXkCanvasRendererComponent_CreateBuffers);
-			VertexBuffer->InitRHI();
-			IndexBuffer->InitRHI();
-			InstancePositionBuffer->InitRHI();
-			InstanceWeightBuffer->InitRHI();
+			VertexBuffer.InitRHI();
+			IndexBuffer.InitRHI();
+			InstancePositionBuffer.InitRHI();
+			InstanceWeightBuffer.InitRHI();
 		});
+	FlushRenderingCommands();
 
 	if (CanvasMPC && GetWorld())
 	{
@@ -96,21 +121,42 @@ void UXkCanvasRendererComponent::CreateBuffers(
 		MPC_Instance->SetVectorParameterValue(FName(TEXT("Center")), FLinearColor(CanvasCenter.X, CanvasCenter.Y, CanvasCenter.Z, CanvasCenter.W));
 		MPC_Instance->SetVectorParameterValue(FName(TEXT("Extent")), FLinearColor(CanvasExtent.X, CanvasExtent.Y, CanvasExtent.Z, CanvasExtent.W));
 	}
-
 }
 
 
-void UXkCanvasRendererComponent::DrawCanvas(
-	FXkCanvasVertexBuffer* VertexBuffer, 
-	FXkCanvasIndexBuffer* IndexBuffer, 
-	FXkCanvasInstanceBuffer* InstancePositionBuffer, 
-	FXkCanvasInstanceBuffer* InstanceWeightBuffer)
+void UXkCanvasRendererComponent::UpdateBuffers(const TArray<FVector4f> Positions, const TArray<FVector4f> Weights)
 {
-	if (!VertexBuffer || !IndexBuffer)
+	if (Positions.IsEmpty() || Weights.IsEmpty())
 	{
 		return;
 	}
 
+
+	ENQUEUE_RENDER_COMMAND(UXkCanvasRendererComponent_UpdateBuffers)([&]
+	(FRHICommandListImmediate& RHICmdList)
+		{
+			TRACE_CPUPROFILER_EVENT_SCOPE(UXkCanvasRendererComponent_UpdateBuffers);
+			/** instance position data */
+			void* RawInstancePositionData = RHILockBuffer(
+				InstancePositionBuffer.VertexBufferRHI, 0,
+				InstancePositionBuffer.VertexBufferRHI->GetSize(),
+				RLM_WriteOnly);
+			FMemory::Memcpy((char*)RawInstancePositionData, Positions.GetData(), Positions.Num() * sizeof(FVector4f));
+			RHIUnlockBuffer(InstancePositionBuffer.VertexBufferRHI);
+
+			/** instance weight data */
+			void* RawInstanceWeightData = RHILockBuffer(
+				InstanceWeightBuffer.VertexBufferRHI, 0,
+				InstanceWeightBuffer.VertexBufferRHI->GetSize(),
+				RLM_WriteOnly);
+			FMemory::Memcpy((char*)RawInstanceWeightData, Weights.GetData(), Weights.Num() * sizeof(FVector4f));
+			RHIUnlockBuffer(InstanceWeightBuffer.VertexBufferRHI);
+		});
+}
+
+
+void UXkCanvasRendererComponent::DrawCanvas()
+{
 	if (!CanvasRT0 || !CanvasRT1)
 	{
 		return;
@@ -123,24 +169,28 @@ void UXkCanvasRendererComponent::DrawCanvas(
 	uint8 CRValueZ = ConvolutionRangeZ;
 	FVector4f Center = CanvasCenter;
 	FVector4f Extent = CanvasExtent;
+	FXkCanvasVertexBuffer* VertexBuf = &VertexBuffer;
+	FXkCanvasIndexBuffer* IndexBuf = &IndexBuffer;
+	FXkCanvasInstanceBuffer* InstancePositionBuf = &InstancePositionBuffer;
+	FXkCanvasInstanceBuffer* InstanceWeightBuf = &InstanceWeightBuffer;
 	FXkCanvasRenderVS::FParameters VertexShaderParamsToCopy;
 	FXkCanvasRenderPS::FParameters PixelShaderParamsToCopy;
 	FMatrix44f LocalToWorld = FMatrix44f(GetOwner()->GetTransform().ToMatrixWithScale());
 	RenderCaptureInterface::FScopedCapture RenderCapture(CaptureDrawCanvas, TEXT("CaptureDrawCanvas"));
 	ENQUEUE_RENDER_COMMAND(UXkRendererComponent_DrawCanvas)([Canvas0, Canvas1, CRValueX, CRValueY, CRValueZ, LocalToWorld, Center, Extent,
-		VertexShaderParamsToCopy, PixelShaderParamsToCopy, VertexBuffer, IndexBuffer, InstancePositionBuffer, InstanceWeightBuffer]
+		VertexShaderParamsToCopy, PixelShaderParamsToCopy, VertexBuf, IndexBuf, InstancePositionBuf, InstanceWeightBuf]
 		(FRHICommandListImmediate& RHICmdList)
 		{
 			TRACE_CPUPROFILER_EVENT_SCOPE(UXkCanvasRendererComponent_DrawCanvas);
 
-			VertexBuffer->InitRHI();
-			IndexBuffer->InitRHI();
-			InstancePositionBuffer->InitRHI();
-			InstanceWeightBuffer->InitRHI();
+			VertexBuf->InitRHI();
+			IndexBuf->InitRHI();
+			InstancePositionBuf->InitRHI();
+			InstanceWeightBuf->InitRHI();
 
 			FRDGBuilder GraphBuilder(RHICmdList, RDG_EVENT_NAME("CaptureDrawCanvas"));
 
-			uint32 NumInstances = InstancePositionBuffer->Data.Num();
+			uint32 NumInstances = InstancePositionBuf->Data.Num();
 			NumInstances = FMath::Max(NumInstances, (uint32)1);
 
 			// This great func CreateRenderTarget() would create RT and manage it, it's awesome~
@@ -182,15 +232,15 @@ void UXkCanvasRendererComponent::DrawCanvas(
 				PassUniformBuffer = GraphBuilder.CreateUniformBuffer(BuildParameters);
 			}
 			VertexShaderParams->Parameters = PassUniformBuffer;
-			VertexShaderParams->InstancePositionBuffer = InstancePositionBuffer->ShaderResourceViewRHI.GetReference();
-			VertexShaderParams->InstanceWeightBuffer = InstanceWeightBuffer->ShaderResourceViewRHI.GetReference();
+			VertexShaderParams->InstancePositionBuffer = InstancePositionBuf->ShaderResourceViewRHI.GetReference();
+			VertexShaderParams->InstanceWeightBuffer = InstanceWeightBuf->ShaderResourceViewRHI.GetReference();
 			PixelShaderParams->Parameters = PassUniformBuffer;
 
 			PixelShaderParams->RenderTargets[0] = FRenderTargetBinding(Canvas0_RDG, ERenderTargetLoadAction::EClear, /*InMipIndex = */0);
 			PixelShaderParams->RenderTargets[1] = FRenderTargetBinding(Canvas1_RDG, ERenderTargetLoadAction::EClear, /*InMipIndex = */0);
 			FIntRect Viewport = FIntRect(0, 0, TextureSize.X, TextureSize.Y);
 			XkCanvasRendererDraw(GraphBuilder, NumInstances, Viewport, VertexShaderParams, PixelShaderParams,
-				VertexBuffer, IndexBuffer);
+				VertexBuf, IndexBuf);
 
 			FXkCanvasRenderCS::FParameters* ComputerShaderParams =
 				GraphBuilder.AllocParameters<FXkCanvasRenderCS::FParameters>();

@@ -22,7 +22,7 @@
 AXkGamepadCursor::AXkGamepadCursor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	GetDecal()->DecalSize = FVector(128, 128, 128);
+	GetDecal()->DecalSize = FVector(512, 128, 128);
 	Radius = 50.0;
 }
 
