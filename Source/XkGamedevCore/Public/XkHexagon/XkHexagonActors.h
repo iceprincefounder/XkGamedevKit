@@ -53,9 +53,11 @@ public:
 	virtual void SetHexagonWorld(class AXkHexagonalWorldActor* Input);
 	virtual void OnBaseHighlight(const FLinearColor& InColor = FLinearColor::White);
 	virtual void OnEdgeHighlight(const FLinearColor& InColor = FLinearColor::White);
+	virtual UStaticMeshComponent* GetStaticProcMesh() const { return StaticProcMesh; };
 	//~ End AXkHexagonActor Interface
 
 protected:
+
 	virtual void UpdateMaterial();
 #if WITH_EDITOR
 	virtual void UpdateProcMesh();
@@ -161,6 +163,10 @@ public:
 	FORCEINLINE virtual TArray<FXkHexagonNode*> GetHexagonNodeNeighbors(const FIntVector& InCoord) const;
 
 	FORCEINLINE virtual TArray<FXkHexagonNode*> GetHexagonNodeSurrounders(const TArray<FIntVector>& InCoords) const;
+
+	FORCEINLINE virtual TArray<FXkHexagonNode*> GetHexagonNodeCoverages(const FIntVector& InCoord, const int32 InRange) const;
+
+	FORCEINLINE virtual TArray<FXkHexagonNode*> GetHexagonNodesPath(const FIntVector& StartCoord, const FIntVector& EndCoord);
 
 	FORCEINLINE virtual TArray<FXkHexagonNode*> GetHexagonNodesPathfinding(const FIntVector& StartCoord, const FIntVector& EndCoord, const TArray<FIntVector>& BlockList = TArray<FIntVector>());
 

@@ -9,8 +9,7 @@
 #include "InputActionValue.h"
 #include "XkController.generated.h"
 
-
-UENUM(BlueprintType)
+UENUM(BlueprintType, Blueprintable)
 enum class EXkControlsFlavor : uint8
 {
 	Keyboard,
@@ -20,7 +19,7 @@ enum class EXkControlsFlavor : uint8
 };
 
 
-UENUM(BlueprintType)
+UENUM(BlueprintType, Blueprintable)
 enum class EXkControlsCursorArea: uint8
 {
 	SafeArea = 0,
@@ -31,7 +30,88 @@ enum class EXkControlsCursorArea: uint8
 };
 
 
-UCLASS()
+UCLASS(BlueprintType , Blueprintable)
+class XKGAMEDEVCORE_API AXkGuideLine : public AActor
+{
+	GENERATED_BODY()
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class USceneComponent> RootScene;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TArray<class USplineMeshComponent*> SegmentSplineMeshes;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UInstancedStaticMeshComponent> SegmentSphereAncherMesh;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class USplineComponent> ParabolaSpline;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TArray<class USplineMeshComponent*> ParabolaSplineMeshes;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UMaterialInterface* ParabolaMeshMaterial;
+
+	UPROPERTY(Transient)
+	class UMaterialInstanceDynamic* ParabolaMeshMaterialDyn;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UMaterialInterface* SegmentMeshMaterial;
+
+	UPROPERTY(Transient)
+	class UMaterialInstanceDynamic* SegmentMeshMaterialDyn;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	float ParabolaStartScale;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	float ParabolaEndScale;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	int32 ParabolaNumPoints;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	float SegmentScale;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	int32 SegmentSortPriority;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	int32 ParabolaSortPriority;
+public:
+	/** Default UObject constructor. */
+	AXkGuideLine(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+	virtual void OnConstruction(const FTransform& Transform) override;
+
+	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	virtual void UpdateSegmentCurve(const TArray<FVector>& Points, const bool bContinuous);
+
+	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	virtual void UpdateParabolaCurve(const FVector& Start, const FVector& End, const float ParaCurveArc);
+
+	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	void SetSegmentCurveColor(const FLinearColor& Color);
+
+	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	void SetParabolaCurveColor(const FLinearColor& Color);
+
+	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	void SetParabolaScale(const float StartScale, const float EndScale) { ParabolaStartScale = StartScale; ParabolaEndScale = EndScale;};
+
+	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	void SetSegmentScale (const float Scale) { SegmentScale = Scale;};	
+
+	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	void SetSegmentTranslucentPriority(const int32 Priority) { SegmentSortPriority = Priority;};
+
+	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	void SetParabolaTranslucentPriority(const int32 Priority) { ParabolaSortPriority = Priority;};
+};
+
+
+UCLASS(BlueprintType , Blueprintable)
 class XKGAMEDEVCORE_API AXkGamepadCursor : public ADecalActor
 {
 	GENERATED_BODY()
@@ -57,7 +137,7 @@ private:
 };
 
 
-UCLASS()
+UCLASS(BlueprintType , Blueprintable)
 class XKGAMEDEVCORE_API AXkController : public APlayerController
 {
 	GENERATED_BODY()
@@ -69,6 +149,9 @@ public:
 	/** Time Threshold to know if it was a short press */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float ShortPressThreshold;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
+	float MaxHoveringThreshold;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float CameraScrollingSpeed;
@@ -201,8 +284,13 @@ protected:
 
 	UPROPERTY(Transient)
 	FVector2D CachedMouseCursorLocation;
+
 	UPROPERTY(Transient)
 	FVector CachedGamepadCursorLocation;
+
+	UPROPERTY(Transient)
+	float HoveringTime;
+
 	UPROPERTY(Transient)
 	TWeakObjectPtr<class AXkGamepadCursor> GamepadCursor;
 
@@ -212,6 +300,8 @@ protected:
 
 public:
 	virtual bool IsShortPress();
+	virtual bool IsHoveringMotionless() const { return HoveringTime > MaxHoveringThreshold; };
+	virtual bool IsOnUI() const { return false; };
 	virtual bool ControllerSelect() const;
 	virtual bool ControllerSelect(FHitResult& Hit) const;
 	virtual bool ControllerSelect(FHitResult& Hit, const ECollisionChannel Channel) const;
@@ -225,5 +315,3 @@ public:
 	virtual class AXkGameState* GetGameState() const;
 	virtual class AXkTopDownCamera* GetTopDownCamera() const;
 };
-
-

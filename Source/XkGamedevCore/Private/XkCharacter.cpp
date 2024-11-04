@@ -17,16 +17,16 @@
 UXkMovement::UXkMovement(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	bShouldMove = false;
+	bShouldDoAction = false;
 	bIsMoving = false;
 	bIsRotating = false;
 	MaxVelocity = 500.0;
 	MaxAcceleration = 2048.0;
-	RotationRate = FRotator(0.0, 640.0, 0.0);
+	RotationRate = FRotator(0.0, 500.0, 0.0);
 }
 
 
-AActor* UXkMovement::GetMovingActor() const
+AActor* UXkMovement::GetMovementActor() const
 {
 	AActor* Actor = GetOwner();
 	if (Actor && IsValid(Actor))
@@ -41,6 +41,22 @@ UXkTargetMovement::UXkTargetMovement(const FObjectInitializer& ObjectInitializer
 	: Super(ObjectInitializer)
 {
 	bBlinkMode = false;
+	bFailToGround = false;
+	MoveAcceler = 1.0f;
+	JumpAcceler = 1.0f;
+	ShotAcceler = 1.0f;
+	SlideAcceler = 1.0f;
+	JumpArc = -0.5;
+	ShotArc = -0.1;
+	CapsuleHalfHeight = 96.0;
+
+	// Set default values
+	ActionPoint = 0;
+	MoveCostPoint = 1;
+	RotateCostPoint = 0;
+	JumpCostPoint = 2;
+	SlideCostPoint = 0;
+	ShotCostPoint = 0;
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryComponentTick.bCanEverTick = true;
@@ -50,215 +66,323 @@ UXkTargetMovement::UXkTargetMovement(const FObjectInitializer& ObjectInitializer
 
 void UXkTargetMovement::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
-	auto IsMovementJobFinished = [this]() -> bool
-	{
-		bool bMovementJobFinished = PendingMovementTargets.Num() == 0 || MovementPoint == 0;
-		return bMovementJobFinished;
-	};
-
-	auto IsRotationJobFinished = [this]() -> bool
-	{
-		bool bRotationJobFinished = PendingRotationTargets.Num() == 0;
-		return bRotationJobFinished;
-	};
-
-	auto IsAllPendingJobFinished = [this, IsMovementJobFinished, IsRotationJobFinished]() -> bool
-	{
-		return IsRotationJobFinished() && IsMovementJobFinished();
-	};
-
 	SCOPED_NAMED_EVENT(UXkMovement_TickComponent, FColor::Red);
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_UXkMovement_TickComponent);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_UXkMovement_TickComponent);
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (!bShouldMove)
+	check(GetMovementActor());
+
+	if (!bShouldDoAction && bFailToGround)
 	{
+		// Snap to ground
+		FVector ActorLocation = GetMovementActor()->GetActorLocation();
+		FVector TargetLocation = GetLineTraceLocation(ActorLocation);
+		FVector NewLocation = ActorLocation;
+		if (CheckHeightSafely(ActorLocation, TargetLocation))
+		{
+			Velocity = FVector::ZeroVector;
+			Acceleration = FVector::ZeroVector;
+			bIsFalling = false;
+		}
+		else if (TargetLocation.Z > ActorLocation.Z)
+		{
+			// Snap to target if target is higher than current location
+			NewLocation = TargetLocation;
+		}
+		else if (TargetLocation.Z < ActorLocation.Z)
+		{
+			// Falling to target if target is lower than current location
+			const float Gravity = -980.0f; // Unreal Engine unit cm/s^2
+			FVector GravityAcceleration(0.0f, 0.0f, Gravity);
+			Acceleration = GravityAcceleration;
+			Velocity += Acceleration * DeltaTime;
+			
+			NewLocation = ActorLocation + Velocity * DeltaTime + 0.5f * Acceleration * DeltaTime * DeltaTime;
+			bIsFalling = true;
+		}
+		GetMovementActor()->SetActorLocation(NewLocation);
 		return Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	}
 
-	if (AActor* MovingActor = GetMovingActor())
+	FVector Location = GetMovementActor()->GetActorLocation();
+	FRotator Rotation = GetMovementActor()->GetActorRotation();
+
+	// Whether every action finished?
+	if ((PendingMoveTargets.Num() == 0 || ActionPoint == 0)
+		&& PendingRotateTargets.Num() == 0
+		&& (PendingJumpTargets.Num() == 0 || ActionPoint == 0)
+		&& PendingShotTargets.Num() == 0
+		&& PendingSlideTargets.Num() == 0
+		&& !bIsMoving && !bIsRotating && !bIsJumping && !bIsShotting && !bIsSliding && bShouldDoAction)
 	{
-		FVector Location = MovingActor->GetActorLocation();
-		FRotator Rotation = MovingActor->GetActorRotation();
+		bShouldDoAction = false;
+		MoveAcceler = JumpAcceler = ShotAcceler = SlideAcceler = 1.0f;
+		OnMovementFinishEvent.Broadcast();
+		OnMovementReachTargetEvent.Broadcast(ActionPoint);
+		ClearActionPoint();
+		ClearMoveTargets();
+		ClearRotateTargets();
+		ClearJumpTargets();
+		ClearShotTargets();
+		ClearSlideTargets();
+	}
 
-		////////////////////////////////////////////////////////////////////////////////
-		// Sliding -> Moving -> Jumping -> Rotating
+	////////////////////////////////////////////////////////////////////////////////
+	// Moving -> Rotating -> Jumping -> Shotting -> Sliding
 
-		// If no PendingMovementTargets, execute PendingRotationTargets
-		if (!bIsMoving && IsMovementJobFinished())
-		{
-			if (PendingRotationTargets.Num() > 0)
-			{
-				FVector RotationTarget = PendingRotationTargets.Pop(true);
-				FVector TargetLocation = FVector(RotationTarget.X, RotationTarget.Y, Location.Z);
-				const FVector X = TargetLocation - Location;
-				CurrentRotationTarget = FRotationMatrix::MakeFromX(X).Rotator();
-				bIsRotating = true;
-			}
-			else if (bIsRotating && IsRotationJobFinished() && CheckRotationSafely(Rotation, CurrentRotationTarget))
-			{
-				// Closed enough, stop moving
-				bIsRotating = false;
-				Velocity = FVector::ZeroVector;
-				Acceleration = FVector::ZeroVector;
-
-				if (IsAllPendingJobFinished())
-				{
-					bShouldMove = false;
-					OnMovementBaseFinishEvent.Broadcast();
-					OnMovementTargetFinishEvent.Broadcast(MovementPoint);
-				}
-			}
-
-			if (bIsRotating && !CheckRotationSafely(Rotation, CurrentRotationTarget))
-			{
-				FRotator StartRotator = MovingActor->GetActorRotation();
-				FRotator TargetRotator = CurrentRotationTarget;
-				FRotator NewRotator = bBlinkMode ? FMath::RInterpTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw) :
-					FMath::RInterpConstantTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw);
-				MovingActor->SetActorRotation(NewRotator);
-				
-				Acceleration += TargetRotator.Vector() * MaxAcceleration * DeltaTime;
-				Velocity += (TargetRotator.Vector() * MaxAcceleration * DeltaTime);
-			}
-		}
-
-		if (bIsRotating)
-		{
-			return;
-		}
-
-		if (!bShouldMove)
-		{
-			return;
-		}
-
-		if (!bIsMoving)
-		{
-			bIsMoving = true;
-			OnMovementBaseBeginEvent.Broadcast();
-		}
-
+	// 1. Moving
+	if (bIsMoving)
+	{
 		/////////////////////////////////////////////////////////////
 		// If into new Hexagon, change to new target
 		// else if, stop moving
 		// @TODO: check distance is not safe, pool FPS would case many problem
-		if (CheckMovementSafely(Location, CurrentMovementTarget, 1.0f))
+		if ((PendingMoveTargets.Num() == 0 || ActionPoint < MoveCostPoint) && CheckDistanceSafely(Location, CurrentMoveTarget))
 		{
-			if (!IsMovementJobFinished())
-			{
-				// decrease MovementPoint count
-				MovementPoint--;
-				// decrease PendingMovementTargets count
-				CurrentMovementTarget = PendingMovementTargets.Pop(true);
-			}
-			else if (CheckMovementSafely(Location, CurrentMovementTarget))
-			{
-				// Closed enough, stop moving
-				bIsMoving = false;
-				Velocity = FVector::ZeroVector;
-				Acceleration = FVector::ZeroVector;
-
-				if (IsAllPendingJobFinished())
-				{
-					bShouldMove = false;
-					OnMovementBaseFinishEvent.Broadcast();
-					OnMovementTargetFinishEvent.Broadcast(MovementPoint);
-				}
-			}
+			// Closed enough, stop moving
+			bIsMoving = false;
+			bIsRotating = true;
+			CurrentRotateTarget = GetMovementActor()->GetActorRotation();
+			Velocity = FVector::ZeroVector;
+			Acceleration = FVector::ZeroVector;
+			OnMovementReachTargetEvent.Broadcast(ActionPoint);
+		}
+		else if (PendingMoveTargets.Num() > 0 && ActionPoint >= MoveCostPoint && CheckDistanceSafely(Location, CurrentMoveTarget))
+		{
+			// decrease PendingMoveTargets count
+			LastTarget = CurrentMoveTarget;
+			CurrentMoveTarget = PendingMoveTargets.Pop(true);
+			// broadcast current action point of last target reached, the action point was decreased when start to move to that target
+			OnMovementReachTargetEvent.Broadcast(ActionPoint);
+			// decrease MovementPoint count
+			ActionPoint -= MoveCostPoint;
 		}
 		/////////////////////////////////////////////////////////////
 		// If not closed to target, move
-		if (!CheckMovementSafely(Location, CurrentMovementTarget))
+		else
 		{
-			FVector TargetVector = FVector(CurrentMovementTarget.X, CurrentMovementTarget.Y, Location.Z);
+			FVector TargetVector = FVector(CurrentMoveTarget.X, CurrentMoveTarget.Y, Location.Z);
 			FVector StartVector = Location;
 			FVector MovingDir = (TargetVector - StartVector);
 			MovingDir.Normalize();
 			float CurrentVelocity = Velocity.Size();
-			float CurrentAcceleration = MaxAcceleration * DeltaTime;
-			// @TODO: Fix movement lagging
-			//if (PendingMovementTargets.Num() > 0)
-			//{
-			//	FVector NextLocation = PendingMovementTargets[0];
-			//	FVector NextTargetVector = FVector(NextLocation.X, NextLocation.Y, Location.Z);
-			//	FVector NextMovingDir = (NextTargetVector - StartVector);
-			//	NextMovingDir.Normalize();
-			//	if (MovingDir == NextMovingDir)
-			//	{
-			//		TargetVector = NextTargetVector;
-			//	}
-			//}
-			// Here is no deceleration currently.
-			//CurrentVelocity -= CurrentAcceleration;
-			CurrentVelocity += CurrentAcceleration;
-			CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity);
+			float CurrentAcceleration = MaxAcceleration * MoveAcceler;
+			CurrentVelocity += CurrentAcceleration * DeltaTime;
+			CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity * MoveAcceler);
 			FVector NewLocation = bBlinkMode ? FMath::VInterpTo(StartVector, TargetVector, DeltaTime, CurrentVelocity) :
 				FMath::VInterpConstantTo(StartVector, TargetVector, DeltaTime, CurrentVelocity);
-			Velocity = (NewLocation - Location) / DeltaTime;
-			Acceleration = (NewLocation - Location) * MaxAcceleration;
-			MovingActor->SetActorLocation(NewLocation);
-
-			// @DEBUG: WorldOffset
-			//FString Message = FString::Printf(TEXT("WorldOffset %f"), MovingDir.Size());
-			//GEngine->AddOnScreenDebugMessage(-1, 3.0, FColor::Orange, *Message);
+			// Snap to ground
+			NewLocation = GetLineTraceLocation(NewLocation);
+			Velocity = CurrentVelocity * MovingDir;
+			Acceleration = CurrentAcceleration * MovingDir;
+			GetMovementActor()->SetActorLocation(NewLocation);
 
 			const FVector X = TargetVector - StartVector;
-			FRotator StartRotator = MovingActor->GetActorRotation();
+			FRotator StartRotator = GetMovementActor()->GetActorRotation();
 			FRotator TargetRotator = FRotationMatrix::MakeFromX(X).Rotator();
 			FRotator NewRotator = bBlinkMode ? FMath::RInterpTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw) :
 				FMath::RInterpConstantTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw);
-			MovingActor->SetActorRotation(NewRotator);
+			GetMovementActor()->SetActorRotation(NewRotator);
 		}
-	}
-}
+	} // Moving
 
-
-void UXkTargetMovement::OnMoving()
-{
-	if (AActor* MovingActor = GetMovingActor())
+	// 2. Rotating
+	if (bIsRotating)
 	{
-		if (PendingMovementTargets.Num() > 0)
+		if ((PendingRotateTargets.Num() == 0 || ActionPoint < RotateCostPoint /* Useless*/) && CheckRotationSafely(Rotation, CurrentRotateTarget))
 		{
-			// PendingMovementTargets contains the start hexagon which character step on currently,
-			// So, begin every moving, add one more MovementPoint to make up for
-			MovementPoint += 1;
-			CurrentMovementTarget = MovingActor->GetActorLocation();
-			bShouldMove = true;
+			// Closed enough, stop moving
+			bIsRotating = false;
+			bIsJumping = true;
+			CurrentJumpTarget = GetMovementActor()->GetActorLocation();
+			Velocity = FVector::ZeroVector;
+			Acceleration = FVector::ZeroVector;
+			OnMovementReachTargetEvent.Broadcast(ActionPoint);
 		}
-		if (PendingRotationTargets.Num() > 0)
+		else if ((PendingRotateTargets.Num() > 0 && ActionPoint >= RotateCostPoint) && CheckRotationSafely(Rotation, CurrentRotateTarget))
 		{
-			CurrentRotationTarget = MovingActor->GetActorRotation();
-			bShouldMove = true;
+			FVector RotationTarget = PendingRotateTargets.Pop(true);
+			FVector TargetLocation = FVector(RotationTarget.X, RotationTarget.Y, Location.Z);
+			const FVector X = TargetLocation - Location;
+			CurrentRotateTarget = FRotationMatrix::MakeFromX(X).Rotator();
+			OnMovementReachTargetEvent.Broadcast(ActionPoint);
 		}
-		if (PendingMovementJumpTargets.Num() > 0)
+		else
 		{
-			CurrentMovementJumpTarget = MovingActor->GetActorLocation();
-			bShouldMove = true;
+			FRotator StartRotator = GetMovementActor()->GetActorRotation();
+			FRotator TargetRotator = CurrentRotateTarget;
+			FRotator NewRotator = bBlinkMode ? FMath::RInterpTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw) :
+				FMath::RInterpConstantTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw);
+			GetMovementActor()->SetActorRotation(NewRotator);
+
+			Acceleration += TargetRotator.Vector() * MaxAcceleration * DeltaTime;
+			Velocity += (TargetRotator.Vector() * MaxVelocity * DeltaTime);
 		}
-		if (PendingMovementSlideTargets.Num() > 0)
+	}
+
+	// 3. Jumping
+	if (bIsJumping)
+	{
+		if ((PendingJumpTargets.Num() == 0 || ActionPoint < JumpCostPoint) && CheckDistanceSafely(Location, CurrentJumpTarget))
 		{
-			CurrentMovementSlideTarget = MovingActor->GetActorLocation();
-			bShouldMove = true;
+			bIsJumping = false;
+			bIsShotting = true;
+			CurrentShotTarget = GetMovementActor()->GetActorLocation();
+			OnMovementReachTargetEvent.Broadcast(ActionPoint);
+		}
+		else if (PendingJumpTargets.Num() > 0 && ActionPoint >= JumpCostPoint && CheckDistanceSafely(Location, CurrentJumpTarget))
+		{
+			// decrease PendingMoveTargets count
+			LastTarget = CurrentJumpTarget;
+			CurrentJumpTarget = PendingJumpTargets.Pop(true);
+			CurrentJumpTarget = GetLineTraceLocation(CurrentJumpTarget);
+			OnMovementReachTargetEvent.Broadcast(ActionPoint);
+			// decrease MovementPoint count
+			ActionPoint -= JumpCostPoint;
+		}
+		else
+		{
+			FVector TargetVector = FVector(CurrentJumpTarget.X, CurrentJumpTarget.Y, Location.Z);
+			FVector StartVector = Location;
+			FVector MovingDir = (TargetVector - StartVector);
+			MovingDir.Normalize();
+			float CurrentVelocity = Velocity.Size();
+			float CurrentAcceleration = MaxAcceleration;
+			CurrentVelocity += CurrentAcceleration * DeltaTime;
+			CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity * JumpAcceler);
+			FVector NewLocation = bBlinkMode ? FMath::VInterpTo(StartVector, TargetVector, DeltaTime, CurrentVelocity) :
+				FMath::VInterpConstantTo(StartVector, TargetVector, DeltaTime, CurrentVelocity);
+			// Calculate the height of jump
+			if (LastTarget.IsSet())
+			{
+				float CurrLength = FVector::Dist2D(NewLocation, LastTarget.GetValue());
+				FVector CurrLocation = CalcParaCurve(LastTarget.GetValue(), CurrentJumpTarget, JumpArc, CurrLength);
+				NewLocation.Z = CurrLocation.Z;
+			}
+			Velocity = (NewLocation - Location) / DeltaTime;
+			Acceleration = CurrentAcceleration * MovingDir;
+			GetMovementActor()->SetActorLocation(NewLocation);
+
+			const FVector X = TargetVector - StartVector;
+			FRotator StartRotator = GetMovementActor()->GetActorRotation();
+			FRotator TargetRotator = FRotationMatrix::MakeFromX(X).Rotator();
+			FRotator NewRotator = bBlinkMode ? FMath::RInterpTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw) :
+				FMath::RInterpConstantTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw);
+			GetMovementActor()->SetActorRotation(NewRotator);
+		}
+	}
+
+	// 4. Shotting
+	if (bIsShotting)
+	{
+		if ((PendingShotTargets.Num() == 0 || ActionPoint < ShotCostPoint) && CheckDistanceSafely(Location, CurrentShotTarget))
+		{
+			bIsShotting = false;
+			bIsSliding = true;
+			CurrentSlideTarget = GetMovementActor()->GetActorLocation();
+			OnMovementReachTargetEvent.Broadcast(ActionPoint);
+		}
+		else if (PendingShotTargets.Num() > 0 && ActionPoint >= ShotCostPoint && CheckDistanceSafely(Location, CurrentShotTarget))
+		{
+			LastTarget = CurrentShotTarget;
+			CurrentShotTarget = PendingShotTargets.Pop(true);
+			OnMovementReachTargetEvent.Broadcast(ActionPoint);
+			// decrease MovementPoint count
+			ActionPoint -= ShotCostPoint;
+		}
+		else
+		{
+			FVector TargetVector = FVector(CurrentShotTarget.X, CurrentShotTarget.Y, Location.Z);
+			FVector StartVector = Location;
+			FVector MovingDir = (TargetVector - StartVector);
+			MovingDir.Normalize();
+			float CurrentVelocity = Velocity.Size();
+			float CurrentAcceleration = MaxAcceleration * ShotAcceler;
+			CurrentVelocity += CurrentAcceleration * DeltaTime;
+			CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity * ShotAcceler);
+			FVector NewLocation = bBlinkMode ? FMath::VInterpTo(StartVector, TargetVector, DeltaTime, CurrentVelocity) :
+				FMath::VInterpConstantTo(StartVector, TargetVector, DeltaTime, CurrentVelocity);
+			// Calculate the height of shot
+			if (LastTarget.IsSet())
+			{
+				float CurrLength = FVector::Dist2D(NewLocation, LastTarget.GetValue());
+				FVector CurrLocation = CalcParaCurve(LastTarget.GetValue(), CurrentShotTarget, ShotArc, CurrLength);
+				NewLocation.Z = CurrLocation.Z;
+			}
+			Velocity = (NewLocation - Location) / DeltaTime;
+			Acceleration = CurrentAcceleration * MovingDir;
+			GetMovementActor()->SetActorLocation(NewLocation);
+
+			if (LastLocation.IsSet())
+			{
+				FVector NewDir = NewLocation - LastLocation.GetValue();
+				NewDir.Normalize();
+				GetMovementActor()->SetActorRotation(NewDir.ToOrientationRotator());
+			}
+			LastLocation = NewLocation;
+		}
+	}
+
+	// 5. Sliding
+	if (bIsSliding)
+	{
+		if ((PendingSlideTargets.Num() == 0 || ActionPoint < SlideCostPoint) && CheckDistanceSafely(Location, CurrentSlideTarget))
+		{
+			// Closed enough, stop moving
+			bIsSliding = false;
+			Velocity = FVector::ZeroVector;
+			Acceleration = FVector::ZeroVector;
+			OnMovementReachTargetEvent.Broadcast(ActionPoint);
+		}
+		else if ((PendingSlideTargets.Num() > 0 && ActionPoint >= SlideCostPoint) && CheckDistanceSafely(Location, CurrentSlideTarget))
+		{
+			// decrease PendingMoveTargets count
+			LastTarget = CurrentSlideTarget;
+			CurrentSlideTarget = PendingSlideTargets.Pop(true);
+			OnMovementReachTargetEvent.Broadcast(ActionPoint);
+		}
+		/////////////////////////////////////////////////////////////
+		// If not closed to target, move
+		else
+		{
+			FVector TargetVector = FVector(CurrentSlideTarget.X, CurrentSlideTarget.Y, Location.Z);
+			FVector StartVector = Location;
+			FVector MovingDir = (TargetVector - StartVector);
+			MovingDir.Normalize();
+			float CurrentVelocity = Velocity.Size();
+			float CurrentAcceleration = MaxAcceleration;
+			CurrentVelocity += CurrentAcceleration * DeltaTime;
+			CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity * SlideAcceler);
+			FVector NewLocation = bBlinkMode ? FMath::VInterpTo(StartVector, TargetVector, DeltaTime, CurrentVelocity) :
+				FMath::VInterpConstantTo(StartVector, TargetVector, DeltaTime, CurrentVelocity);
+			Velocity = (NewLocation - Location) / DeltaTime;
+			Acceleration = CurrentAcceleration * MovingDir;
+			GetMovementActor()->SetActorLocation(NewLocation);
 		}
 	}
 }
 
 
-void UXkTargetMovement::AddMovementPoint(const uint8 Input)
+void UXkTargetMovement::OnAction()
 {
-	// Extra add one, for character currently standing hexagon target
-	MovementPoint += Input;
+	if (AActor* MovingActor = GetMovementActor())
+	{
+		bShouldDoAction = true;
+		bIsMoving = true;
+		CurrentMoveTarget = MovingActor->GetActorLocation();
+		bIsRotating = bIsJumping = bIsSliding = false;
+		OnMovementBeginEvent.Broadcast();
+	}
 }
 
 
 TArray<FVector> UXkTargetMovement::GetValidMovementTargets() const
 {
 	TArray<FVector> Results;
-	TArray<FVector> CheckTargets = PendingMovementTargets;
-	for (uint8 Index = 0; ((Index < MovementPoint + 1) && (Index < PendingMovementTargets.Num())); Index++)
+	TArray<FVector> CheckTargets = PendingMoveTargets;
+	for (uint8 Index = 0; ((Index < ActionPoint + 1) && (Index < PendingMoveTargets.Num())); Index++)
 	{
 		FVector Location = CheckTargets.Pop(true /* Shrink*/);
 		Results.Insert(Location, 0);
@@ -270,14 +394,14 @@ TArray<FVector> UXkTargetMovement::GetValidMovementTargets() const
 FVector UXkTargetMovement::GetFinalMovementTarget() const
 {
 	FVector Result = FVector::ZeroVector;
-	if (AActor* MovingActor = GetMovingActor())
+	if (AActor* MovingActor = GetMovementActor())
 	{
 		Result = MovingActor->GetActorLocation();
 	}
 
 	TArray<FVector> ValidMovementTargets;
-	TArray<FVector> CheckTargets = PendingMovementTargets;
-	for (uint8 Index = 0; ((Index < MovementPoint + 1) && (Index < PendingMovementTargets.Num())); Index++)
+	TArray<FVector> CheckTargets = PendingMoveTargets;
+	for (uint8 Index = 0; ((Index < ActionPoint + 1) && (Index < PendingMoveTargets.Num())); Index++)
 	{
 		FVector Location = CheckTargets.Pop(true /* Shrink*/);
 		ValidMovementTargets.Insert(Location, 0);
@@ -287,6 +411,44 @@ FVector UXkTargetMovement::GetFinalMovementTarget() const
 		Result = ValidMovementTargets.Last();
 	}
 	return Result;
+}
+
+
+FVector UXkTargetMovement::GetLineTraceLocation(const FVector& Input)
+{
+	FHitResult HitResult;
+	FVector Start = Input + FVector(0.0, 0.0, 1000.0);
+	FVector End = Input + FVector(0.0, 0.0, -1000.0);
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(GetMovementActor());
+	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Pawn, CollisionParams))
+	{
+		return HitResult.Location + FVector(0.0, 0.0, CapsuleHalfHeight);
+	}
+	return Input;
+}
+
+
+FVector UXkTargetMovement::CalcParaCurve(const FVector& Start, const FVector& End, const float CurveArc, const float CurveDist)
+{
+	// y = a*x^2 + b*x + c
+	// x = dist(start, end)
+	// y = 0
+	// b = ?
+	const float a = CurveArc / 100.0 /* cm to m */;
+	const float t = CurveDist;
+	float b = 0.0f;
+	const float c = Start.Z - End.Z;
+	const float h = End.Z;
+	const float x = FVector::Dist2D(End, Start);
+	const float y = 0.0;
+	b = (y - a * x * x - c) / x;
+
+	const float s = t / x;
+	float vx = FMath::Lerp(Start.X, End.X, s);
+	float vy = FMath::Lerp(Start.Y, End.Y, s);
+	float vz = a * t * t + b * t + c + h;
+	return FVector(vx, vy, vz);
 }
 
 
@@ -308,9 +470,9 @@ void UXkSplineMovement::TickComponent(float DeltaTime, enum ELevelTick TickType,
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_UXkSplineMovement_TickComponent);
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (AActor* MovingActor = GetMovingActor())
+	if (AActor* MovingActor = GetMovementActor())
 	{
-		if (!ShouldMove())
+		if (!ShouldDoAction())
 		{
 			return;
 		}
@@ -319,7 +481,7 @@ void UXkSplineMovement::TickComponent(float DeltaTime, enum ELevelTick TickType,
 		// after the moving start, just keep the line and flight over through.
 		if (!TargetSpline.IsValid())
 		{
-			FVector Location = GetMovingActor()->GetActorLocation();
+			FVector Location = GetMovementActor()->GetActorLocation();
 			Location += Velocity;
 			MovingActor->SetActorLocation(Location);
 			return;
@@ -337,7 +499,7 @@ void UXkSplineMovement::TickComponent(float DeltaTime, enum ELevelTick TickType,
 		}
 		else
 		{
-			FVector Location = GetMovingActor()->GetActorLocation();
+			FVector Location = GetMovementActor()->GetActorLocation();
 			Location += DeltaDirection * DeltaDistance;
 			MovingActor->SetActorLocation(Location);
 		}

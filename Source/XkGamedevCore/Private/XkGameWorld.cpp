@@ -117,15 +117,14 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 			{
 				continue;
 			}
-			FVector Location = FVector(Pos.X, Pos.Y, 0.0);
-			FVector4f Position = FVector4f(Pos.X, Pos.Y, 0.0, 1.0);
+			FVector4f Position = FVector4f(Pos.X, Pos.Y, 0.0, Radius);
 
 			FXkHexagonNode HexagonNode = FXkHexagonNode(EXkHexagonType::DeepWater | EXkHexagonType::Unavailable, Position, 0, HexagonCoord);
 			ModifyHexagonalWorldNodes().Add(HexagonCoord, HexagonNode);
 			if (bSpawnActors && ManhattanDistanceToCenter < SpawnActorsMaxMhtDist)
 			{
 				FActorSpawnParameters ActorSpawnParameters;
-				AXkHexagonActor* HexagonActor = GetWorld()->SpawnActor<AXkHexagonActor>(AXkHexagonActor::StaticClass(), Location, FRotator(0.0), ActorSpawnParameters);
+				AXkHexagonActor* HexagonActor = GetWorld()->SpawnActor<AXkHexagonActor>(AXkHexagonActor::StaticClass(), HexagonNode.GetLocation(), FRotator(0.0), ActorSpawnParameters);
 				HexagonActor->SetFlags(RF_Transient);
 				HexagonActor->SetCoord(HexagonCoord);
 				HexagonActor->SetHexagonWorld(this);

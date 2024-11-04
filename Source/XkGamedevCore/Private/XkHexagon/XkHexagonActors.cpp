@@ -35,6 +35,7 @@ AXkHexagonActor::AXkHexagonActor()
 	ProcMesh->SetVisibility(false);
 	ProcMesh->SetCastShadow(false);
 	ProcMesh->SetupAttachment(RootComponent);
+	ProcMesh->SetTranslucentSortPriority(9999);
 #endif
 }
 
@@ -387,12 +388,56 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeSurrounders(const 
 }
 
 
-TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodesPathfinding(const FIntVector& StartCoord, const FIntVector& EndCoord, const TArray<FIntVector>& BlockList)
+TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeCoverages(const FIntVector& InCoord, const int32 InRange) const
+{
+	TArray<FXkHexagonNode*> Results;
+	for (TPair<FIntVector, FXkHexagonNode>& NodePair : HexagonalWorldTable.Nodes)
+	{
+		if (FXkHexagonAStarPathfinding::CalcManhattanDistance(InCoord, NodePair.Key) <= InRange)
+		{
+			Results.AddUnique(&NodePair.Value);
+		}
+	}
+	return Results;
+}
+
+
+TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodesPath(const FIntVector& StartCoord, const FIntVector& EndCoord)
 {
 	TArray<FXkHexagonNode*> FindingNodes;
 	TArray<FIntVector> FindingPaths;
 	HexagonAStarPathfinding.Reinit();
-	HexagonAStarPathfinding.Blocking(BlockList);
+	if (HexagonAStarPathfinding.Pathfinding(StartCoord, EndCoord))
+	{
+		TArray<FIntVector> BacktrackingList = HexagonAStarPathfinding.Backtracking(BacktrackingMaxStep);
+		FindingPaths = BacktrackingList;
+	}
+	// It is Backtrack, reverse the order
+	for (int32 Index = FindingPaths.Num() - 1; Index >= 0; --Index)
+	{
+		FIntVector FindingCoord = FindingPaths[Index];
+		FXkHexagonNode* HexagonNode = GetHexagonNode(FindingCoord);
+		if (HexagonNode)
+		{
+			FindingNodes.AddUnique(HexagonNode);
+		}
+	}
+	return FindingNodes;
+}
+
+
+TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodesPathfinding(const FIntVector& StartCoord, const FIntVector& EndCoord, const TArray<FIntVector>& BlockList)
+{
+	TArray<FXkHexagonNode*> FindingNodes;
+	TArray<FIntVector> FindingPaths;
+	TArray<FIntVector> Blockers = BlockList;
+	HexagonAStarPathfinding.Reinit();
+	// Blocker should not contain the end coord, character might just step on the end coord
+	if (Blockers.Contains(EndCoord))
+	{
+		Blockers.Remove(EndCoord);
+	}
+	HexagonAStarPathfinding.Blocking(Blockers);
 	if (HexagonAStarPathfinding.Pathfinding(StartCoord, EndCoord))
 	{
 		TArray<FIntVector> BacktrackingList = HexagonAStarPathfinding.Backtracking(BacktrackingMaxStep);
@@ -404,7 +449,7 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodesPathfinding(const
 	{
 		FIntVector FindingCoord = FindingPaths[Index];
 		FXkHexagonNode* HexagonNode = GetHexagonNode(FindingCoord);
-		if (HexagonNode)
+		if (HexagonNode && !BlockList.Contains(HexagonNode->Coord))
 		{
 			FindingNodes.AddUnique(HexagonNode);
 		}

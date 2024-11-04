@@ -70,8 +70,8 @@ AXkTopDownCamera::AXkTopDownCamera(const FObjectInitializer& ObjectInitializer)
 	CameraRotationLock = FVector2D(-75.0, -55.0);
 	CameraZoomArmLength = 1200.0;
 	CameraZoomArmRange = FVector2D(800.0, 2000.0);
-	MaxVelocity = 500.0;
-	MaxAcceleration = 2048.0;
+	MaxVelocity = 10.0;
+	MaxAcceleration = 100.0;
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
@@ -104,11 +104,10 @@ void AXkTopDownCamera::Tick(float DeltaSeconds)
 			MovingDir.Normalize();
 			float CurrentVelocity = Velocity.Size();
 			float CurrentAcceleration = MaxAcceleration * DeltaSeconds;
-			CurrentVelocity += CurrentAcceleration;
-			CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity);
+			CurrentVelocity = FMath::Clamp(CurrentVelocity + CurrentAcceleration, 0.0, MaxVelocity);
 			FVector NewLocation = FMath::VInterpTo(StartVector, TargetVector, DeltaSeconds, CurrentVelocity);
 			Velocity = (NewLocation - Location) / DeltaSeconds;
-			Acceleration = (NewLocation - Location) * MaxAcceleration;
+			Acceleration = MovingDir * CurrentAcceleration;
 			SetActorLocation(NewLocation);
 		}
 		else
@@ -117,6 +116,15 @@ void AXkTopDownCamera::Tick(float DeltaSeconds)
 			Acceleration = FVector::ZeroVector;
 			bMoveToTarget = false;
 		}
+	}
+}
+
+
+void AXkTopDownCamera::SetOutlineColor(const FLinearColor& InColor)
+{
+	if (PostProcessMaterialDyn && IsValid(PostProcessMaterialDyn))
+	{
+		PostProcessMaterialDyn->SetVectorParameterValue(FName("OutlineColor"), InColor);
 	}
 }
 
@@ -140,12 +148,6 @@ void AXkTopDownCamera::AddMovement(const FVector& InputValue, const float Speed)
 	}
 	float DeltaSeconds = GetWorld()->GetDeltaSeconds();
 
-	// if camera is moving to target, ignore controller input
-	if (bMoveToTarget)
-	{
-		return;
-	}
-
 	FRotator Rotator = GetForwardRotator();
 	FVector MovementVectorRotated = Rotator.RotateVector(InputValue);
 	AddActorWorldOffset(MovementVectorRotated * Speed * DeltaSeconds);
@@ -157,6 +159,8 @@ void AXkTopDownCamera::AddMovement(const FVector& InputValue, const float Speed)
 		Location.Y = FMath::Clamp(Location.Y, CameraInvisibleWall.Min.Y, CameraInvisibleWall.Max.Y);
 		SetActorLocation(Location);
 	}
+
+	bMoveToTarget = false;
 }
 
 
@@ -188,12 +192,6 @@ void AXkTopDownCamera::AddRotation(const FVector2D& InputValue, const float Spee
 		return;
 	}
 	float DeltaSeconds = GetWorld()->GetDeltaSeconds();
-
-	// if camera is moving to target, ignore controller input
-	if (bMoveToTarget)
-	{
-		return;
-	}
 
 	float InputValueX = InputValue.X;
 	//if (InputValueX != 0.0 && FMath::Abs(InputValueX) > 0.25)
@@ -251,12 +249,6 @@ void AXkTopDownCamera::AddCameraZoom(const float InputValue, const float Speed)
 	}
 	float DeltaSeconds = GetWorld()->GetDeltaSeconds();
 
-	// if camera is moving to target, ignore controller input
-	if (bMoveToTarget)
-	{
-		return;
-	}
-
 	float TargetArmLength = CameraBoom->TargetArmLength;
 	TargetArmLength += (InputValue * Speed * DeltaSeconds);
 	TargetArmLength = FMath::Clamp(TargetArmLength, CameraZoomArmRange.X, CameraZoomArmRange.Y);
@@ -270,11 +262,11 @@ void AXkTopDownCamera::ResetCameraZoom()
 }
 
 
-void AXkTopDownCamera::AddMovementTarget(const FVector& InTarget)
+void AXkTopDownCamera::AddMoveTarget(const FVector& InTarget)
 {
-	SCOPED_NAMED_EVENT(AXkTopDownCamera_AddMovementTarget, FColor::Red);
-	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkTopDownCamera_AddMovementTarget);
-	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkTopDownCamera_AddMovementTarget);
+	SCOPED_NAMED_EVENT(AXkTopDownCamera_AddMoveTarget, FColor::Red);
+	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkTopDownCamera_AddMoveTarget);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkTopDownCamera_AddMoveTarget);
 
 	MovementTarget = InTarget;
 	bMoveToTarget = true;

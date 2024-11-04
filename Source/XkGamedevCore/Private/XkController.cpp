@@ -14,10 +14,181 @@
 #include "EngineUtils.h"
 #include "Engine/LocalPlayer.h"
 #include "Components/DecalComponent.h"
+#include "Components/SplineComponent.h"
+#include "Components/SplineMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputMappingContext.h"
+
+
+
+AXkGuideLine::AXkGuideLine(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	RootScene = CreateDefaultSubobject<USceneComponent>(TEXT("RootScene"));
+	RootComponent = RootScene;
+
+	ParabolaSpline = CreateDefaultSubobject<USplineComponent>(TEXT("ParabolaSpline"));
+	ParabolaSpline->SetupAttachment(RootComponent);
+	ParabolaSpline->SetClosedLoop(false);
+
+	SegmentSphereAncherMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("SegmentSphereAncherMesh"));
+	SegmentSphereAncherMesh->SetupAttachment(RootComponent);
+	SegmentSphereAncherMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SegmentSphereAncherMesh->SetMobility(EComponentMobility::Movable);
+	SegmentSphereAncherMesh->SetStaticMesh(CastChecked<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/XkGamedevKit/Meshes/SM_Sphere.SM_Sphere"))));
+
+	//ParabolaMeshMaterial = CastChecked<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_GuidelineParabolaMesh.M_GuidelineParabolaMesh")));
+	SegmentMeshMaterial = CastChecked<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_GuidelineSegmentMesh.M_GuidelineSegmentMesh")));
+
+	SegmentScale = 0.1;
+	ParabolaStartScale = 0.1;
+	ParabolaEndScale = 0.1;
+	ParabolaNumPoints = 10;
+	SegmentSortPriority = 0;
+
+	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bStartWithTickEnabled = false;
+}
+
+
+void AXkGuideLine::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	if (ParabolaMeshMaterial && IsValid(ParabolaMeshMaterial))
+	{
+		ParabolaMeshMaterialDyn = UMaterialInstanceDynamic::Create(ParabolaMeshMaterial, this);
+	}
+	if (SegmentMeshMaterial && IsValid(SegmentMeshMaterial))
+	{
+		SegmentMeshMaterialDyn = UMaterialInstanceDynamic::Create(SegmentMeshMaterial, this);
+	}
+}
+
+
+void AXkGuideLine::UpdateSegmentCurve(const TArray<FVector>& Points, const bool bContinuous)
+{
+	UStaticMesh* StaticMesh = CastChecked<UStaticMesh>(
+		StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/XkGamedevKit/Meshes/SM_SplineMeshTube.SM_SplineMeshTube")));
+	TArray<TObjectPtr<class USplineMeshComponent>> TempSplineMeshes;
+	for (int32 Index = 0; Index < (Points.Num() / 2); ++Index)
+	{
+		USplineMeshComponent* SplineMesh = SegmentSplineMeshes.IsValidIndex(Index) ? SegmentSplineMeshes[Index] : nullptr;
+		if (!SplineMesh || !IsValid(SplineMesh))
+		{
+			SplineMesh = NewObject<USplineMeshComponent>(this);
+			SplineMesh->SetMobility(EComponentMobility::Movable);
+			SplineMesh->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+			SplineMesh->SetStaticMesh(StaticMesh);
+			SplineMesh->SetForwardAxis(ESplineMeshAxis::X);
+			SplineMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			SplineMesh->RegisterComponent();
+			SplineMesh->SetMaterial(0, SegmentMeshMaterialDyn);
+			SplineMesh->SetTranslucentSortPriority(SegmentSortPriority);
+			AddInstanceComponent(SplineMesh); // Component Would Display on Setup.
+		}
+		FVector Start = Points[Index * 2];
+		FVector End = Points[Index * 2 + 1];
+		SplineMesh->SetStartAndEnd(Start, Start - End, End, Start - End);
+		SplineMesh->SetStartScale(FVector2D(SegmentScale));
+		SplineMesh->SetEndScale(FVector2D(SegmentScale));
+		TempSplineMeshes.Add(SplineMesh);
+	}
+	for (int32 Index = 0; Index < SegmentSplineMeshes.Num(); ++Index)
+	{
+		USplineMeshComponent* SplineMesh = SegmentSplineMeshes[Index];
+		if (SplineMesh && IsValid(SplineMesh) && !TempSplineMeshes.Contains(SplineMesh))
+		{
+			SplineMesh->DestroyComponent();
+		}
+	}
+	SegmentSplineMeshes = TempSplineMeshes;
+
+	SegmentSphereAncherMesh->ClearInstances();
+	SegmentSphereAncherMesh->SetMaterial(0, SegmentMeshMaterialDyn);
+	SegmentSphereAncherMesh->SetTranslucentSortPriority(SegmentSortPriority);
+	for (int32 Index = 0; Index < Points.Num(); ++Index)
+	{
+		FVector Location = Points[Index];
+		FRotator Rotation = FRotator(0.0);
+		FVector Scale = FVector(SegmentScale);
+		SegmentSphereAncherMesh->AddInstance(FTransform(Rotation, Location, Scale));
+	}
+}
+
+
+void AXkGuideLine::UpdateParabolaCurve(const FVector& Start, const FVector& End, const float ParaCurveArc)
+{
+	ParabolaSpline->ClearSplinePoints();
+	for (int32 i = 0; i <= ParabolaNumPoints; ++i)
+	{
+		float T = i / static_cast<float>(ParabolaNumPoints);
+		float Dist = FVector::Dist2D(Start, End) * T;
+		FVector Point = UXkTargetMovement::CalcParaCurve(Start, End, ParaCurveArc, Dist);
+		ParabolaSpline->AddSplinePoint(Point, ESplineCoordinateSpace::World);
+	}
+
+	UStaticMesh* StaticMesh = CastChecked<UStaticMesh>(
+		StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/XkGamedevKit/Meshes/SM_SplineMeshTube.SM_SplineMeshTube")));
+	TArray<TObjectPtr<class USplineMeshComponent>> TempSplineMeshes;
+	for (int32 Index = 0; Index < (ParabolaSpline->GetNumberOfSplinePoints() - 1); ++Index)
+	{
+		USplineMeshComponent* SplineMesh = ParabolaSplineMeshes.IsValidIndex(Index) ? ParabolaSplineMeshes[Index] : nullptr;
+		if (!SplineMesh || !IsValid(SplineMesh))
+		{
+			SplineMesh = NewObject<USplineMeshComponent>(this);
+			SplineMesh->SetMobility(EComponentMobility::Movable);
+			SplineMesh->AttachToComponent(ParabolaSpline, FAttachmentTransformRules::KeepRelativeTransform);
+			SplineMesh->SetStaticMesh(StaticMesh);
+			SplineMesh->SetForwardAxis(ESplineMeshAxis::X);
+			SplineMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			SplineMesh->RegisterComponent();
+			SplineMesh->SetMaterial(0, ParabolaMeshMaterialDyn);
+			SplineMesh->SetTranslucentSortPriority(ParabolaSortPriority);
+			AddInstanceComponent(SplineMesh); // Component Would Display on Setup.
+		}
+		SplineMesh->SetStartAndEnd(ParabolaSpline->GetLocationAtSplinePoint(Index, ESplineCoordinateSpace::Local),
+			ParabolaSpline->GetTangentAtSplinePoint(Index, ESplineCoordinateSpace::Local),
+			ParabolaSpline->GetLocationAtSplinePoint(Index + 1, ESplineCoordinateSpace::Local),
+			ParabolaSpline->GetTangentAtSplinePoint(Index + 1, ESplineCoordinateSpace::Local));
+		SplineMesh->SetStartScale(FVector2D(ParabolaStartScale));
+		SplineMesh->SetEndScale(FVector2D(ParabolaEndScale));
+		TempSplineMeshes.Add(SplineMesh);
+	}
+
+	for (int32 Index = 0; Index < ParabolaSplineMeshes.Num(); ++Index)
+	{
+		USplineMeshComponent* SplineMesh = ParabolaSplineMeshes[Index];
+		if (SplineMesh && IsValid(SplineMesh) && !TempSplineMeshes.Contains(SplineMesh))
+		{
+			SplineMesh->DestroyComponent();
+		}
+	}
+	ParabolaSplineMeshes = TempSplineMeshes;
+}
+
+
+void AXkGuideLine::SetSegmentCurveColor(const FLinearColor& Color)
+{
+	if (SegmentMeshMaterialDyn && IsValid(SegmentMeshMaterialDyn))
+	{
+		SegmentMeshMaterialDyn->SetVectorParameterValue(FName(TEXT("Color")), Color);
+	}
+}
+
+
+void AXkGuideLine::SetParabolaCurveColor(const FLinearColor& Color)
+{
+	if (ParabolaMeshMaterialDyn && IsValid(ParabolaMeshMaterialDyn))
+	{
+		ParabolaMeshMaterialDyn->SetVectorParameterValue(FName(TEXT("Color")), Color);
+	}
+}
+
 
 AXkGamepadCursor::AXkGamepadCursor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -121,6 +292,7 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	bShowMouseCursor = true;
 	DefaultMouseCursor = EMouseCursor::Default;
 	ShortPressThreshold = 0.1;
+	MaxHoveringThreshold = 0.5;
 	CameraScrollingSpeed = 1000.0;
 	CameraDraggingSpeed = 1500;
 	CameraRotatingSpeed = 120.0;
@@ -349,6 +521,20 @@ void AXkController::TickActor(float DeltaTime, enum ELevelTick TickType, FActorT
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkController_TickActor);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkController_TickActor);
 
+	if (IsOnUI())
+	{
+		return Super::TickActor(DeltaTime, TickType, ThisTickFunction);
+	}
+
+	if ((IsMouseCursorMoving() || IsGamepadCursorMoving()))
+	{
+		HoveringTime = 0.0f;
+	}
+	else
+	{
+		HoveringTime = (HoveringTime + DeltaTime);
+	}
+
 	if (ControlsFlavor == EXkControlsFlavor::Keyboard)
 	{
 		FVector2D MouseLocation;
@@ -460,6 +646,12 @@ void AXkController::OnSetCameraDraggingTriggered(const FInputActionValue& Value)
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkController_OnSetCameraDraggingTriggered);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkController_OnSetCameraDraggingTriggered);
 
+	if (IsOnUI())
+	{
+		// Don't do anything if we are on UI mode.
+		return;
+	}
+
 	if (bIsCameraDraggingButtonPressing)
 	{
 		// input is a Vector2D
@@ -487,6 +679,12 @@ void AXkController::OnSetCameraDraggingPressing(const FInputActionValue& Value)
 	SCOPED_NAMED_EVENT(AXkController_OnSetCameraDraggingPressing, FColor::Red);
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkController_OnSetCameraDraggingPressing);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkController_OnSetCameraDraggingPressing);
+
+	if (IsOnUI())
+	{
+		// Don't do anything if we are on UI mode.
+		return;
+	}
 
 	FVector2D MovementVector = Value.Get<FVector2D>();
 	MovementVector.Normalize();
@@ -520,12 +718,14 @@ void AXkController::OnSetCameraDraggingReleased()
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkController_OnSetCameraDraggingReleased);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkController_OnSetCameraDraggingReleased);
 
+	if (IsOnUI())
+	{
+		// Don't do anything if we are on UI mode.
+		return;
+	}
+
 	bIsCameraDraggingButtonPressing = false;
 	SetMouseCursorType(EMouseCursor::Default);
-
-	// @DEBUG: CameraDraggingReleased
-	//FString Message = FString::Printf(TEXT("CameraDraggingReleased~"));
-	//GEngine->AddOnScreenDebugMessage(-1, 1.0, FColor::Orange, *Message);
 }
 
 
@@ -534,6 +734,12 @@ void AXkController::OnSetCameraRotatingTriggered(const FInputActionValue& Value)
 	SCOPED_NAMED_EVENT(AXkController_OnSetCameraRotatingTriggered, FColor::Red);
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkController_OnSetCameraRotatingTriggered);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkController_OnSetCameraRotatingTriggered);
+
+	if (IsOnUI())
+	{
+		// Don't do anything if we are on UI mode.
+		return;
+	}
 
 	// input is a Vector2D
 	FVector2D MovementVector = Value.Get<FVector2D>();
@@ -559,6 +765,12 @@ void AXkController::OnSetCameraRotatingPressing(const FInputActionValue& Value)
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkController_OnSetCameraRotatingPressing);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkController_OnSetCameraRotatingPressing);
 
+	if (IsOnUI())
+	{
+		// Don't do anything if we are on UI mode.
+		return;
+	}
+
 	bIsCameraRotatingButtonPressing = true;
 	bIsCameraDraggingButtonPressing = false;
 	// Move towards mouse pointer
@@ -576,9 +788,11 @@ void AXkController::OnSetCameraRotatingReleased()
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkController_OnSetCameraRotatingReleased);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkController_OnSetCameraRotatingReleased);
 
-	// @DEBUG: CameraDraggingReleased
-	//FString Message = FString::Printf(TEXT("CameraDraggingReleased~"));
-	//GEngine->AddOnScreenDebugMessage(-1, 1.0, FColor::Orange, *Message);
+	if (IsOnUI())
+	{
+		// Don't do anything if we are on UI mode.
+		return;
+	}
 
 	bIsCameraRotatingButtonPressing = false;
 
@@ -596,6 +810,12 @@ void AXkController::OnSetCameraZoomingTriggered(const FInputActionValue& Value)
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkController_OnSetCameraZoomingTriggered);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkController_OnSetCameraZoomingTriggered);
 
+	if (IsOnUI())
+	{
+		// Don't do anything if we are on UI mode.
+		return;
+	}
+
 	float ZoomingValue = Value.Get<float>();
 	if (AXkTopDownCamera * TopDownCamera = GetTopDownCamera())
 	{
@@ -606,6 +826,12 @@ void AXkController::OnSetCameraZoomingTriggered(const FInputActionValue& Value)
 
 void AXkController::OnSetGamepadCursorMovementTriggered(const FInputActionValue& Value)
 {
+	if (IsOnUI())
+	{
+		// Don't do anything if we are on UI mode.
+		return;
+	}
+
 	FVector2D MovementVector = Value.Get<FVector2D>();
 	// Move towards mouse pointer
 	if (AXkTopDownCamera* TopDownCamera = GetTopDownCamera())
@@ -621,11 +847,21 @@ void AXkController::OnSetGamepadCursorMovementTriggered(const FInputActionValue&
 
 void AXkController::OnSetGamepadCursorMovementPressing(const FInputActionValue& Value)
 {
+	if (IsOnUI())
+	{
+		// Don't do anything if we are on UI mode.
+		return;
+	}
 }
 
 
 void AXkController::OnSetGamepadCursorMovementReleased()
 {
+	if (IsOnUI())
+	{
+		// Don't do anything if we are on UI mode.
+		return;
+	}
 }
 
 
