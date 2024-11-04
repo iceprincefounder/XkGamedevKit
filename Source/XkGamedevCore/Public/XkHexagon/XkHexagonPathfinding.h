@@ -167,6 +167,42 @@ struct XKGAMEDEVCORE_API FXkHexagonNode
 	GENERATED_BODY()
 
 public:
+	struct XKGAMEDEVCORE_API FXkHexagonLine
+	{
+		FXkHexagonLine() : A(FVector::ZeroVector), B(FVector::ZeroVector) {};
+		FXkHexagonLine(const FVector& InStart, const FVector& InEnd) : A(InStart), B(InEnd) {};
+		~FXkHexagonLine() {};
+
+		FVector A;
+		FVector B;
+
+		inline FXkHexagonLine& operator= (const FXkHexagonLine& rhs)
+		{
+			A = rhs.A;
+			B = rhs.B;
+			return *this;
+		};
+
+		inline bool operator== (const FXkHexagonLine& rhs) const
+		{
+			// This is the max gap between two hexagons.
+			float Tolerance = FVector::Dist(A, B) * 0.5;
+			if (A == rhs.A && B == rhs.B)
+			{
+				return true;
+			}
+			else if (FVector::Dist(A, rhs.B) < Tolerance && FVector::Dist(B, rhs.A) < Tolerance)
+			{
+				return true;
+			}
+			else if (FVector::Dist(A, rhs.A) < Tolerance && FVector::Dist(B, rhs.B) < Tolerance)
+			{
+				return true;
+			}
+			return false;
+		};
+	};
+
 	FXkHexagonNode()
 	{
 		Type = EXkHexagonType::Unavailable;
@@ -190,7 +226,7 @@ public:
 	EXkHexagonType Type;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
-	FVector4f Position;
+	FVector4f Position; // Position.W for hexagon radius.
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	FVector4f CustomData;
@@ -217,6 +253,30 @@ public:
 	};
 
 	FVector GetLocation() const { return FVector(Position.X, Position.Y, Position.Z); }
+	float GetRadius() const { return Position.W; }
+	TArray<FVector> GetVertices() const {
+		TArray<FVector> Results;
+		FVector Location = FVector(Position.X, Position.Y, Position.Z);
+		float Radius = Position.W;
+		Results.Add(Location + FVector(Radius, 0.0, 0.0));
+		Results.Add(Location + FVector(Radius * XkSin30, -XkCos30 * Radius, 0.0));
+		Results.Add(Location + FVector(-Radius * XkSin30, -XkCos30 * Radius, 0.0));
+		Results.Add(Location + FVector(-Radius, 0.0, 0.0));
+		Results.Add(Location + FVector(-Radius * XkSin30, XkCos30 * Radius, 0.0));
+		Results.Add(Location + FVector(Radius * XkSin30, XkCos30 * Radius, 0.0));
+		return Results;
+	};
+	TArray<FXkHexagonLine> GetEdgeLines() const {
+		TArray<FXkHexagonLine> Results;
+		TArray<FVector> Vertices = GetVertices();
+		Results.Add(FXkHexagonLine(Vertices[0], Vertices[1]));
+		Results.Add(FXkHexagonLine(Vertices[1], Vertices[2]));
+		Results.Add(FXkHexagonLine(Vertices[2], Vertices[3]));
+		Results.Add(FXkHexagonLine(Vertices[3], Vertices[4]));
+		Results.Add(FXkHexagonLine(Vertices[4], Vertices[5]));
+		Results.Add(FXkHexagonLine(Vertices[5], Vertices[0]));
+		return Results;
+	};
 };
 
 

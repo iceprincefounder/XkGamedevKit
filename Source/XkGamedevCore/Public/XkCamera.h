@@ -63,7 +63,7 @@ class XKGAMEDEVCORE_API AXkTopDownCamera : public AXkCamera
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
 	float MaxVelocity;
 
-	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0"))
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
 	float MaxAcceleration;
 public:
 	/** Default UObject constructor. */
@@ -86,6 +86,8 @@ public:
 	/** Returns ArrowComponent subobject **/
 	FORCEINLINE class UArrowComponent* GetArrowComponent() const { return ArrowComponent; }
 #endif
+	
+	FORCEINLINE virtual void SetOutlineColor(const FLinearColor& InColor);
 
 	FORCEINLINE virtual void AddMovement(const FVector2D& InputValue, const float Speed);
 	FORCEINLINE virtual void AddMovement(const FVector& InputValue, const float Speed);
@@ -93,15 +95,19 @@ public:
 	FORCEINLINE virtual void ResetRotation();
 	FORCEINLINE virtual void AddCameraZoom(const float InputValue, const float Speed);
 	FORCEINLINE virtual void ResetCameraZoom();
-	FORCEINLINE virtual void AddMovementTarget(const FVector& InTarget);
+	FORCEINLINE virtual void AddMoveTarget(const FVector& InTarget);
 	FORCEINLINE virtual FRotator GetForwardRotator() const;
+
 private:
 	UPROPERTY()
 	bool bMoveToTarget;
+
 	UPROPERTY()
 	FVector MovementTarget;
+
 	UPROPERTY()
 	FVector Velocity;
+
 	UPROPERTY()
 	FVector Acceleration;
 };

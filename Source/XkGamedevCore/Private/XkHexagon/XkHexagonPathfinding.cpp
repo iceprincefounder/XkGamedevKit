@@ -146,6 +146,7 @@ void FXkHexagonAStarPathfinding::Reinit()
 {
 	OpenList.Empty();
 	ClosedList.Empty();
+	BlockList.Empty();
 }
 
 
