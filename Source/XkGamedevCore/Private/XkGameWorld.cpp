@@ -42,21 +42,15 @@ AXkSphericalWorldWithOceanActor::AXkSphericalWorldWithOceanActor()
 	CanvasRendererComponent = CreateDefaultSubobject<UXkCanvasRendererComponent>(TEXT("CanvasRenderer"));
 
 	HexagonMPC = CastChecked<UMaterialParameterCollection>(
-		StaticLoadObject(UMaterialParameterCollection::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/MPC_Hexagon")));
+		StaticLoadObject(UMaterialParameterCollection::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/MPC_HexagonalWorld")));
 
+	GroundManhattanDistance = 20;
+	ShorelineManhattanDistance = 5;
 	bSpawnActors = false;
 	SpawnActorsMaxMhtDist = 10;
-	XAxisCount = 64;
-	YAxisCount = 64;
 	bShowSpawnedActorBaseMesh = true;
 	bShowSpawnedActorEdgeMesh = true;
-	GeneratingMaxStep = 9999;
-	CenterFieldRange = 20;
-	PositionRandom = FVector2D(0.0, 0.0);
-	PositionScale = 0.0002;
-	FalloffCenter = FVector2D::ZeroVector;
-	FalloffExtent = FVector2D(3000.0);
-	FalloffCornerRadii = 1500.0;
+	PositionRandomRange = FVector2D(0.0, 0.0);
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
@@ -103,9 +97,9 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 
 	ModifyHexagonalWorldNodes().Empty();
 
-	for (int32 X = -XAxisCount; X < (XAxisCount + 1); X++)
+	for (int32 X = -MaxManhattanDistance; X < (MaxManhattanDistance + 1); X++)
 	{
-		for (int32 Y = -YAxisCount; Y < (YAxisCount + 1); Y++)
+		for (int32 Y = -MaxManhattanDistance; Y < (MaxManhattanDistance + 1); Y++)
 		{
 			float Dist = Radius + GapWidth;
 			FVector2D Pos = FXkHexagonAStarPathfinding::CalcHexagonPosition(X, Y, Dist);
@@ -113,28 +107,27 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 			// calculate XkHexagon coordinate
 			FIntVector HexagonCoord = FXkHexagonAStarPathfinding::CalcHexagonCoord(Pos.X, Pos.Y, Dist);
 			int32 ManhattanDistanceToCenter = FXkHexagonAStarPathfinding::CalcManhattanDistance(HexagonCoord, FIntVector(0, 0, 0));
-			if (ManhattanDistanceToCenter > MaxManhattanDistance)
-			{
-				continue;
-			}
 			FVector4f Position = FVector4f(Pos.X, Pos.Y, 0.0, Radius);
 
 			FXkHexagonNode HexagonNode = FXkHexagonNode(EXkHexagonType::DeepWater | EXkHexagonType::Unavailable, Position, 0, HexagonCoord);
-			ModifyHexagonalWorldNodes().Add(HexagonCoord, HexagonNode);
-			if (bSpawnActors && ManhattanDistanceToCenter < SpawnActorsMaxMhtDist)
+			if (ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
 			{
-				FActorSpawnParameters ActorSpawnParameters;
-				AXkHexagonActor* HexagonActor = GetWorld()->SpawnActor<AXkHexagonActor>(AXkHexagonActor::StaticClass(), HexagonNode.GetLocation(), FRotator(0.0), ActorSpawnParameters);
-				HexagonActor->SetFlags(RF_Transient);
-				HexagonActor->SetCoord(HexagonCoord);
-				HexagonActor->SetHexagonWorld(this);
+				ModifyHexagonalWorldNodes().Add(HexagonCoord, HexagonNode);
+				if (bSpawnActors && ManhattanDistanceToCenter < SpawnActorsMaxMhtDist)
+				{
+					FActorSpawnParameters ActorSpawnParameters;
+					AXkHexagonActor* HexagonActor = GetWorld()->SpawnActor<AXkHexagonActor>(AXkHexagonActor::StaticClass(), HexagonNode.GetLocation(), FRotator(0.0), ActorSpawnParameters);
+					HexagonActor->SetFlags(RF_Transient);
+					HexagonActor->SetCoord(HexagonCoord);
+					HexagonActor->SetHexagonWorld(this);
 #if WITH_EDITOR
-				FString CoordString = FString::Printf(
-					TEXT("HexagonActor(%i, %i, %i)"), HexagonCoord.X, HexagonCoord.Y, HexagonCoord.Z);
-				HexagonActor->SetActorLabel(CoordString);
+					FString CoordString = FString::Printf(
+						TEXT("HexagonActor(%i, %i, %i)"), HexagonCoord.X, HexagonCoord.Y, HexagonCoord.Z);
+					HexagonActor->SetActorLabel(CoordString);
 #endif
-				HexagonActor->ConstructionScripts();
-				HexagonActor->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+					HexagonActor->ConstructionScripts();
+					HexagonActor->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+				}
 			}
 		}
 	}
@@ -143,114 +136,35 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 
 void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 {
-	auto RectangleFalloff = [](FVector2D InPosition, FVector2D InCenter, FVector2D InExtent, float InRadius, float InCornerRadii) -> float
-		{
-			FVector2D SafeExtent = InExtent - FVector2D(InCornerRadii);
-			FVector2D FalloffCenter = FVector2D(InExtent.X - InCornerRadii, InExtent.Y - InCornerRadii);
-
-			if (FMath::Abs(InPosition.X) < InExtent.X && FMath::Abs(InPosition.Y) < InExtent.Y)
-			{
-				if (FMath::Abs(InPosition.X) < SafeExtent.X || FMath::Abs(InPosition.Y) < SafeExtent.Y)
-				{
-					return 1.0;
-				}
-				float Y = FMath::Sqrt(FMath::Square(InCornerRadii) - FMath::Square(FMath::Abs(InPosition.X) - SafeExtent.X)) + SafeExtent.Y;
-				if (FMath::Abs(InPosition.Y) <= Y)
-				{
-					return 1.0;
-				}
-			}
-			return 0.0;
-		};
-
-	auto NotInsideNumber = [](const TArray<FIntVector>& AllNodes, const TArray<FIntVector>& CheckNodes) -> int32
-		{
-			int32 Result = 0;
-			for (const FIntVector& CheckNode : CheckNodes)
-			{
-				if (!AllNodes.Contains(CheckNode))
-				{
-					Result++;
-				}
-			}
-			return Result;
-		};
-
-
 	if (!GetWorld())
 	{
 		return;
 	}
 
-	uint32 CurrentGeneratingStep = 0;
-
 	TArray<FIntVector> AllNodes;
 	ModifyHexagonalWorldNodes().GenerateKeyArray(AllNodes);
 
-	TArray<FIntVector> AllLandNodes;
-
-	TArray<FIntVector> AllTempNodes;
-
-	FVector2D RandomOffset = FVector2D(FMath::RandRange(PositionRandom.X, PositionRandom.Y), FMath::RandRange(PositionRandom.X, PositionRandom.Y));
+	// final deal with nodes splat
 	for (const FIntVector& NodeCoord : AllNodes)
 	{
+		int32 ManhattanDistanceToCenter = FXkHexagonAStarPathfinding::CalcManhattanDistance(NodeCoord, FIntVector(0, 0, 0));
 		FXkHexagonNode* Node = GetHexagonNode(NodeCoord);
-		if (Node)
-		{
-			FVector Location = Node->GetLocation();
-			if (FXkHexagonAStarPathfinding::CalcManhattanDistance(FIntVector(0, 0, 0), NodeCoord) < (int32)(CenterFieldRange))
-			{
-				AllLandNodes.AddUnique(NodeCoord);
-				continue;
-			}
-			FVector2D RandomLocation = (FVector2D(Location.X, Location.Y) + RandomOffset) * PositionScale;
-			// noise range of - 1.0 to 1.0
-			float Noise = FMath::PerlinNoise2D(RandomLocation);
-			FVector2D FalloffLocation = FVector2D(Location.X, Location.Y);
-			Noise = FMath::CeilToFloat(Noise);
-			float Falloff = RectangleFalloff(FalloffLocation, FalloffCenter, FalloffExtent, FalloffRadius, FalloffCornerRadii);
-
-			if (Noise * Falloff)
-			{
-				AllLandNodes.AddUnique(NodeCoord);
-			}
-		}
-	}
-
-	// 1. fill thin land
-	if (CurrentGeneratingStep < GeneratingMaxStep)
-	{
-		for (FIntVector NodeCoord : AllLandNodes)
-		{
-			TArray<FIntVector> NeighborNodeCoords = FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(NodeCoord);
-			if (NotInsideNumber(AllLandNodes, NeighborNodeCoords) > 3)
-			{
-				for (const FIntVector& NeighborNodeCoord : NeighborNodeCoords)
-				{
-					FXkHexagonNode* Node = GetHexagonNode(NeighborNodeCoord);
-					if (Node)
-					{
-						AllTempNodes.AddUnique(NeighborNodeCoord);
-					}
-				}
-			}
-			else
-			{
-				AllTempNodes.AddUnique(NodeCoord);
-			}
-		}
-		AllLandNodes = AllTempNodes;
-		AllTempNodes.Empty();
-		CurrentGeneratingStep++;
-	}
-
-	// final deal with nodes
-	for (const FIntVector& NodeCoord : AllLandNodes)
-	{
-		FXkHexagonNode* Node = GetHexagonNode(NodeCoord);
-		if (Node)
+		if (Node && ManhattanDistanceToCenter < GroundManhattanDistance)
 		{
 			Node->Type = EXkHexagonType::Land;
+			float RandomSeed = FVector2D(Node->Position.X, Node->Position.Y).Length();
+			for (const FXkHexagonSplat& HexagonSplat : HexagonSplats)
+			{
+				if (Node->Type == HexagonSplat.TargetType)
+				{
+					Node->Position.Z = HexagonSplat.Height;
+					Node->Splatmap = HexagonSplat.Splats[RandRangeIntMT(RandomSeed, 0, HexagonSplat.Splats.Num() - 1)];
+				}
+			}
+		}
+		else if (Node && ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
+		{
+			Node->Type = EXkHexagonType::Sand;
 			float RandomSeed = FVector2D(Node->Position.X, Node->Position.Y).Length();
 			for (const FXkHexagonSplat& HexagonSplat : HexagonSplats)
 			{
@@ -324,11 +238,8 @@ void AXkSphericalWorldWithOceanActor::GenerateCanvas()
 }
 
 
-void AXkSphericalWorldWithOceanActor::RegenerateAll()
+void AXkSphericalWorldWithOceanActor::RegenerateWorld()
 {
-	GenerateHexagons();
-	GenerateHexagonalWorld();
-	GenerateGameWorld();
-	GenerateCanvas();
-	RegenerateHexagonalWorldContext();
+	CreateAll();
+	UpdateAll();
 }

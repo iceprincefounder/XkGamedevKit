@@ -12,6 +12,7 @@
 #include "XkRenderer/XkRendererRenderUtils.h"
 #include "XkGameWorld.generated.h"
 
+
 UCLASS(BlueprintType, Blueprintable)
 class XKGAMEDEVCORE_API AXkSphericalWorldWithOceanActor : public AXkHexagonalWorldActor
 {
@@ -24,31 +25,20 @@ public:
 	TObjectPtr<class UXkCanvasRendererComponent> CanvasRendererComponent;
 
 	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	uint32 GeneratingMaxStep;
+	int32 GroundManhattanDistance;
 
 	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	uint32 CenterFieldRange;
+	int32 ShorelineManhattanDistance;
 
 	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	FVector2D PositionRandom;
-
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	float PositionScale;
-
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	float FalloffRadius;
-
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	FVector2D FalloffCenter;
-
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	FVector2D FalloffExtent;
-
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	float FalloffCornerRadii;
+	FVector2D PositionRandomRange;
 
 	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	TArray<FXkHexagonSplat> HexagonSplats;
+
+	/* The splat id in the range of HexagonSplatMaskRange would do discard in VS. */
+	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	FVector2D HexagonSplatMaskRange;
 
 	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	UMaterialParameterCollection* HexagonMPC;
@@ -58,12 +48,6 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	int32 SpawnActorsMaxMhtDist;
-
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	int32 XAxisCount;
-
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	int32 YAxisCount;
 
 	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	bool bShowSpawnedActorBaseMesh;
@@ -91,5 +75,5 @@ public:
 	virtual void GenerateCanvas();
 
 	UFUNCTION(CallInEditor, BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	void RegenerateAll();
+	void RegenerateWorld();
 };
