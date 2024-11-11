@@ -25,7 +25,7 @@
 
 
 
-AXkGuideLine::AXkGuideLine(const FObjectInitializer& ObjectInitializer)
+AXkParabolaCurve::AXkParabolaCurve(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	RootScene = CreateDefaultSubobject<USceneComponent>(TEXT("RootScene"));
@@ -41,13 +41,13 @@ AXkGuideLine::AXkGuideLine(const FObjectInitializer& ObjectInitializer)
 	SegmentSphereAncherMesh->SetMobility(EComponentMobility::Movable);
 	SegmentSphereAncherMesh->SetStaticMesh(CastChecked<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/XkGamedevKit/Meshes/SM_Sphere.SM_Sphere"))));
 
-	//ParabolaMeshMaterial = CastChecked<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_GuidelineParabolaMesh.M_GuidelineParabolaMesh")));
+	ParabolaMeshMaterial = CastChecked<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_GuidelineParabolaMesh.M_GuidelineParabolaMesh")));
 	SegmentMeshMaterial = CastChecked<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_GuidelineSegmentMesh.M_GuidelineSegmentMesh")));
 
 	SegmentScale = 0.1;
 	ParabolaStartScale = 0.1;
 	ParabolaEndScale = 0.1;
-	ParabolaNumPoints = 10;
+	ParabolaPointsNum = 10;
 	SegmentSortPriority = 0;
 
 	PrimaryActorTick.bCanEverTick = false;
@@ -55,7 +55,7 @@ AXkGuideLine::AXkGuideLine(const FObjectInitializer& ObjectInitializer)
 }
 
 
-void AXkGuideLine::OnConstruction(const FTransform& Transform)
+void AXkParabolaCurve::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
@@ -70,7 +70,7 @@ void AXkGuideLine::OnConstruction(const FTransform& Transform)
 }
 
 
-void AXkGuideLine::UpdateSegmentCurve(const TArray<FVector>& Points, const bool bContinuous)
+void AXkParabolaCurve::UpdateSegmentCurve(const TArray<FVector>& Points, const bool bContinuous)
 {
 	UStaticMesh* StaticMesh = CastChecked<UStaticMesh>(
 		StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/XkGamedevKit/Meshes/SM_SplineMeshTube.SM_SplineMeshTube")));
@@ -121,15 +121,13 @@ void AXkGuideLine::UpdateSegmentCurve(const TArray<FVector>& Points, const bool 
 }
 
 
-void AXkGuideLine::UpdateParabolaCurve(const FVector& Start, const FVector& End, const float ParaCurveArc)
+void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& End, const float ParaCurveArc)
 {
 	ParabolaSpline->ClearSplinePoints();
-	for (int32 i = 0; i <= ParabolaNumPoints; ++i)
+	TArray<FVector> Points = UXkTargetMovement::CalcParaCurvePoints(Start, End, ParaCurveArc, ParabolaPointsNum);
+	for (int32 i = 0; i < Points.Num(); ++i)
 	{
-		float T = i / static_cast<float>(ParabolaNumPoints);
-		float Dist = FVector::Dist2D(Start, End) * T;
-		FVector Point = UXkTargetMovement::CalcParaCurve(Start, End, ParaCurveArc, Dist);
-		ParabolaSpline->AddSplinePoint(Point, ESplineCoordinateSpace::World);
+		ParabolaSpline->AddSplinePoint(Points[i], ESplineCoordinateSpace::World);
 	}
 
 	UStaticMesh* StaticMesh = CastChecked<UStaticMesh>(
@@ -172,7 +170,7 @@ void AXkGuideLine::UpdateParabolaCurve(const FVector& Start, const FVector& End,
 }
 
 
-void AXkGuideLine::SetSegmentCurveColor(const FLinearColor& Color)
+void AXkParabolaCurve::SetSegmentCurveColor(const FLinearColor& Color)
 {
 	if (SegmentMeshMaterialDyn && IsValid(SegmentMeshMaterialDyn))
 	{
@@ -181,7 +179,7 @@ void AXkGuideLine::SetSegmentCurveColor(const FLinearColor& Color)
 }
 
 
-void AXkGuideLine::SetParabolaCurveColor(const FLinearColor& Color)
+void AXkParabolaCurve::SetParabolaCurveColor(const FLinearColor& Color)
 {
 	if (ParabolaMeshMaterialDyn && IsValid(ParabolaMeshMaterialDyn))
 	{

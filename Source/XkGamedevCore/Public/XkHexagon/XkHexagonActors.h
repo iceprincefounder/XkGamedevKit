@@ -139,9 +139,6 @@ public:
 	UFUNCTION(CallInEditor, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
 	void DebugPathfinding();
 
-	UFUNCTION(CallInEditor, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
-	void DebugUpdateWorld();
-
 	//~ Begin Actor Interface
 	virtual void BeginPlay() override;
 	virtual void OnConstruction(const FTransform& Transform) override;
@@ -182,8 +179,8 @@ public:
 
 	FORCEINLINE virtual TMap<FIntVector, FXkHexagonNode>& ModifyHexagonalWorldNodes() const { return HexagonalWorldTable.Nodes; };
 
-	FORCEINLINE virtual void UpdateHexagonalWorldCustomData() {};
 	FORCEINLINE virtual void RegenerateHexagonalWorldContext() {};
+	FORCEINLINE virtual void RegenerateHexagonalWorldButtons() {};
 private:
 	UPROPERTY()
 	mutable FXkHexagonalWorldNodeTable HexagonalWorldTable;

@@ -19,6 +19,17 @@ UXkLandscapeComponent::UXkLandscapeComponent(const FObjectInitializer& ObjectIni
 	PrimaryComponentTick.bCanEverTick = true;
 	SetComponentTickEnabled(true);
 	bTickInEditor = true;
+	
+	// Enable shadow casting
+	CastShadow = true;
+	bCastDynamicShadow = true;
+	bCastStaticShadow = true;
+	bCastVolumetricTranslucentShadow = true;
+	bCastContactShadow = true;
+	bCastHiddenShadow = true;
+	bCastFarShadow = true;
+	bCastShadowAsTwoSided = true;
+	bCastInsetShadow = true;
 
 	Material = CastChecked<UMaterialInterface>(
 		StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/Engine/EngineMaterials/WorldGridMaterial")));
