@@ -303,13 +303,13 @@ FPrimitiveViewRelevance FXkLandscapeSceneProxy::GetViewRelevance(const FSceneVie
 	FPrimitiveViewRelevance Result;
 	Result.bDrawRelevance = IsShown(View);
 	Result.bShadowRelevance = IsShadowCast(View);
-	Result.bDynamicRelevance = true;
-	Result.bStaticRelevance = false;
-	Result.bRenderInDepthPass = true;
+	Result.bDynamicRelevance = bCastDynamicShadow;
+	Result.bStaticRelevance = bCastStaticShadow;
+	Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
 	Result.bRenderInMainPass = ShouldRenderInMainPass();
+	Result.bRenderInDepthPass = ShouldRenderInDepthPass();
 	Result.bUsesLightingChannels = GetLightingChannelMask() != GetDefaultLightingChannelMask();
 	Result.bRenderCustomDepth = ShouldRenderCustomDepth();
-	Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
 	Result.bVelocityRelevance = DrawsVelocity() && Result.bOpaque && Result.bRenderInMainPass;
 	// @Note: To render Blend Mode - Translucent 
 	MaterialRelevance.SetPrimitiveViewRelevance(Result);
@@ -697,13 +697,14 @@ FPrimitiveViewRelevance FXkLandscapeWithWaterSceneProxy::GetViewRelevance(const 
 	FPrimitiveViewRelevance Result;
 	Result = Super::GetViewRelevance(View);
 	Result.bDrawRelevance = IsShown(View);
-	Result.bShadowRelevance = false;
-	Result.bDynamicRelevance = true;
-	Result.bStaticRelevance = false;
+	Result.bShadowRelevance = IsShadowCast(View);
+	Result.bDynamicRelevance = bCastDynamicShadow;
+	Result.bStaticRelevance = bCastStaticShadow;
+	Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
 	Result.bRenderInMainPass = ShouldRenderInMainPass();
+	Result.bRenderInDepthPass = ShouldRenderInDepthPass();
 	Result.bUsesLightingChannels = GetLightingChannelMask() != GetDefaultLightingChannelMask();
 	Result.bRenderCustomDepth = ShouldRenderCustomDepth();
-	Result.bTranslucentSelfShadow = bCastVolumetricTranslucentShadow;
 	WaterMaterialRelevance.SetPrimitiveViewRelevance(Result);
 	Result.bVelocityRelevance = DrawsVelocity() && Result.bOpaque && Result.bRenderInMainPass;
 	return Result;

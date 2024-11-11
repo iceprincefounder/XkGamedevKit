@@ -31,7 +31,7 @@ enum class EXkControlsCursorArea: uint8
 
 
 UCLASS(BlueprintType , Blueprintable)
-class XKGAMEDEVCORE_API AXkGuideLine : public AActor
+class XKGAMEDEVCORE_API AXkParabolaCurve : public AActor
 {
 	GENERATED_BODY()
 
@@ -69,7 +69,7 @@ class XKGAMEDEVCORE_API AXkGuideLine : public AActor
 	float ParabolaEndScale;
 
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-	int32 ParabolaNumPoints;
+	int32 ParabolaPointsNum;
 
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	float SegmentScale;
@@ -79,9 +79,10 @@ class XKGAMEDEVCORE_API AXkGuideLine : public AActor
 
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	int32 ParabolaSortPriority;
+
 public:
 	/** Default UObject constructor. */
-	AXkGuideLine(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+	AXkParabolaCurve(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 
@@ -108,6 +109,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
 	void SetParabolaTranslucentPriority(const int32 Priority) { ParabolaSortPriority = Priority;};
+
+	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	void SetParabolaNumPoints(const int32 Input) { ParabolaPointsNum = Input; };
 };
 
 

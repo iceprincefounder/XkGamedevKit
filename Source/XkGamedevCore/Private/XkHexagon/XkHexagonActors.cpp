@@ -306,13 +306,6 @@ void AXkHexagonalWorldActor::DebugPathfinding()
 }
 
 
-void AXkHexagonalWorldActor::DebugUpdateWorld()
-{
-	UpdateHexagonalWorldCustomData();
-	RegenerateHexagonalWorldContext();
-}
-
-
 void AXkHexagonalWorldActor::BeginPlay()
 {
 	HexagonAStarPathfinding.Init(&HexagonalWorldTable);

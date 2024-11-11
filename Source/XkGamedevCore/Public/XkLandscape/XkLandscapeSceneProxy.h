@@ -93,7 +93,7 @@ public:
 	//~ Begin FPrimitiveSceneProxy Interface
 	virtual SIZE_T GetTypeHash() const override;
 	virtual uint32 GetMemoryFootprint(void) const override;
-	virtual uint32 GetAllocatedSize(void) const { return(FPrimitiveSceneProxy::GetAllocatedSize()); }
+	virtual uint32 GetAllocatedSize(void) const { return(FXkQuadtreeSceneProxy::GetAllocatedSize()); }
 	virtual void GetDynamicMeshElements(
 		const TArray<const FSceneView*>& Views,
 		const FSceneViewFamily& ViewFamily,

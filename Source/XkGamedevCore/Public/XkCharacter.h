@@ -235,6 +235,9 @@ public:
 	//~ End UXkTargetMovement Interface
 
 	static FVector CalcParaCurve(const FVector& Start, const FVector& End, const float CurveArc, const float CurveDist);
+	static TArray<FVector> CalcParaCurvePoints(const FVector& Start, const FVector& End, const float CurveArc, const int32 SegmentNum);
+	static bool CalcParaIntersection(const UObject* WorldContextObject, const FVector& Start, const FVector& End, const float CurveArc, const int32 SegmentNum, TArray<AActor*> IgnoreActors = TArray<AActor*>(), const ECollisionChannel TraceChannel = ECC_Visibility);
+
 private:
 	TOptional<FVector> LastTarget;
 	TOptional<FVector> LastLocation;
