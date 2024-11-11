@@ -146,7 +146,7 @@ struct FXkHexagonSplat
 {
 	GENERATED_BODY()
 
-	FXkHexagonSplat() : TargetType(EXkHexagonType::Unavailable), Height(0.0f), Splats() {};
+	FXkHexagonSplat() : TargetType(EXkHexagonType::Unavailable), Height(100.0f), Splats() {};
 public:
 	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
 	EXkHexagonType TargetType;

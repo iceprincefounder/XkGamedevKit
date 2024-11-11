@@ -51,6 +51,8 @@ class XKGAMEDEVCORE_API FXkCanvasInstanceBuffer : public FVertexBufferWithSRV
 public:
 	virtual void InitRHI() override;
 
+	int32 GetInstanceNum() const { return Data.Num(); }
+
 	TArray<FVector4f> Data;
 };
 

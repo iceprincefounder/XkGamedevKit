@@ -157,7 +157,7 @@ void UXkCanvasRendererComponent::UpdateBuffers(const TArray<FVector4f> Positions
 
 void UXkCanvasRendererComponent::DrawCanvas()
 {
-	if (!CanvasRT0 || !CanvasRT1)
+	if (!CanvasRT0 || !CanvasRT1 || InstancePositionBuffer.GetInstanceNum() == 0 || InstanceWeightBuffer.GetInstanceNum() == 0)
 	{
 		return;
 	}
