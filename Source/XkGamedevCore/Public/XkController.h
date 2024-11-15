@@ -222,7 +222,7 @@ public:
 	class UInputAction* SetGamepadCursorMovementAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	class UInputAction* SetGamepadMenuSwitchAction;
+	class UInputAction* SetGamepadSwitchAction;
 
 	/** Event delegate for when the controls flavor for the UI has changed. */
 	DECLARE_EVENT_OneParam(AXkController, FControlsFlavorChangedEvent, const EXkControlsFlavor);
@@ -273,9 +273,9 @@ protected:
 	virtual void OnSetGamepadCursorMovementTriggered(const FInputActionValue& Value);
 	virtual void OnSetGamepadCursorMovementPressing(const FInputActionValue& Value);
 	virtual void OnSetGamepadCursorMovementReleased();
-	virtual void OnSetGamepadMenuSwitchTriggered(const FInputActionValue& Value);
-	virtual void OnSetGamepadMenuSwitchPressing(const FInputActionValue& Value);
-	virtual void OnSetGamepadMenuSwitchReleased();
+	virtual void OnSetGamepadSwitchTriggered(const FInputActionValue& Value);
+	virtual void OnSetGamepadSwitchPressing(const FInputActionValue& Value);
+	virtual void OnSetGamepadSwitchReleased();
 	virtual void OnTouchTriggered();
 	virtual void OnTouchReleased();
 

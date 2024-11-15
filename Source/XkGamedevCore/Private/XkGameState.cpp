@@ -6,12 +6,13 @@
 #include "Slate/SObjectTableRow.h"
 #include "Kismet/GameplayStatics.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/TileView.h"
 
 
 AXkGameState::AXkGameState(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	CurrentButtonSwitchIndex = -1;
+	CurrentSwitchIndex = -1;
 }
 
 
@@ -31,14 +32,27 @@ void AXkGameState::ResetButtonWidgetIntoMap() const
 	{
 		if (Controller->GetControlsFlavor() == EXkControlsFlavor::Gamepad)
 		{
-			CurrentButtonSwitchIndex = 0;
+			CurrentSwitchIndex = 0;
 		}
 		else
 		{
-			CurrentButtonSwitchIndex = -1;
+			CurrentSwitchIndex = -1;
 		}
 	}	
 	ButtonWidgetMap.Reset();
+}
+
+
+void AXkGameState::SetTileViewWidget(class UTileView* InWidget) const
+{
+	TileViewWidget = MakeWeakObjectPtr(InWidget);
+}
+
+
+void AXkGameState::ResetTileViewWidget() const
+{
+	TileViewWidget.Reset();
+	CurrentSwitchIndex = -1;
 }
 
 
@@ -69,7 +83,7 @@ void AXkGameState::OnSwitchToNextButton() const
 	TArray<int32> ButtonWidgetsValidIndex = GetButtonWidgetsValidIndex();
 	if (!ButtonWidgetsValidIndex.IsEmpty())
 	{
-		CurrentButtonSwitchIndex = (CurrentButtonSwitchIndex + 1) % ButtonWidgetsValidIndex.Num();
+		CurrentSwitchIndex = (CurrentSwitchIndex + 1) % ButtonWidgetsValidIndex.Num();
 	}
 }
 
@@ -79,7 +93,86 @@ void AXkGameState::OnSwitchToLastButton() const
 	TArray<int32> ButtonWidgetsValidIndex = GetButtonWidgetsValidIndex();
 	if (!ButtonWidgetsValidIndex.IsEmpty())
 	{
-		CurrentButtonSwitchIndex = (CurrentButtonSwitchIndex - 1 + ButtonWidgetsValidIndex.Num()) % ButtonWidgetsValidIndex.Num();
+		CurrentSwitchIndex = (CurrentSwitchIndex - 1 + ButtonWidgetsValidIndex.Num()) % ButtonWidgetsValidIndex.Num();
+	}
+}
+
+
+void AXkGameState::OnSwitchToTheUp() const
+{
+	if (TileViewWidget.IsValid())
+	{
+		int32 ItemWidth = TileViewWidget->GetEntryWidth();
+		int32 WidthSize = TileViewWidget->GetCachedGeometry().Size.X;
+		int32 RowNum = WidthSize / TileViewWidget->GetEntryWidth();
+		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
+		int32 Num = TileViewWidget->GetNumItems();
+		int32 TotalRawNum = FMath::CeilToInt32((float)Num / (float)RowNum) * RowNum;
+		CurrentIndex = (CurrentIndex - RowNum + TotalRawNum) % TotalRawNum;
+		if (CurrentIndex >= Num)
+		{
+			CurrentIndex -= RowNum;
+		}
+		TileViewWidget->SetSelectedIndex(CurrentIndex);
+	}
+	else
+	{
+		OnSwitchToLastButton();
+	}
+}
+
+
+void AXkGameState::OnSwitchToTheDown() const
+{
+	if (TileViewWidget.IsValid())
+	{
+		int32 WidthSize = TileViewWidget->GetCachedGeometry().Size.X;
+		int32 RowNum = WidthSize / TileViewWidget->GetEntryWidth();
+		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
+		int32 Num = TileViewWidget->GetNumItems();
+		int32 TotalRawNum = FMath::CeilToInt32((float)Num / (float)RowNum) * RowNum;
+		CurrentIndex = (CurrentIndex + RowNum) % TotalRawNum;
+		if (CurrentIndex >= Num)
+		{
+			CurrentIndex = (CurrentIndex + RowNum) % TotalRawNum;
+		}
+		TileViewWidget->SetSelectedIndex(CurrentIndex);
+	}
+	else
+	{
+		OnSwitchToNextButton();
+	}
+}
+
+
+void AXkGameState::OnSwitchToTheLeft() const
+{
+	if (TileViewWidget.IsValid())
+	{
+		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
+		int32 Num = TileViewWidget->GetNumItems();
+		CurrentIndex = (CurrentIndex - 1 + Num) % Num;
+		TileViewWidget->SetSelectedIndex(CurrentIndex);
+	}
+	else
+	{
+		OnSwitchToNextButton();
+	}
+}
+
+
+void AXkGameState::OnSwitchToTheRight() const
+{
+	if (TileViewWidget.IsValid())
+	{
+		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
+		int32 Num = TileViewWidget->GetNumItems();
+		CurrentIndex = (CurrentIndex + 1 + Num) % Num;
+		TileViewWidget->SetSelectedIndex(CurrentIndex);
+	}
+	else
+	{
+		OnSwitchToNextButton();
 	}
 }
 
@@ -93,9 +186,9 @@ void AXkGameState::OnCallCurrentButton() const
 int32 AXkGameState::GetCurrentButtonIndex() const
 {
 	TArray<int32> ButtonWidgetsValidIndex = GetButtonWidgetsValidIndex();
-	if (CurrentButtonSwitchIndex >= 0 && CurrentButtonSwitchIndex < ButtonWidgetsValidIndex.Num())
+	if (CurrentSwitchIndex >= 0 && CurrentSwitchIndex < ButtonWidgetsValidIndex.Num())
 	{
-		return ButtonWidgetsValidIndex[CurrentButtonSwitchIndex];
+		return ButtonWidgetsValidIndex[CurrentSwitchIndex];
 	}
-	return CurrentButtonSwitchIndex;
+	return CurrentSwitchIndex;
 }
