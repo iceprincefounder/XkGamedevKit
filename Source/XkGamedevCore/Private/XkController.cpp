@@ -328,8 +328,8 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraZooming")));
 	SetGamepadCursorMovementAction = CastChecked<UInputAction>(
 		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadCursorMovement")));
-	SetGamepadMenuSwitchAction = CastChecked<UInputAction>(
-		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadMenuSwitch")));
+	SetGamepadSwitchAction = CastChecked<UInputAction>(
+		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadSwitch")));
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
@@ -471,11 +471,11 @@ void AXkController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(SetGamepadCursorMovementAction, ETriggerEvent::Completed, this, &AXkController::OnSetGamepadCursorMovementReleased);
 		EnhancedInputComponent->BindAction(SetGamepadCursorMovementAction, ETriggerEvent::Canceled, this, &AXkController::OnSetGamepadCursorMovementReleased);
 
-		EnhancedInputComponent->BindAction(SetGamepadMenuSwitchAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
-		EnhancedInputComponent->BindAction(SetGamepadMenuSwitchAction, ETriggerEvent::Triggered, this, &AXkController::OnSetGamepadMenuSwitchTriggered);
-		EnhancedInputComponent->BindAction(SetGamepadMenuSwitchAction, ETriggerEvent::Triggered, this, &AXkController::OnSetGamepadMenuSwitchPressing);
-		EnhancedInputComponent->BindAction(SetGamepadMenuSwitchAction, ETriggerEvent::Completed, this, &AXkController::OnSetGamepadMenuSwitchReleased);
-		EnhancedInputComponent->BindAction(SetGamepadMenuSwitchAction, ETriggerEvent::Canceled, this, &AXkController::OnSetGamepadMenuSwitchReleased);
+		EnhancedInputComponent->BindAction(SetGamepadSwitchAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
+		EnhancedInputComponent->BindAction(SetGamepadSwitchAction, ETriggerEvent::Triggered, this, &AXkController::OnSetGamepadSwitchTriggered);
+		EnhancedInputComponent->BindAction(SetGamepadSwitchAction, ETriggerEvent::Triggered, this, &AXkController::OnSetGamepadSwitchPressing);
+		EnhancedInputComponent->BindAction(SetGamepadSwitchAction, ETriggerEvent::Completed, this, &AXkController::OnSetGamepadSwitchReleased);
+		EnhancedInputComponent->BindAction(SetGamepadSwitchAction, ETriggerEvent::Canceled, this, &AXkController::OnSetGamepadSwitchReleased);
 
 		// Setup touch input events
 		EnhancedInputComponent->BindAction(SetSelectionTouchAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
@@ -863,25 +863,25 @@ void AXkController::OnSetGamepadCursorMovementReleased()
 }
 
 
-void AXkController::OnSetGamepadMenuSwitchTriggered(const FInputActionValue& Value)
+void AXkController::OnSetGamepadSwitchTriggered(const FInputActionValue& Value)
 {
 	FVector2D MovementVector = Value.Get<FVector2D>();
-	// @DEBUG: OnSetGamepadMenuSwitchTriggered
+	// @DEBUG: OnSetGamepadSwitchTriggered
 	//if (FollowTime == 0.0f)
 	//{
-	//	FString Message = FString::Printf(TEXT("OnSetGamepadMenuSwitchTriggered (%0.2f,%0.2f)"), MovementVector.X, MovementVector.Y);
+	//	FString Message = FString::Printf(TEXT("OnSetGamepadSwitchTriggered (%0.2f,%0.2f)"), MovementVector.X, MovementVector.Y);
 	//	GEngine->AddOnScreenDebugMessage(-1, 1.0, FColor::Green, *Message);
 	//}
 }
 
 
-void AXkController::OnSetGamepadMenuSwitchPressing(const FInputActionValue& Value)
+void AXkController::OnSetGamepadSwitchPressing(const FInputActionValue& Value)
 {
 	OnInputPressing();
 }
 
 
-void AXkController::OnSetGamepadMenuSwitchReleased()
+void AXkController::OnSetGamepadSwitchReleased()
 {
 }
 

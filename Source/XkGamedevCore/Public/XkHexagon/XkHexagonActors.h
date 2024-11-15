@@ -181,10 +181,11 @@ public:
 
 	FORCEINLINE virtual void CreateAll() {};
 	FORCEINLINE virtual void UpdateAll() {};
+
 private:
-	UPROPERTY()
+	UPROPERTY(Transient)
 	mutable FXkHexagonalWorldNodeTable HexagonalWorldTable;
 
-	UPROPERTY()
+	UPROPERTY(Transient)
 	mutable FXkHexagonAStarPathfinding HexagonAStarPathfinding;
 };
