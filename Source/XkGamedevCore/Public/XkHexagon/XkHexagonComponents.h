@@ -132,7 +132,7 @@ private:
 };
 
 
-UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, ShowCategories = (VirtualTexture), hideCategories = (Instances), meta = (BlueprintSpawnableComponent, DisplayName = "UXkInstancedHexagonComponent"))
+UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, ShowCategories = (VirtualTexture), meta = (BlueprintSpawnableComponent, DisplayName = "UXkInstancedHexagonComponent"))
 class XKGAMEDEVCORE_API UXkInstancedHexagonComponent : public UInstancedStaticMeshComponent
 {
 	GENERATED_BODY()
