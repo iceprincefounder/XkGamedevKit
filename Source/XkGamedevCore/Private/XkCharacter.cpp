@@ -48,7 +48,7 @@ UXkTargetMovement::UXkTargetMovement(const FObjectInitializer& ObjectInitializer
 	SlideAcceler = 1.0f;
 	JumpArc = -0.5;
 	ShotArc = -0.1;
-	CapsuleHalfHeight = 96.0;
+	CapsuleHalfHeight = 0.0;
 
 	// Set default values
 	ActionPoint = 0;
@@ -417,8 +417,8 @@ FVector UXkTargetMovement::GetFinalMovementTarget() const
 FVector UXkTargetMovement::GetLineTraceLocation(const FVector& Input)
 {
 	FHitResult HitResult;
-	FVector Start = Input + FVector(0.0, 0.0, 1000.0);
-	FVector End = Input + FVector(0.0, 0.0, -1000.0);
+	FVector Start = Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
+	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Pawn, CollisionParams))

@@ -625,6 +625,7 @@ FVector2D AXkController::GetControlsCursorPositionOnScreen() const
 	return FVector2D(1, 1);
 }
 
+
 void AXkController::OnInputStarted()
 {
 	StopMovement();
