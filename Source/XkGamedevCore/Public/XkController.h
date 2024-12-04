@@ -39,28 +39,19 @@ class XKGAMEDEVCORE_API AXkParabolaCurve : public AActor
 	TObjectPtr<class USceneComponent> RootScene;
 
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TArray<class USplineMeshComponent*> SegmentSplineMeshes;
-
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class UInstancedStaticMeshComponent> SegmentSphereAncherMesh;
-
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class USplineComponent> ParabolaSpline;
 
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TArray<class USplineMeshComponent*> ParabolaSplineMeshes;
 
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UStaticMesh* ParabolaMesh;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UMaterialInterface* ParabolaMeshMaterial;
 
 	UPROPERTY(Transient)
 	class UMaterialInstanceDynamic* ParabolaMeshMaterialDyn;
-
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	class UMaterialInterface* SegmentMeshMaterial;
-
-	UPROPERTY(Transient)
-	class UMaterialInstanceDynamic* SegmentMeshMaterialDyn;
 
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	float ParabolaStartScale;
@@ -72,12 +63,6 @@ class XKGAMEDEVCORE_API AXkParabolaCurve : public AActor
 	int32 ParabolaPointsNum;
 
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-	float SegmentScale;
-
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-	int32 SegmentSortPriority;
-
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	int32 ParabolaSortPriority;
 
 public:
@@ -87,25 +72,14 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
-	virtual void UpdateSegmentCurve(const TArray<FVector>& Points, const bool bContinuous);
-
-	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
 	virtual void UpdateParabolaCurve(const FVector& Start, const FVector& End, const float ParaCurveArc);
 
-	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
-	void SetSegmentCurveColor(const FLinearColor& Color);
 
 	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
 	void SetParabolaCurveColor(const FLinearColor& Color);
 
 	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
 	void SetParabolaScale(const float StartScale, const float EndScale) { ParabolaStartScale = StartScale; ParabolaEndScale = EndScale;};
-
-	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
-	void SetSegmentScale (const float Scale) { SegmentScale = Scale;};	
-
-	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
-	void SetSegmentTranslucentPriority(const int32 Priority) { SegmentSortPriority = Priority;};
 
 	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
 	void SetParabolaTranslucentPriority(const int32 Priority) { ParabolaSortPriority = Priority;};

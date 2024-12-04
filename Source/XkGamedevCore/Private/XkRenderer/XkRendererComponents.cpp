@@ -41,12 +41,12 @@ UXkCanvasRendererComponent::UXkCanvasRendererComponent(const FObjectInitializer&
 	CanvasExtent = FVector4f(204800.0/*WorldSize.X*/, 204800.0/*WorldSize.Y*/, -2048.0/*HeightRange MinZ*/, 2048.0/*HeightRange MaxZ*/);
 	HorizonHeight = 100.0f;
 
-	CanvasRT0 = CastChecked<UTextureRenderTarget2D>(
-		StaticLoadObject(UTextureRenderTarget2D::StaticClass(), NULL, TEXT("/XkGamedevKit/RenderTargets/RT_SphericalLandscapeHeight")));
-	CanvasRT1 = CastChecked<UTextureRenderTarget2D>(
-		StaticLoadObject(UTextureRenderTarget2D::StaticClass(), NULL, TEXT("/XkGamedevKit/RenderTargets/RT_SphericalLandscapeWeight")));
-	CanvasMPC = CastChecked<UMaterialParameterCollection>(
-		StaticLoadObject(UMaterialParameterCollection::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/MPC_CanvasRender")));
+	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> ObjectFinder(TEXT("/XkGamedevKit/RenderTargets/RT_SphericalLandscapeHeight"));
+	CanvasRT0 = ObjectFinder.Object;
+	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> ObjectFinder2(TEXT("/XkGamedevKit/RenderTargets/RT_SphericalLandscapeWeight"));
+	CanvasRT1 = ObjectFinder2.Object;
+	static ConstructorHelpers::FObjectFinder<UMaterialParameterCollection> ObjectFinder3(TEXT("/XkGamedevKit/Materials/MPC_CanvasRender"));
+	CanvasMPC = ObjectFinder3.Object;
 }
 
 
