@@ -45,14 +45,11 @@ void UXkLandscapeComponent::PostLoad()
 FPrimitiveSceneProxy* UXkLandscapeComponent::CreateSceneProxy()
 {
 	FPrimitiveSceneProxy* LocalSceneProxy = NULL;
+
 	if (Material)
 	{
-		MaterialDyn = UMaterialInstanceDynamic::Create(Material, GetWorld());
-	}
-	if (MaterialDyn)
-	{
 		FPrimitiveSceneProxy* Proxy = new FXkLandscapeSceneProxy(
-			this, NAME_None, MaterialDyn->GetRenderProxy());
+			this, NAME_None, Material->GetRenderProxy());
 		LocalSceneProxy = Proxy;
 	}
 	return LocalSceneProxy;
@@ -103,9 +100,9 @@ FMaterialRelevance UXkLandscapeComponent::GetMaterialRelevance(ERHIFeatureLevel:
 
 void UXkLandscapeComponent::GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials) const
 {
-	if (MaterialDyn)
+	if (Material)
 	{
-		OutMaterials.Add(MaterialDyn);
+		OutMaterials.Add(Material);
 	}
 }
 
@@ -130,13 +127,13 @@ FMaterialRelevance UXkLandscapeWithWaterComponent::GetWaterMaterialRelevance(ERH
 
 void UXkLandscapeWithWaterComponent::GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials) const
 {
-	if (MaterialDyn)
+	if (Material)
 	{
-		OutMaterials.Add(MaterialDyn);
+		OutMaterials.Add(Material);
 	}
-	if (WaterMaterialDyn)
+	if (WaterMaterial)
 	{
-		OutMaterials.Add(WaterMaterialDyn);
+		OutMaterials.Add(WaterMaterial);
 	}
 }
 
@@ -146,13 +143,8 @@ FPrimitiveSceneProxy* UXkSphericalLandscapeWithWaterComponent::CreateSceneProxy(
 	FPrimitiveSceneProxy* LocalSceneProxy = NULL;
 	if (Material && WaterMaterial)
 	{
-		MaterialDyn = UMaterialInstanceDynamic::Create(Material, GetWorld());
-		WaterMaterialDyn = UMaterialInstanceDynamic::Create(WaterMaterial, GetWorld());
-	}
-	if (MaterialDyn && WaterMaterialDyn)
-	{
 		FPrimitiveSceneProxy* Proxy = new FXkSphericalLandscapeWithWaterSceneProxy(
-			this, NAME_None, MaterialDyn->GetRenderProxy(), WaterMaterialDyn->GetRenderProxy());
+			this, NAME_None, Material->GetRenderProxy(), WaterMaterial->GetRenderProxy());
 		LocalSceneProxy = Proxy;
 	}
 	return LocalSceneProxy;

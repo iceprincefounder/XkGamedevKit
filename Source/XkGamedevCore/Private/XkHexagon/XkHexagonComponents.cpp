@@ -486,13 +486,8 @@ FPrimitiveSceneProxy* UXkHexagonalWorldComponent::CreateSceneProxy()
 	FPrimitiveSceneProxy* HexagonalWorldceneProxy = NULL;
 	if (BaseMaterial && EdgeMaterial)
 	{
-		BaseMaterialDyn = UMaterialInstanceDynamic::Create(BaseMaterial, GetWorld());
-		EdgeMaterialDyn = UMaterialInstanceDynamic::Create(EdgeMaterial, GetWorld());
-	}
-	if (BaseMaterialDyn && EdgeMaterialDyn)
-	{
 		FPrimitiveSceneProxy* Proxy = new FXkHexagonalWorldSceneProxy(
-			this, NAME_None, BaseMaterialDyn->GetRenderProxy(), EdgeMaterialDyn->GetRenderProxy());
+			this, NAME_None, BaseMaterial->GetRenderProxy(), EdgeMaterial->GetRenderProxy());
 		HexagonalWorldceneProxy = Proxy;
 	}
 	return HexagonalWorldceneProxy;
@@ -525,10 +520,10 @@ FMaterialRelevance UXkHexagonalWorldComponent::GetMaterialRelevance(ERHIFeatureL
 
 void UXkHexagonalWorldComponent::GetUsedMaterials(TArray<UMaterialInterface*>& OutMaterials, bool bGetDebugMaterials) const
 {
-	if (BaseMaterialDyn && EdgeMaterialDyn)
+	if (BaseMaterial && EdgeMaterial)
 	{
-		OutMaterials.Add(BaseMaterialDyn);
-		OutMaterials.Add(EdgeMaterialDyn);
+		OutMaterials.Add(BaseMaterial);
+		OutMaterials.Add(EdgeMaterial);
 	}
 }
 
