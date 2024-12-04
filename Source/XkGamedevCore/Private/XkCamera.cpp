@@ -62,11 +62,11 @@ AXkTopDownCamera::AXkTopDownCamera(const FObjectInitializer& ObjectInitializer)
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
-	UObject* PostProcessMaterialObject = StaticLoadObject(UMaterial::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_CameraPostProcess"));
-	PostProcessMaterial = Cast<UMaterialInterface>(PostProcessMaterialObject);
-	bCameraInvisibleWall = false;
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder(TEXT("/XkGamedevKit/Materials/M_CameraPostProcess"));
+	PostProcessMaterial = ObjectFinder.Object;
+	bUseCameraInvisibleWall = false;
 	CameraInvisibleWall = FBox2D(FVector2D(-1000.0, -1000.0), FVector2D(1000.0, 1000.0));
-	bCameraRotationLock = false;
+	bUseCameraRotationLock = false;
 	CameraRotationLock = FVector2D(-75.0, -55.0);
 	CameraZoomArmLength = 1200.0;
 	CameraZoomArmRange = FVector2D(800.0, 2000.0);
@@ -152,7 +152,7 @@ void AXkTopDownCamera::AddMovement(const FVector& InputValue, const float Speed)
 	FVector MovementVectorRotated = Rotator.RotateVector(InputValue);
 	AddActorWorldOffset(MovementVectorRotated * Speed * DeltaSeconds);
 
-	if (bCameraInvisibleWall && CameraInvisibleWall.bIsValid)
+	if (bUseCameraInvisibleWall && CameraInvisibleWall.bIsValid)
 	{
 		FVector Location = GetActorLocation();
 		Location.X = FMath::Clamp(Location.X, CameraInvisibleWall.Min.X, CameraInvisibleWall.Max.X);
@@ -209,7 +209,7 @@ void AXkTopDownCamera::AddRotation(const FVector2D& InputValue, const float Spee
 	float Yaw = Rotator.Yaw;
 	float Roll = 0.0f;
 
-	if (bCameraRotationLock)
+	if (bUseCameraRotationLock)
 	{
 		if ((Rotator.Pitch < CameraRotationLock.Y && InputValueY > 0.0) || (Rotator.Pitch > CameraRotationLock.X && InputValueY < 0.0))
 		{

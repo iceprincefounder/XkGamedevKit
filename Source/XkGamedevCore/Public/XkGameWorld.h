@@ -55,7 +55,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	bool bShowSpawnedActorEdgeMesh;
 
-	AXkSphericalWorldWithOceanActor();
+	AXkSphericalWorldWithOceanActor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	//~ Begin Actor Interface
 	void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;

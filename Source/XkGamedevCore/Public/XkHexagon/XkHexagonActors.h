@@ -30,13 +30,19 @@ class XKGAMEDEVCORE_API AXkHexagonActor : public AActor
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	FIntVector Coord;
 
+	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
+	class UMaterialInterface* BaseMaterial;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
+	class UMaterialInterface* EdgeMaterial;
+
 	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	class UMaterialInstanceDynamic* BaseMID;
 
 	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	class UMaterialInstanceDynamic* EdgeMID;
 public:
-	AXkHexagonActor();
+	AXkHexagonActor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	//~ Begin AActor Interface
 	virtual void ConstructionScripts();

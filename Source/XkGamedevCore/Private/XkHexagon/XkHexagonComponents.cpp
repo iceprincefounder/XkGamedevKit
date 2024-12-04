@@ -456,10 +456,10 @@ UXkHexagonalWorldComponent::UXkHexagonalWorldComponent(const FObjectInitializer&
 	SetComponentTickEnabled(true);
 	bTickInEditor = true;
 
-	UObject* BaseMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonBaseSpherical"));
-	BaseMaterial = CastChecked<UMaterialInterface>(BaseMaterialObject);
-	UObject* EdgeMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonEdgeSpherical"));
-	EdgeMaterial = CastChecked<UMaterialInterface>(EdgeMaterialObject);
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder(TEXT("/XkGamedevKit/Materials/M_HexagonBaseSpherical"));
+	BaseMaterial = ObjectFinder.Object;
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder2(TEXT("/XkGamedevKit/Materials/M_HexagonEdgeSpherical"));
+	EdgeMaterial = ObjectFinder2.Object;
 
 	Radius = 100.0;
 	Height = 10.0;
@@ -562,8 +562,8 @@ FVector2D UXkHexagonalWorldComponent::GetFullUnscaledWorldSize(const FVector2D& 
 
 
 UXkInstancedHexagonComponent::UXkInstancedHexagonComponent(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
-	UObject* Object = StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/XkGamedevKit/Meshes/SM_StandardHexagonWithUV.SM_StandardHexagonWithUV"));
-	UStaticMesh* StaticMeshObject = CastChecked<UStaticMesh>(Object);
-	SetStaticMesh(StaticMeshObject);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_StandardHexagonWithUV"));
+	SetStaticMesh(ObjectFinder.Object);
 }

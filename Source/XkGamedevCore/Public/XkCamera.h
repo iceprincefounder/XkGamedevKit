@@ -45,18 +45,21 @@ class XKGAMEDEVCORE_API AXkTopDownCamera : public AXkCamera
 	class UMaterialInstanceDynamic* PostProcessMaterialDyn;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	bool bCameraInvisibleWall;
+	bool bUseCameraInvisibleWall;
+
 	/** Camera boom positioning the camera above the character */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	FBox2D CameraInvisibleWall;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	bool bCameraRotationLock;
+	bool bUseCameraRotationLock;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	FVector2D CameraRotationLock;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	float CameraZoomArmLength;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	FVector2D CameraZoomArmRange;
 

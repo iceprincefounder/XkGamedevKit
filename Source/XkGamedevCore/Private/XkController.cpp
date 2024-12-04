@@ -35,20 +35,14 @@ AXkParabolaCurve::AXkParabolaCurve(const FObjectInitializer& ObjectInitializer)
 	ParabolaSpline->SetupAttachment(RootComponent);
 	ParabolaSpline->SetClosedLoop(false);
 
-	SegmentSphereAncherMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("SegmentSphereAncherMesh"));
-	SegmentSphereAncherMesh->SetupAttachment(RootComponent);
-	SegmentSphereAncherMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	SegmentSphereAncherMesh->SetMobility(EComponentMobility::Movable);
-	SegmentSphereAncherMesh->SetStaticMesh(CastChecked<UStaticMesh>(StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/XkGamedevKit/Meshes/SM_Sphere.SM_Sphere"))));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_SplineMeshTube.SM_SplineMeshTube"));
+	ParabolaMesh = ObjectFinder.Object;
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder2(TEXT("/XkGamedevKit/Materials/M_GuidelineParabolaMesh.M_GuidelineParabolaMesh"));
+	ParabolaMeshMaterial = ObjectFinder2.Object;
 
-	ParabolaMeshMaterial = CastChecked<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_GuidelineParabolaMesh.M_GuidelineParabolaMesh")));
-	SegmentMeshMaterial = CastChecked<UMaterialInterface>(StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_GuidelineSegmentMesh.M_GuidelineSegmentMesh")));
-
-	SegmentScale = 0.1;
 	ParabolaStartScale = 0.1;
 	ParabolaEndScale = 0.1;
 	ParabolaPointsNum = 10;
-	SegmentSortPriority = 0;
 
 	PrimaryActorTick.bCanEverTick = false;
 	PrimaryActorTick.bStartWithTickEnabled = false;
@@ -63,61 +57,6 @@ void AXkParabolaCurve::OnConstruction(const FTransform& Transform)
 	{
 		ParabolaMeshMaterialDyn = UMaterialInstanceDynamic::Create(ParabolaMeshMaterial, this);
 	}
-	if (SegmentMeshMaterial && IsValid(SegmentMeshMaterial))
-	{
-		SegmentMeshMaterialDyn = UMaterialInstanceDynamic::Create(SegmentMeshMaterial, this);
-	}
-}
-
-
-void AXkParabolaCurve::UpdateSegmentCurve(const TArray<FVector>& Points, const bool bContinuous)
-{
-	UStaticMesh* StaticMesh = CastChecked<UStaticMesh>(
-		StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/XkGamedevKit/Meshes/SM_SplineMeshTube.SM_SplineMeshTube")));
-	TArray<TObjectPtr<class USplineMeshComponent>> TempSplineMeshes;
-	for (int32 Index = 0; Index < (Points.Num() / 2); ++Index)
-	{
-		USplineMeshComponent* SplineMesh = SegmentSplineMeshes.IsValidIndex(Index) ? SegmentSplineMeshes[Index] : nullptr;
-		if (!SplineMesh || !IsValid(SplineMesh))
-		{
-			SplineMesh = NewObject<USplineMeshComponent>(this);
-			SplineMesh->SetMobility(EComponentMobility::Movable);
-			SplineMesh->AttachToComponent(RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-			SplineMesh->SetStaticMesh(StaticMesh);
-			SplineMesh->SetForwardAxis(ESplineMeshAxis::X);
-			SplineMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			SplineMesh->RegisterComponent();
-			SplineMesh->SetMaterial(0, SegmentMeshMaterialDyn);
-			SplineMesh->SetTranslucentSortPriority(SegmentSortPriority);
-			AddInstanceComponent(SplineMesh); // Component Would Display on Setup.
-		}
-		FVector Start = Points[Index * 2];
-		FVector End = Points[Index * 2 + 1];
-		SplineMesh->SetStartAndEnd(Start, Start - End, End, Start - End);
-		SplineMesh->SetStartScale(FVector2D(SegmentScale));
-		SplineMesh->SetEndScale(FVector2D(SegmentScale));
-		TempSplineMeshes.Add(SplineMesh);
-	}
-	for (int32 Index = 0; Index < SegmentSplineMeshes.Num(); ++Index)
-	{
-		USplineMeshComponent* SplineMesh = SegmentSplineMeshes[Index];
-		if (SplineMesh && IsValid(SplineMesh) && !TempSplineMeshes.Contains(SplineMesh))
-		{
-			SplineMesh->DestroyComponent();
-		}
-	}
-	SegmentSplineMeshes = TempSplineMeshes;
-
-	SegmentSphereAncherMesh->ClearInstances();
-	SegmentSphereAncherMesh->SetMaterial(0, SegmentMeshMaterialDyn);
-	SegmentSphereAncherMesh->SetTranslucentSortPriority(SegmentSortPriority);
-	for (int32 Index = 0; Index < Points.Num(); ++Index)
-	{
-		FVector Location = Points[Index];
-		FRotator Rotation = FRotator(0.0);
-		FVector Scale = FVector(SegmentScale);
-		SegmentSphereAncherMesh->AddInstance(FTransform(Rotation, Location, Scale));
-	}
 }
 
 
@@ -130,8 +69,6 @@ void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& 
 		ParabolaSpline->AddSplinePoint(Points[i], ESplineCoordinateSpace::World);
 	}
 
-	UStaticMesh* StaticMesh = CastChecked<UStaticMesh>(
-		StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/XkGamedevKit/Meshes/SM_SplineMeshTube.SM_SplineMeshTube")));
 	TArray<TObjectPtr<class USplineMeshComponent>> TempSplineMeshes;
 	for (int32 Index = 0; Index < (ParabolaSpline->GetNumberOfSplinePoints() - 1); ++Index)
 	{
@@ -141,7 +78,7 @@ void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& 
 			SplineMesh = NewObject<USplineMeshComponent>(this);
 			SplineMesh->SetMobility(EComponentMobility::Movable);
 			SplineMesh->AttachToComponent(ParabolaSpline, FAttachmentTransformRules::KeepRelativeTransform);
-			SplineMesh->SetStaticMesh(StaticMesh);
+			SplineMesh->SetStaticMesh(ParabolaMesh);
 			SplineMesh->SetForwardAxis(ESplineMeshAxis::X);
 			SplineMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			SplineMesh->RegisterComponent();
@@ -167,15 +104,6 @@ void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& 
 		}
 	}
 	ParabolaSplineMeshes = TempSplineMeshes;
-}
-
-
-void AXkParabolaCurve::SetSegmentCurveColor(const FLinearColor& Color)
-{
-	if (SegmentMeshMaterialDyn && IsValid(SegmentMeshMaterialDyn))
-	{
-		SegmentMeshMaterialDyn->SetVectorParameterValue(FName(TEXT("Color")), Color);
-	}
 }
 
 
@@ -304,32 +232,32 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	bIsCameraDraggingButtonPressing = false;
 	bIsCameraRotatingButtonPressing = false;
 
-	GamepadCursorMaterial = CastChecked<UMaterialInterface>(
-		StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_CursorFocus")));
-	DefaultMappingContext = CastChecked<UInputMappingContext>(
-		StaticLoadObject(UInputMappingContext::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/IMC_XkController")));
-	SetSelectionClickAction = CastChecked<UInputAction>(
-		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionClick")));
-	SetSelectionTouchAction = CastChecked<UInputAction>(
-		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionTouch")));
-	SetDeselectionClickAction = CastChecked<UInputAction>(
-		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionClick")));
-	SetDeselectionTouchAction = CastChecked<UInputAction>(
-		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionTouch")));
-	SetCameraDraggingAction = CastChecked<UInputAction>(
-		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDragging")));
-	SetCameraDraggingPressAction = CastChecked<UInputAction>(
-		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDraggingPress")));
-	SetCameraRotatingAction = CastChecked<UInputAction>(
-		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotating")));
-	SetCameraRotatingPressAction = CastChecked<UInputAction>(
-		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotatingPress")));
-	SetCameraZoomingAction = CastChecked<UInputAction>(
-		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraZooming")));
-	SetGamepadCursorMovementAction = CastChecked<UInputAction>(
-		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadCursorMovement")));
-	SetGamepadSwitchAction = CastChecked<UInputAction>(
-		StaticLoadObject(UInputAction::StaticClass(), NULL, TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadSwitch")));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder(TEXT("/XkGamedevKit/Materials/M_CursorFocus"));
+	GamepadCursorMaterial = ObjectFinder.Object;
+	static ConstructorHelpers::FObjectFinder<UInputMappingContext> ObjectFinder2(TEXT("/XkGamedevKit/Inputs/IMC_XkController"));
+	DefaultMappingContext = ObjectFinder2.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder3(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionClick"));
+	SetSelectionClickAction = ObjectFinder3.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder4(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionTouch"));
+	SetSelectionTouchAction = ObjectFinder4.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder5(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionClick"));
+	SetDeselectionClickAction = ObjectFinder5.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder6(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionTouch"));
+	SetDeselectionTouchAction = ObjectFinder6.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder7(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDragging"));
+	SetCameraDraggingAction = ObjectFinder7.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder8(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDraggingPress"));
+	SetCameraDraggingPressAction = ObjectFinder8.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder9(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotating"));
+	SetCameraRotatingAction = ObjectFinder9.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder10(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotatingPress"));
+	SetCameraRotatingPressAction = ObjectFinder10.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder11(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraZooming"));
+	SetCameraZoomingAction = ObjectFinder11.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder12(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadCursorMovement"));
+	SetGamepadCursorMovementAction = ObjectFinder12.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder13(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadSwitch"));
+	SetGamepadSwitchAction = ObjectFinder13.Object;
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;

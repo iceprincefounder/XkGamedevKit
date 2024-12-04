@@ -30,19 +30,19 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(XkGameWorld)
 
-AXkSphericalWorldWithOceanActor::AXkSphericalWorldWithOceanActor()
+AXkSphericalWorldWithOceanActor::AXkSphericalWorldWithOceanActor(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
 	SphericalLandscapeComponent = CreateDefaultSubobject<UXkSphericalLandscapeWithWaterComponent>(TEXT("SphericalLandscape"));
-	SphericalLandscapeComponent->Material = CastChecked<UMaterialInterface>(
-		StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_SphericalWorld")));
-	SphericalLandscapeComponent->WaterMaterial = CastChecked<UMaterialInterface>(
-		StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_SphericalWorld")));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder(TEXT("/XkGamedevKit/Materials/M_SphericalWorld"));
+	SphericalLandscapeComponent->Material = ObjectFinder.Object;
+	SphericalLandscapeComponent->WaterMaterial = ObjectFinder.Object;
 	SphericalLandscapeComponent->SetupAttachment(RootComponent);
 
 	CanvasRendererComponent = CreateDefaultSubobject<UXkCanvasRendererComponent>(TEXT("CanvasRenderer"));
 
-	HexagonMPC = CastChecked<UMaterialParameterCollection>(
-		StaticLoadObject(UMaterialParameterCollection::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/MPC_HexagonalWorld")));
+	static ConstructorHelpers::FObjectFinder<UMaterialParameterCollection> ObjectFinder2(TEXT("/XkGamedevKit/Materials/MPC_HexagonalWorld"));
+	HexagonMPC = ObjectFinder2.Object;
 
 	GroundManhattanDistance = 20;
 	ShorelineManhattanDistance = 5;

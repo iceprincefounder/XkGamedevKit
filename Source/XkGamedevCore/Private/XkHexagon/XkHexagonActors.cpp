@@ -17,14 +17,14 @@ static const TArray<FLinearColor> GXkHexagonColor = {
 };
 
 
-AXkHexagonActor::AXkHexagonActor()
+AXkHexagonActor::AXkHexagonActor(const FObjectInitializer& ObjectInitializer)
 {
 	StaticProcMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticProcMesh"));
 	StaticProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	StaticProcMesh->SetCollisionProfileName(FName(TEXT("NoCollision")));
 	StaticProcMesh->SetCastShadow(false);
-	UObject* Object = StaticLoadObject(UStaticMesh::StaticClass(), NULL, TEXT("/XkGamedevKit/Meshes/SM_StandardHexagonWithUV.SM_StandardHexagonWithUV"));
-	UStaticMesh* StaticMeshObject = CastChecked<UStaticMesh>(Object);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_StandardHexagonWithUV.SM_StandardHexagonWithUV"));
+	UStaticMesh* StaticMeshObject = ObjectFinder.Object;
 	StaticProcMesh->SetStaticMesh(StaticMeshObject);
 	SetRootComponent(StaticProcMesh);
 
@@ -37,6 +37,11 @@ AXkHexagonActor::AXkHexagonActor()
 	ProcMesh->SetupAttachment(RootComponent);
 	ProcMesh->SetTranslucentSortPriority(9999);
 #endif
+
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder2(TEXT("/XkGamedevKit/Materials/M_HexagonBase.M_HexagonBase"));
+	BaseMaterial = ObjectFinder2.Object;
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder3(TEXT("/XkGamedevKit/Materials/M_HexagonEdge.M_HexagonEdge"));
+	EdgeMaterial = ObjectFinder3.Object;
 }
 
 
@@ -105,19 +110,17 @@ void AXkHexagonActor::OnEdgeHighlight(const FLinearColor& InColor)
 
 void AXkHexagonActor::UpdateMaterial()
 {
-	if (!BaseMID)
+	if (!BaseMID && BaseMaterial)
 	{
-		UObject* BaseMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonBase"));
-		BaseMID = UMaterialInstanceDynamic::Create(CastChecked<UMaterialInterface>(BaseMaterialObject), this);
+		BaseMID = UMaterialInstanceDynamic::Create(BaseMaterial, this);
 	}
 	if (BaseMID && IsValid(BaseMID) && ParentHexagonalWorld.IsValid())
 	{
 		BaseMID->SetVectorParameterValue(FName("Color"), ParentHexagonalWorld->BaseColor);
 	}
-	if (!EdgeMID)
+	if (!EdgeMID && EdgeMaterial)
 	{
-		UObject* EdgeMaterialObject = StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/XkGamedevKit/Materials/M_HexagonEdge"));
-		EdgeMID = UMaterialInstanceDynamic::Create(CastChecked<UMaterialInterface>(EdgeMaterialObject), this);
+		EdgeMID = UMaterialInstanceDynamic::Create(EdgeMaterial, this);
 	}
 	if (EdgeMID && IsValid(EdgeMID) && ParentHexagonalWorld.IsValid())
 	{
@@ -213,8 +216,8 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 	InstancedHexagonComponent->SetupAttachment(RootComponent);
 	InstancedHexagonComponent->bRenderInMainPass = false;
 	InstancedHexagonComponent->bRenderInDepthPass = false;
-	UObject* Object = StaticLoadObject(URuntimeVirtualTexture::StaticClass(), NULL, TEXT("/XkGamedevKit/Textures/RVT_InstancedHexagons.RVT_InstancedHexagons"));
-	URuntimeVirtualTexture* RVT = CastChecked<URuntimeVirtualTexture>(Object);
+	static ConstructorHelpers::FObjectFinder<URuntimeVirtualTexture> ObjectFinder(TEXT("/XkGamedevKit/Textures/RVT_InstancedHexagons"));
+	URuntimeVirtualTexture* RVT = ObjectFinder.Object;
 	InstancedHexagonComponent->RuntimeVirtualTextures.Empty();
 	InstancedHexagonComponent->RuntimeVirtualTextures.Add(RVT);
 
