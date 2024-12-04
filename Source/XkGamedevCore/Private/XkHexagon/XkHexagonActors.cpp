@@ -391,7 +391,11 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeCoverages(const FI
 	{
 		if (FXkHexagonAStarPathfinding::CalcManhattanDistance(InCoord, NodePair.Key) <= InRange)
 		{
-			Results.AddUnique(&NodePair.Value);
+			FXkHexagonNode* HexagonNode = &NodePair.Value;
+			if (HexagonNode)
+			{
+				Results.AddUnique(HexagonNode);
+			}
 		}
 	}
 	return Results;

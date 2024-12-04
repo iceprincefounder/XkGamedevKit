@@ -104,12 +104,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonalPrimitive [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* EdgeMaterial;
 
-	UPROPERTY(Transient)
-	UMaterialInstanceDynamic* BaseMaterialDyn;
-
-	UPROPERTY(Transient)
-	UMaterialInstanceDynamic* EdgeMaterialDyn;
-
 	UXkHexagonalWorldComponent(const FObjectInitializer& ObjectInitializer);
 
 	//~ Begin UPrimitiveComponent interface

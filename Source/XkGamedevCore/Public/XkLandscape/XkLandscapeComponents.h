@@ -22,9 +22,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Landscape [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface *Material;
 
-	UPROPERTY(Transient)
-	UMaterialInstanceDynamic* MaterialDyn;
-
 	UXkLandscapeComponent(const FObjectInitializer& ObjectInitializer);
 
 	//~ Begin UPrimitiveComponent interface
@@ -48,9 +45,6 @@ class XKGAMEDEVCORE_API UXkLandscapeWithWaterComponent : public UXkLandscapeComp
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* WaterMaterial;
-
-	UPROPERTY(Transient)
-	UMaterialInstanceDynamic* WaterMaterialDyn;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXUGAMEDEV]")
 	bool bDisableWaterBody;
