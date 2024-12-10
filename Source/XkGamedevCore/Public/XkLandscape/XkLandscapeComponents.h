@@ -44,6 +44,13 @@ class XKGAMEDEVCORE_API UXkLandscapeWithWaterComponent : public UXkLandscapeComp
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXUGAMEDEV]")
+	class UWaterWavesAsset* WaterWavesAsset;
+
+	/** Water depth at which waves start being attenuated. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXUGAMEDEV]", meta = (UIMin = 0, ClampMin = 0, UIMax = 10000.0))
+	float TargetWaveMaskDepth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* WaterMaterial;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXUGAMEDEV]")
