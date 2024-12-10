@@ -10,15 +10,13 @@ public class XkGamedevCore : ModuleRules
 
 		PublicIncludePaths.AddRange(
 			new string[] {
-				"$(EngineDir)/Source/Runtime/Renderer/Private",
-				// ... add public include paths required here ...
+				System.IO.Path.Combine(GetModuleDirectory("Renderer"), "Private"),
 			}
 			);
 
 		PrivateIncludePaths.AddRange(
 			new string[] {
-				"$(EngineDir)/Source/Runtime/Renderer/Private",
-				// ... add other private include paths required here ...
+				System.IO.Path.Combine(GetModuleDirectory("Renderer"), "Private"),
 			}
 			);
 
@@ -42,17 +40,20 @@ public class XkGamedevCore : ModuleRules
 				"UMG",
 				"RHI",
 				"Renderer",
+				"Water",
 			});
 
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
+				"Engine",
 				"Projects",
 				"Slate",
 				"SlateCore",
 				"Landscape",
 				"Json",
 				"RHI",
+				"DeveloperSettings",
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
