@@ -13,7 +13,7 @@
 #include "XkGameWorld.h"
 
 
-FXkGerstnerWaterWaveViewExtension::FXkGerstnerWaterWaveViewExtension(const FAutoRegister& AutoReg, UWorld* InWorld) : FWorldSceneViewExtension(AutoReg, InWorld), WaveGPUData(MakeShared<FWaveGPUResources, ESPMode::ThreadSafe>())
+FXkGerstnerWaterWaveViewExtension::FXkGerstnerWaterWaveViewExtension(const FAutoRegister& AutoReg, UWorld* InWorld) : FWorldSceneViewExtension(AutoReg, InWorld), WaveGPUData(MakeShared<FXkWaveGPUResources, ESPMode::ThreadSafe>())
 {
 }
 
@@ -36,22 +36,25 @@ void FXkGerstnerWaterWaveViewExtension::Initialize()
 	}
 }
 
+
 void FXkGerstnerWaterWaveViewExtension::Deinitialize()
 {
 	ENQUEUE_RENDER_COMMAND(DeallocateWaterInstanceDataBuffer)
 		(
 			// Copy the shared ptr into a local copy for this lambda, this will increase the ref count and keep it alive on the renderthread until this lambda is executed
-			[WaveGPUData = WaveGPUData](FRHICommandListImmediate& RHICmdList) {}
+			[WaveGPUData = WaveGPUData](FRHICommandListImmediate& RHICmdList) {
+			} 
 			);
 	Components.Empty();
 }
+
 
 void FXkGerstnerWaterWaveViewExtension::SetupViewFamily(FSceneViewFamily& InViewFamily)
 {
 	if (bRebuildGPUData)
 	{
-		TResourceArray<FVector4f> WaterIndirectionBuffer;
 		TResourceArray<FVector4f> WaterDataBuffer;
+		TResourceArray<FVector4f> WaterIndirectionBuffer;
 
 		const TWeakObjectPtr<UWorld> WorldPtr = GetWorld();
 		check(WorldPtr.IsValid())
@@ -112,9 +115,9 @@ void FXkGerstnerWaterWaveViewExtension::SetupViewFamily(FSceneViewFamily& InView
 			WaterDataBuffer.AddZeroed();
 		}
 
-		ENQUEUE_RENDER_COMMAND(AllocateWaterInstanceDataBuffer)
+		ENQUEUE_RENDER_COMMAND(AllocateXkWaterInstanceDataBuffer)
 			(
-				[WaveGPUData = WaveGPUData, WaterDataBuffer, WaterIndirectionBuffer](FRHICommandListImmediate& RHICmdList) mutable
+				[WaveGPUData = WaveGPUData, WaterIndirectionBuffer, WaterDataBuffer](FRHICommandListImmediate& RHICmdList) mutable
 				{
 					FRHIResourceCreateInfo CreateInfoData(TEXT("WaterDataBuffer"), &WaterDataBuffer);
 					WaveGPUData->DataBuffer = RHICreateBuffer(WaterDataBuffer.GetResourceDataSize(), BUF_VertexBuffer | BUF_ShaderResource | BUF_Static, sizeof(FVector4f), ERHIAccess::SRVMask, CreateInfoData);
@@ -130,13 +133,28 @@ void FXkGerstnerWaterWaveViewExtension::SetupViewFamily(FSceneViewFamily& InView
 	}
 }
 
+
 void FXkGerstnerWaterWaveViewExtension::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
 {
-	if (WaveGPUData->DataSRV && WaveGPUData->IndirectionSRV)
+	SceneViews.Add(&InView);
+	// FGerstnerWaterWaveViewExtension::PreRenderView_RenderThread(...)
+	// This would be override by Water plugin, so I record it and submit it at PreInitViews_RenderThread
+	//if (WaveGPUData->DataSRV && WaveGPUData->IndirectionSRV)
+	//{
+	//	InView.WaterDataBuffer = WaveGPUData->DataSRV;
+	//	InView.WaterIndirectionBuffer = WaveGPUData->IndirectionSRV;
+	//}
+}
+
+
+void FXkGerstnerWaterWaveViewExtension::PreInitViews_RenderThread(FRDGBuilder& GraphBuilder)
+{
+	for (FSceneView* SceneView : SceneViews)
 	{
-		InView.WaterDataBuffer = WaveGPUData->DataSRV;
-		InView.WaterIndirectionBuffer = WaveGPUData->IndirectionSRV;
+		SceneView->WaterDataBuffer = WaveGPUData->DataSRV;
+		SceneView->WaterIndirectionBuffer = WaveGPUData->IndirectionSRV;
 	}
+	SceneViews.Reset();
 }
 
 
@@ -176,13 +194,13 @@ void UXkGerstnerWaterWaveSubsystem::Initialize(FSubsystemCollectionBase& Collect
 {
 	Super::Initialize(Collection);
 
-	FCoreDelegates::OnBeginFrame.AddUObject(this, &UXkGerstnerWaterWaveSubsystem::BeginFrameCallback);
-
 	if (GetWorld() != nullptr)
 	{
 		GerstnerWaterWaveViewExtension = FSceneViewExtensions::NewExtension<FXkGerstnerWaterWaveViewExtension>(GetWorld());
 		GerstnerWaterWaveViewExtension->Initialize();
 	}
+
+	FCoreDelegates::OnBeginFrame.AddUObject(this, &UXkGerstnerWaterWaveSubsystem::BeginFrameCallback);
 }
 
 

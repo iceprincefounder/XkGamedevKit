@@ -247,7 +247,7 @@ int32 FQuadtree::AllocateNode(const FBox2D& Box, int32 InPosx, int32 InPosy, int
 	FQuadtreeNode& NewNode = TreeNodes[NodeIndex];
 	NewNode.NodeID = NodeIndex;
 	// NodeBox extent z is one, center at zero
-	NewNode.NodeBox = FBox(FVector(Box.Min.X, Box.Min.Y, -0.5), FVector(Box.Max.X, Box.Max.Y, 0.5));
+	NewNode.NodeBox = FBox(FVector(Box.Min.X, Box.Min.Y, -UE_FLOAT_HUGE_DISTANCE), FVector(Box.Max.X, Box.Max.Y, UE_FLOAT_HUGE_DISTANCE));
 	NewNode.NodePosX = InPosx;
 	NewNode.NodePosY = InPosy;
 	NewNode.Parent = Parent;
