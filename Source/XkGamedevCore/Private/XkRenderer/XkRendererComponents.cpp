@@ -33,7 +33,7 @@ UXkCanvasRendererComponent::UXkCanvasRendererComponent(const FObjectInitializer&
 	bTickInEditor = true;
 
 	ConvolutionRangeX = 2;
-	ConvolutionRangeY = 1;
+	ConvolutionRangeY = 2;
 	ConvolutionRangeZ = 4;
 
 	CanvasCenter = FVector4f::Zero();
@@ -164,9 +164,8 @@ void UXkCanvasRendererComponent::DrawCanvas()
 
 	UTextureRenderTarget2D* Canvas0 = CanvasRT0;
 	UTextureRenderTarget2D* Canvas1 = CanvasRT1;
-	uint8 CRValueX = ConvolutionRangeX;
-	uint8 CRValueY = ConvolutionRangeY;
-	uint8 CRValueZ = ConvolutionRangeZ;
+	FIntVector4 TextureFilter = FIntVector4(ConvolutionRangeX, ConvolutionRangeY, ConvolutionRangeZ, 0);
+	FIntVector4 SuperResMask = FIntVector4(SplatMaskRange.X, SplatMaskRange.Y, 2, 4);
 	FVector4f Center = CanvasCenter;
 	FVector4f Extent = CanvasExtent;
 	FXkCanvasVertexBuffer* VertexBuf = &VertexBuffer;
@@ -177,7 +176,7 @@ void UXkCanvasRendererComponent::DrawCanvas()
 	FXkCanvasRenderPS::FParameters PixelShaderParamsToCopy;
 	FMatrix44f LocalToWorld = FMatrix44f(GetOwner()->GetTransform().ToMatrixWithScale());
 	RenderCaptureInterface::FScopedCapture RenderCapture(CaptureDrawCanvas, TEXT("CaptureDrawCanvas"));
-	ENQUEUE_RENDER_COMMAND(UXkRendererComponent_DrawCanvas)([Canvas0, Canvas1, CRValueX, CRValueY, CRValueZ, LocalToWorld, Center, Extent,
+	ENQUEUE_RENDER_COMMAND(UXkRendererComponent_DrawCanvas)([Canvas0, Canvas1, TextureFilter, SuperResMask, LocalToWorld, Center, Extent,
 		VertexShaderParamsToCopy, PixelShaderParamsToCopy, VertexBuf, IndexBuf, InstancePositionBuf, InstanceWeightBuf]
 		(FRHICommandListImmediate& RHICmdList)
 		{
@@ -241,13 +240,14 @@ void UXkCanvasRendererComponent::DrawCanvas()
 			FIntRect Viewport = FIntRect(0, 0, TextureSize.X, TextureSize.Y);
 			XkCanvasRendererDraw(GraphBuilder, NumInstances, Viewport, VertexShaderParams, PixelShaderParams,
 				VertexBuf, IndexBuf);
-
 			FXkCanvasRenderCS::FParameters* ComputerShaderParams =
 				GraphBuilder.AllocParameters<FXkCanvasRenderCS::FParameters>();
-			ComputerShaderParams->TextureFilter = FIntVector4(CRValueX, CRValueY, CRValueZ, TextureSize.X);
+			ComputerShaderParams->TextureFilter = FIntVector4(TextureFilter.X, TextureFilter.Y, TextureFilter.Z, TextureSize.X);
+			ComputerShaderParams->SuperResMask = SuperResMask;
 			ComputerShaderParams->Center = Center; // @TODO: just computer the pixel area which changed by game logic
 			ComputerShaderParams->Extent = Extent;
-			ComputerShaderParams->SourceTexture = Canvas0_RDG;
+			ComputerShaderParams->SourceTexture0 = Canvas0_RDG;
+			ComputerShaderParams->SourceTexture1 = Canvas1_RDG;
 			ComputerShaderParams->TargetTexture = GraphBuilder.CreateUAV(CanvasTemp_RDG);
 			FIntVector GroupCount = FIntVector(
 				FMath::CeilToInt((float)TextureSize.X / FXkCanvasRenderCS::ThreadGroupSizeX),
