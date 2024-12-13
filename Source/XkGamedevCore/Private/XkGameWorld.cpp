@@ -79,6 +79,7 @@ void AXkSphericalWorldWithOceanActor::OnConstruction(const FTransform& Transform
 		}
 	}
 #endif
+	CanvasRendererComponent->SplatMaskRange = HexagonSplatMaskRange;
 }
 
 

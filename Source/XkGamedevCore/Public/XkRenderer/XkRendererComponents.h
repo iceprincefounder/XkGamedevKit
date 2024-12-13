@@ -46,6 +46,9 @@ public:
 	float HorizonHeight;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
+	FVector2D SplatMaskRange;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	UMaterialParameterCollection* CanvasMPC;
 
 	UXkCanvasRendererComponent(const FObjectInitializer& ObjectInitializer);
