@@ -210,8 +210,9 @@ public:
 	FXkHexagonArrowSceneProxy(UXkHexagonArrowComponent* Component)
 		: FPrimitiveSceneProxy(Component)
 		, VertexFactory(GetScene().GetFeatureLevel(), "FArrowSceneProxy")
+		, ArrowHeight(Component->ArrowHeight)
 		, ArrowZOffset(Component->ArrowZOffset)
-		, ArrowMarkStep(Component->ArrowMarkStep)
+		, ArrowUnitStep(Component->ArrowUnitStep)
 		, ArrowMarkWidth(Component->ArrowMarkWidth)
 		, ArrowColor(Component->ArrowColor)
 		, ArrowXColor(Component->ArrowXColor)
@@ -246,14 +247,14 @@ public:
 		const FVector ShaftCenter = FVector(0, 0, 0);
 
 		TArray<FDynamicMeshVertex> OutVerts;
-		BuildXkHexagonConeVerts(HeadAngle, HeadAngle, -HeadLength, TotalLength, ArrowZOffset, 32, OutVerts, IndexBuffer.Indices);
+		BuildXkHexagonConeVerts(HeadAngle, HeadAngle, -HeadLength, TotalLength, ArrowHeight + ArrowZOffset, 32, OutVerts, IndexBuffer.Indices);
 		// build axis mark verts.
-		for (int32 i = 1; i < floor(TotalLength / (ArrowMarkStep * 1.5)); i++)
+		for (int32 i = 1; i < floor(TotalLength / (ArrowUnitStep * 1.5)); i++)
 		{
-			BuildXkHexagonCylinderVerts(-FVector(ArrowMarkStep * i * 1.5, 0, 0), FVector(0, 0, 1), FVector(0, 1, 0), FVector(1, 0, 0), ShaftRadius * 2.0, ArrowMarkWidth, ArrowZOffset, 16, OutVerts, IndexBuffer.Indices);
-			BuildXkHexagonCylinderVerts(FVector(ArrowMarkStep * i * 1.5, 0, 0), FVector(0, 0, 1), FVector(0, 1, 0), FVector(1, 0, 0), ShaftRadius * 2.0, ArrowMarkWidth, ArrowZOffset, 16, OutVerts, IndexBuffer.Indices);
+			BuildXkHexagonCylinderVerts(-FVector(ArrowUnitStep * i * 1.5, 0, 0), FVector(0, 0, 1), FVector(0, 1, 0), FVector(1, 0, 0), ShaftRadius * 2.0, ArrowMarkWidth, ArrowHeight + ArrowZOffset, 16, OutVerts, IndexBuffer.Indices);
+			BuildXkHexagonCylinderVerts(FVector(ArrowUnitStep * i * 1.5, 0, 0), FVector(0, 0, 1), FVector(0, 1, 0), FVector(1, 0, 0), ShaftRadius * 2.0, ArrowMarkWidth, ArrowHeight + ArrowZOffset, 16, OutVerts, IndexBuffer.Indices);
 		}
-		BuildXkHexagonCylinderVerts(ShaftCenter, FVector(0, 0, 1), FVector(0, 1, 0), FVector(1, 0, 0), ShaftRadius, ShaftLength, ArrowZOffset, 16, OutVerts, IndexBuffer.Indices);
+		BuildXkHexagonCylinderVerts(ShaftCenter, FVector(0, 0, 1), FVector(0, 1, 0), FVector(1, 0, 0), ShaftRadius, ShaftLength, ArrowHeight + ArrowZOffset, 16, OutVerts, IndexBuffer.Indices);
 
 		VertexBuffers.InitFromDynamicVertex(&VertexFactory, OutVerts);
 
@@ -404,8 +405,9 @@ private:
 	FLocalVertexFactory VertexFactory;
 
 	FVector Origin;
+	float ArrowHeight;
 	float ArrowZOffset;
-	float ArrowMarkStep;
+	float ArrowUnitStep;
 	float ArrowMarkWidth;
 	FColor ArrowColor;
 	FColor ArrowXColor;
@@ -428,8 +430,9 @@ private:
 UXkHexagonArrowComponent::UXkHexagonArrowComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	ArrowZOffset = 10.0;
-	ArrowMarkStep = 100.0;
+	ArrowHeight = 10.0;
+	ArrowZOffset = 0.0;
+	ArrowUnitStep = 100.0;
 	ArrowMarkWidth = 1.0;
 	ArrowXColor = FColor::Red;
 	ArrowYColor = FColor::Green;

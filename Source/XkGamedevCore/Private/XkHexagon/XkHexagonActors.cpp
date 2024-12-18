@@ -319,8 +319,8 @@ void AXkHexagonalWorldActor::OnConstruction(const FTransform& Transform)
 {
 #if WITH_EDITOR
 	float Distance = Radius + GapWidth;
-	SceneRoot->ArrowZOffset = Height;
-	SceneRoot->ArrowMarkStep = Radius;
+	SceneRoot->ArrowHeight = Height;
+	SceneRoot->ArrowUnitStep = Radius;
 	SceneRoot->SetArrowLength(MaxManhattanDistance * Distance * 1.5);
 
 	if (IsValid(HexagonStarter))
