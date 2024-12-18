@@ -339,28 +339,28 @@ int32 FXkHexagonAStarPathfinding::CalcManhattanDistance(const FIntVector& PointA
 }
 
 
-FIntVector FXkHexagonAStarPathfinding::CalcHexagonCoord(const float PositionX, const float PositionY, const float XkHexagonRadius)
+FIntVector FXkHexagonAStarPathfinding::CalcHexagonCoord(const float PositionX, const float PositionY, const float HexagonRadius)
 {
-	float HexagonUnitLength = XkHexagonRadius + XkHexagonRadius * XkCos60;
-	FIntVector XkHexagonCoord = FIntVector(0, 0, 0);
-	FVector XkHexagonVec = FVector(PositionX, PositionY, 0.0);
-	float Length = XkHexagonVec.Size();
-	XkHexagonVec.Normalize();
+	float HexagonUnitLength = HexagonRadius + HexagonRadius * XkCos60;
+	FIntVector HexagonCoord = FIntVector(0, 0, 0);
+	FVector HexagonVec = FVector(PositionX, PositionY, 0.0);
+	float Length = HexagonVec.Size();
+	HexagonVec.Normalize();
 	FVector XAxis = FVector(1.0, 0.0, 0.0);
 	XAxis.Normalize();
-	FVector YAxis = FRotator(0, 60, 0).RotateVector(XAxis);
+	FVector YAxis = FRotator(0, -120, 0).RotateVector(XAxis);
 	YAxis.Normalize();
 	FVector ZAxis = FRotator(0, 120, 0).RotateVector(XAxis);
 	ZAxis.Normalize();
-	float YProjectionLength = Length * FVector::DotProduct(XkHexagonVec, YAxis);
-	float ZProjectionLength = Length * FVector::DotProduct(XkHexagonVec, ZAxis);
+	float YProjectionLength = Length * FVector::DotProduct(HexagonVec, YAxis);
+	float ZProjectionLength = Length * FVector::DotProduct(HexagonVec, ZAxis);
 	float X = PositionX / HexagonUnitLength;
 	float Y = YProjectionLength / HexagonUnitLength;
 	float Z = ZProjectionLength / HexagonUnitLength;
-	XkHexagonCoord.X = FMath::RoundToInt(X);
-	XkHexagonCoord.Y = FMath::RoundToInt(Y);
-	XkHexagonCoord.Z = FMath::RoundToInt(Z);
-	return XkHexagonCoord;
+	HexagonCoord.X = FMath::RoundToInt(X);
+	HexagonCoord.Y = FMath::RoundToInt(Y);
+	HexagonCoord.Z = FMath::RoundToInt(Z);
+	return HexagonCoord;
 }
 
 
@@ -387,11 +387,11 @@ TArray<FIntVector> FXkHexagonAStarPathfinding::CalcHexagonNeighboringCoord(const
 	//	---------y
 
 	const TArray<FIntVector> HexagonNearVectors = {
-		FIntVector(1, 1, 0),
-		FIntVector(0, 1, 1),
+		FIntVector(1, -1, 0),
+		FIntVector(0, -1, 1),
 		FIntVector(-1, 0, 1),
-		FIntVector(-1, -1, 0),
-		FIntVector(0, -1, -1),
+		FIntVector(-1, 1, 0),
+		FIntVector(0, 1, -1),
 		FIntVector(1, 0, -1)
 	};
 	TArray<FIntVector> Ret;
