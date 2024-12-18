@@ -28,13 +28,17 @@ class XKGAMEDEVCORE_API UXkHexagonArrowComponent : public UArrowComponent
 	GENERATED_UCLASS_BODY()
 
 public:
-	/** Color to draw arrow step*/
+	/** Arrow height*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonArrow [KEVINTSUIXUGAMEDEV]")
+	float ArrowHeight;
+
+	/** Extra arrow height offset*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonArrow [KEVINTSUIXUGAMEDEV]")
 	float ArrowZOffset;
 
 	/** Color to draw arrow step*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonArrow [KEVINTSUIXUGAMEDEV]")
-	float ArrowMarkStep;
+	float ArrowUnitStep;
 
 	/** Color to draw arrow step*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonArrow [KEVINTSUIXUGAMEDEV]")
