@@ -116,7 +116,9 @@ void AXkHexagonActor::UpdateMaterial()
 	}
 	if (BaseMID && IsValid(BaseMID) && ParentHexagonalWorld.IsValid())
 	{
-		BaseMID->SetVectorParameterValue(FName("Color"), ParentHexagonalWorld->BaseColor);
+		FLinearColor BaseColor = ParentHexagonalWorld->BaseColor;
+		BaseColor.A = 1.0;
+		BaseMID->SetVectorParameterValue(FName("Color"), BaseColor);
 	}
 	if (!EdgeMID && EdgeMaterial)
 	{
@@ -124,7 +126,9 @@ void AXkHexagonActor::UpdateMaterial()
 	}
 	if (EdgeMID && IsValid(EdgeMID) && ParentHexagonalWorld.IsValid())
 	{
-		EdgeMID->SetVectorParameterValue(FName("Color"), ParentHexagonalWorld->EdgeColor);
+		FLinearColor EdgeColor = ParentHexagonalWorld->EdgeColor;
+		EdgeColor.A = 1.0;
+		EdgeMID->SetVectorParameterValue(FName("Color"), EdgeColor);
 	}
 	StaticProcMesh->SetMaterial(0, BaseMID);
 	StaticProcMesh->SetMaterial(1, EdgeMID);

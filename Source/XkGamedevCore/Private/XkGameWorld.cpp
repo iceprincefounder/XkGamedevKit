@@ -108,7 +108,7 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 			// calculate XkHexagon coordinate
 			FIntVector HexagonCoord = FXkHexagonAStarPathfinding::CalcHexagonCoord(Pos.X, Pos.Y, Dist);
 			int32 ManhattanDistanceToCenter = FXkHexagonAStarPathfinding::CalcManhattanDistance(HexagonCoord, FIntVector(0, 0, 0));
-			FVector4f Position = FVector4f(Pos.X, Pos.Y, -1000.0, Radius);
+			FVector4f Position = FVector4f(Pos.X, Pos.Y, 0.0, Radius);
 
 			FXkHexagonNode HexagonNode = FXkHexagonNode(EXkHexagonType::DeepWater | EXkHexagonType::Unavailable, Position, 0, HexagonCoord);
 			if (ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
@@ -117,7 +117,8 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 				if (bSpawnActors && ManhattanDistanceToCenter < SpawnActorsMaxMhtDist)
 				{
 					FActorSpawnParameters ActorSpawnParameters;
-					AXkHexagonActor* HexagonActor = GetWorld()->SpawnActor<AXkHexagonActor>(AXkHexagonActor::StaticClass(), HexagonNode.GetLocation(), FRotator(0.0), ActorSpawnParameters);
+					FVector Location = FVector(Position.X, Position.Y, Position.Z + 200.0);
+					AXkHexagonActor* HexagonActor = GetWorld()->SpawnActor<AXkHexagonActor>(AXkHexagonActor::StaticClass(), Location, FRotator(0.0), ActorSpawnParameters);
 					HexagonActor->SetFlags(RF_Transient);
 					HexagonActor->SetCoord(HexagonCoord);
 					HexagonActor->SetHexagonWorld(this);
