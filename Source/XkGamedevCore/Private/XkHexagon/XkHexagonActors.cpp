@@ -344,7 +344,7 @@ void AXkHexagonalWorldActor::OnConstruction(const FTransform& Transform)
 
 FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNode(const FIntVector& InCoord) const
 {
-	return HexagonalWorldTable.Nodes.Find(InCoord);;
+	return HexagonalWorldTable.Nodes.Find(InCoord);
 }
 
 

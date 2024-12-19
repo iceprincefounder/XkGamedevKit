@@ -340,9 +340,10 @@ public:
 #if WITH_EDITORONLY_DATA
 				ViewScale *= EditorScale;
 #endif
+				TArray<float> ArrowRotator = { 0, -120, 120 };
 				for (int32 i = 0; i < 3; i++)
 				{
-					FTransform Transform = FTransform(FRotator(0, 60 * i, 0), FVector(0, 0, 10), FVector(1));
+					FTransform Transform = FTransform(FRotator(0, ArrowRotator[i], 0), FVector(0, 0, 10), FVector(1));
 					EffectiveLocalToWorld = Transform.ToMatrixWithScale() * GetLocalToWorld();
 
 					// Draw the mesh.
