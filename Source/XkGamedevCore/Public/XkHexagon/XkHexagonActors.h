@@ -89,7 +89,8 @@ public:
 	UPROPERTY(VisibleDefaultsOnly, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
 	TObjectPtr<class UXkHexagonArrowComponent> SceneRoot;
 
-	UPROPERTY(VisibleDefaultsOnly, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
+	//UPROPERTY(VisibleDefaultsOnly, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY()
 	TObjectPtr<class UXkInstancedHexagonComponent> InstancedHexagonComponent;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
