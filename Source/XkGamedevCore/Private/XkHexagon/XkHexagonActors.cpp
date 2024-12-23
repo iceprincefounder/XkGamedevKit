@@ -218,12 +218,17 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 
 	InstancedHexagonComponent = CreateDefaultSubobject<UXkInstancedHexagonComponent>(TEXT("InstancedHexagons"));
 	InstancedHexagonComponent->SetupAttachment(RootComponent);
+	InstancedHexagonComponent->SetVisibility(false);
 	InstancedHexagonComponent->bRenderInMainPass = false;
 	InstancedHexagonComponent->bRenderInDepthPass = false;
-	static ConstructorHelpers::FObjectFinder<URuntimeVirtualTexture> ObjectFinder(TEXT("/XkGamedevKit/Textures/RVT_InstancedHexagons"));
-	URuntimeVirtualTexture* RVT = ObjectFinder.Object;
-	InstancedHexagonComponent->RuntimeVirtualTextures.Empty();
-	InstancedHexagonComponent->RuntimeVirtualTextures.Add(RVT);
+	InstancedHexagonComponent->CastShadow = false;
+	InstancedHexagonComponent->bCastDynamicShadow = false;
+	InstancedHexagonComponent->bCastStaticShadow = false;
+
+	//static ConstructorHelpers::FObjectFinder<URuntimeVirtualTexture> ObjectFinder(TEXT("/XkGamedevKit/Textures/RVT_InstancedHexagons"));
+	//URuntimeVirtualTexture* RVT = ObjectFinder.Object;
+	//InstancedHexagonComponent->RuntimeVirtualTextures.Empty();
+	//InstancedHexagonComponent->RuntimeVirtualTextures.Add(RVT);
 
 	Radius = 100.0;
 	Height = 10.0;
