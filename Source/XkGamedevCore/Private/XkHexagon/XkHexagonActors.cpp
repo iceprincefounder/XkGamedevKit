@@ -188,7 +188,7 @@ void AXkHexagonActor::InitHexagon(const FIntVector& InCoord)
 		if (HexagonNode)
 		{
 			FVector4f Position = HexagonNode->Position;
-			FVector NewLocation = FVector(Position.X, Position.Y, Position.Z + 1.0 /* Fix Z-Fighting*/);
+			FVector NewLocation = FVector(Position.X, Position.Y, Position.Z + 2.0 /* Fix Z-Fighting, Leave 1.0 for other surface.*/);
 			SetActorLocation(NewLocation, true);
 		}
 	}
