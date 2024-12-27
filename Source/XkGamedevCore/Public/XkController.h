@@ -280,6 +280,8 @@ public:
 	virtual bool IsShortPress();
 	virtual bool IsHoveringMotionless() const { return HoveringTime > MaxHoveringThreshold; };
 	virtual bool IsOnUI() const { return false; };
+	virtual bool IsCameraDragging() const { return bIsCameraDraggingButtonPressing; };
+	virtual bool IsCameraRotating() const { return bIsCameraRotatingButtonPressing; };
 	virtual bool ControllerSelect() const;
 	virtual bool ControllerSelect(FHitResult& Hit) const;
 	virtual bool ControllerSelect(FHitResult& Hit, const ECollisionChannel Channel) const;
