@@ -23,6 +23,9 @@ AXkHexagonActor::AXkHexagonActor(const FObjectInitializer& ObjectInitializer)
 	StaticProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	StaticProcMesh->SetCollisionProfileName(FName(TEXT("NoCollision")));
 	StaticProcMesh->SetCastShadow(false);
+	StaticProcMesh->bAffectDistanceFieldLighting = false;
+	StaticProcMesh->bAffectDynamicIndirectLighting = false;
+	StaticProcMesh->bAffectIndirectLightingWhileHidden = false;
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_StandardHexagonWithUV.SM_StandardHexagonWithUV"));
 	UStaticMesh* StaticMeshObject = ObjectFinder.Object;
 	StaticProcMesh->SetStaticMesh(StaticMeshObject);
