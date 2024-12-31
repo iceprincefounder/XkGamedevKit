@@ -903,12 +903,9 @@ void FXkSphericalLandscapeWithWaterSceneProxy::GetDynamicMeshElements(const TArr
 				if (OutNode.GetNodeDepth() != 0)
 				{
 					const FVector WorldPosition = OutNode.GetNodeBox().GetCenter() + Quadtree.GetRootOffset();
-					float x = FVector::Dist2D(InCameraPos, WorldPosition);
-					const float a = -0.00001f;
-					const float b = 6400.0f;
-					float y = FMath::Pow(FMath::Max(x - b, 0.0f), 2.0f) * a;
+					float Z = SphericalHeight(InCameraPos, WorldPosition);
 					FVector BoxMin = OutNode.GetNodeBox().Min;
-					BoxMin.Z = y;
+					BoxMin.Z = Z;
 					FVector BoxMax = OutNode.GetNodeBox().Max;
 					//BoxMax.Z = OutNode.GetNodeBox().GetExtent().X / 4.0 + y;
 					OutNode.GetNodeBoxRaw().Min = BoxMin;

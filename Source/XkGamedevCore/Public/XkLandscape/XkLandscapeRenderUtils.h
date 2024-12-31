@@ -130,3 +130,5 @@ private:
 
 // https://www.ronja-tutorials.com/post/041-hsv-colorspace/
 extern FLinearColor Hue2RGB(int32 Index);
+
+extern float SphericalHeight(const FVector& CameraLocation, const FVector& WorldLocation);

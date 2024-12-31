@@ -221,6 +221,8 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 
 	InstancedHexagonComponent = CreateDefaultSubobject<UXkInstancedHexagonComponent>(TEXT("InstancedHexagons"));
 	InstancedHexagonComponent->SetupAttachment(RootComponent);
+	InstancedHexagonComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	InstancedHexagonComponent->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
 	InstancedHexagonComponent->SetVisibility(false);
 	InstancedHexagonComponent->bRenderInMainPass = false;
 	InstancedHexagonComponent->bRenderInDepthPass = false;

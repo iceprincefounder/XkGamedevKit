@@ -414,14 +414,14 @@ FVector UXkTargetMovement::GetFinalMovementTarget() const
 }
 
 
-FVector UXkTargetMovement::GetLineTraceLocation(const FVector& Input)
+FVector UXkTargetMovement::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel)
 {
 	FHitResult HitResult;
 	FVector Start = Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
 	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
-	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Pawn, CollisionParams))
+	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, Channel, CollisionParams))
 	{
 		return HitResult.Location + FVector(0.0, 0.0, CapsuleHalfHeight);
 	}
