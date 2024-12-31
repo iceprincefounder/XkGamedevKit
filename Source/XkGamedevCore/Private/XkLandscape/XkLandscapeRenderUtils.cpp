@@ -375,4 +375,14 @@ FLinearColor Hue2RGB(int32 Index)
 	FLinearColor rgb = FLinearColor(
 		FMath::Clamp(r, 0.0, 1.0), FMath::Clamp(g, 0.0, 1.0), FMath::Clamp(b, 0.0, 1.0)); //combine components
 	return rgb;
-};
+}
+
+
+float SphericalHeight(const FVector& CameraLocation, const FVector& WorldLocation)
+{
+	float x = FVector::Dist2D(CameraLocation, WorldLocation);
+	const float a = -0.00001f;
+	const float b = 6400.0f;
+	float y = FMath::Pow(FMath::Max(x - b, 0.0f), 2.0f) * a;
+	return y;
+}

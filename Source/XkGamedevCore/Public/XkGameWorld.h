@@ -9,6 +9,7 @@
 #include "XkHexagon/XkHexagonActors.h"
 #include "XkHexagon/XkHexagonComponents.h"
 #include "XkHexagon/XkHexagonPathfinding.h"
+#include "XkLandscape/XkLandscapeRenderUtils.h"
 #include "XkRenderer/XkRendererRenderUtils.h"
 #include "XkGameWorld.generated.h"
 
@@ -76,4 +77,10 @@ public:
 
 	UFUNCTION(CallInEditor, BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	void RegenerateWorld();
+
+public:
+	static float CalcSphericalHeight(const FVector& CameraLocation, const FVector& WorldLocation)
+	{
+		return SphericalHeight(CameraLocation, WorldLocation);
+	}
 };

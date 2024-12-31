@@ -231,7 +231,7 @@ public:
 	FORCEINLINE virtual TArray<FVector> GetValidMovementTargets() const;
 	/** Final movement target base on current movement point.*/
 	FORCEINLINE virtual FVector GetFinalMovementTarget() const;
-	FORCEINLINE virtual FVector GetLineTraceLocation(const FVector& Input);
+	FORCEINLINE virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn);
 	//~ End UXkTargetMovement Interface
 
 	static FVector CalcParaCurve(const FVector& Start, const FVector& End, const float CurveArc, const float CurveDist);
