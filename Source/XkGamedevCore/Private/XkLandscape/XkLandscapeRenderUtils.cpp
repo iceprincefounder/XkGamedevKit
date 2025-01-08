@@ -34,12 +34,11 @@ void FQuadtreeNode::Cull(TArray<int32>& OutNodes, const FConvexVolume* InCamera,
 	vCenter3D += RootOffset;
 	FVector vExtent3D = NodeBox.GetExtent();
 
-	FBox CameraBox = FBox(-vExtent3D + InCameraPos, vExtent3D + InCameraPos);
-	FBox TranslatedNodeBox = FBox(-vExtent3D + vCenter3D, vExtent3D + vCenter3D);
 	float fExtent = vExtent3D.X;
 	float fNodeSize = fExtent * 2;
-	float fDistance = FVector::Dist2D(InCameraPos, vCenter3D);
 	bool bRootNode = fNodeSize > Quadtree->MaxNodeSize * Quadtree->UnrealUnitScale;
+	// Scale node extent a little bit to avoid some xy displacement which might show a culled node
+	vExtent3D += FVector(100.0);
 	bool bIntersect = InCamera->IntersectBox(vCenter3D, vExtent3D);
 	if (bIntersect)
 	{
