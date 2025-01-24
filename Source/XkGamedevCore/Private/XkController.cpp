@@ -119,6 +119,8 @@ void AXkParabolaCurve::SetParabolaCurveColor(const FLinearColor& Color)
 AXkGamepadCursor::AXkGamepadCursor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder(TEXT("/XkGamedevKit/Materials/M_CursorFocus"));
+	GetDecal()->SetDecalMaterial(ObjectFinder.Object);
 	GetDecal()->DecalSize = FVector(512, 128, 128);
 	Radius = 50.0;
 }
@@ -215,6 +217,7 @@ void AXkGamepadCursor::SetVisibility(const bool Input)
 AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	GamepadCursorClass = AXkGamepadCursor::StaticClass();
 	bShowMouseCursor = true;
 	DefaultMouseCursor = EMouseCursor::Default;
 	ShortPressThreshold = 0.1;
@@ -226,38 +229,35 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	MouseDraggingSensibility = 1.5;
 	MouseRotatingSensibility = 1.0;
 	GamepadCursorMovingSpeed = 1000.0;
-	GamepadCursorMaterial = nullptr;
 
 	FollowTime = 0.f;
 	bIsCameraDraggingButtonPressing = false;
 	bIsCameraRotatingButtonPressing = false;
 
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder(TEXT("/XkGamedevKit/Materials/M_CursorFocus"));
-	GamepadCursorMaterial = ObjectFinder.Object;
-	static ConstructorHelpers::FObjectFinder<UInputMappingContext> ObjectFinder2(TEXT("/XkGamedevKit/Inputs/IMC_XkController"));
-	DefaultMappingContext = ObjectFinder2.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder3(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionClick"));
-	SetSelectionClickAction = ObjectFinder3.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder4(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionTouch"));
-	SetSelectionTouchAction = ObjectFinder4.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder5(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionClick"));
-	SetDeselectionClickAction = ObjectFinder5.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder6(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionTouch"));
-	SetDeselectionTouchAction = ObjectFinder6.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder7(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDragging"));
-	SetCameraDraggingAction = ObjectFinder7.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder8(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDraggingPress"));
-	SetCameraDraggingPressAction = ObjectFinder8.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder9(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotating"));
-	SetCameraRotatingAction = ObjectFinder9.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder10(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotatingPress"));
-	SetCameraRotatingPressAction = ObjectFinder10.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder11(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraZooming"));
-	SetCameraZoomingAction = ObjectFinder11.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder12(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadCursorMovement"));
-	SetGamepadCursorMovementAction = ObjectFinder12.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder13(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadSwitch"));
-	SetGamepadSwitchAction = ObjectFinder13.Object;
+	static ConstructorHelpers::FObjectFinder<UInputMappingContext> ObjectFinder(TEXT("/XkGamedevKit/Inputs/IMC_XkController"));
+	DefaultMappingContext = ObjectFinder.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder2(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionClick"));
+	SetSelectionClickAction = ObjectFinder2.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder3(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionTouch"));
+	SetSelectionTouchAction = ObjectFinder3.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder4(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionClick"));
+	SetDeselectionClickAction = ObjectFinder4.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder5(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionTouch"));
+	SetDeselectionTouchAction = ObjectFinder5.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder6(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDragging"));
+	SetCameraDraggingAction = ObjectFinder6.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder7(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDraggingPress"));
+	SetCameraDraggingPressAction = ObjectFinder7.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder8(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotating"));
+	SetCameraRotatingAction = ObjectFinder8.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder9(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotatingPress"));
+	SetCameraRotatingPressAction = ObjectFinder9.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder10(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraZooming"));
+	SetCameraZoomingAction = ObjectFinder10.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder11(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadCursorMovement"));
+	SetGamepadCursorMovementAction = ObjectFinder11.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder12(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadSwitch"));
+	SetGamepadSwitchAction = ObjectFinder12.Object;
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
@@ -281,13 +281,9 @@ EXkControlsFlavor AXkController::SetControlsFlavor(const EXkControlsFlavor NewCo
 			{
 				HitPoint = HitResult.ImpactPoint;
 			}
-			if (ensure(GetWorld()))
+			if (ensure(GetWorld()) && GamepadCursorClass)
 			{
-				AXkGamepadCursor* SpawnedActor = GetWorld()->SpawnActor<AXkGamepadCursor>(HitPoint, FRotator::ZeroRotator);
-				if (GamepadCursorMaterial && IsValid(GamepadCursorMaterial))
-				{
-					SpawnedActor->SetDecalMaterial(GamepadCursorMaterial);
-				}
+				AXkGamepadCursor* SpawnedActor = GetWorld()->SpawnActor<AXkGamepadCursor>(GamepadCursorClass, HitPoint, FRotator::ZeroRotator);
 				GamepadCursor = MakeWeakObjectPtr(SpawnedActor);
 			}
 			check(GamepadCursor.IsValid());
