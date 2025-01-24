@@ -1,4 +1,4 @@
-﻿// Copyright ©XUKAI. All Rights Reserved.
+﻿// Copyright ©ICEPRINCE. All Rights Reserved.
 
 #include "XkLandscape/XkGerstnerWaterWave.h"
 #include "XkLandscape/XkLandscapeComponents.h"

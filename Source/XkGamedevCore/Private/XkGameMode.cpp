@@ -1,4 +1,4 @@
-﻿// Copyright ©XUKAI. All Rights Reserved.
+﻿// Copyright ©ICEPRINCE. All Rights Reserved.
 
 #include "XkGameMode.h"
 #include "XkCamera.h"
