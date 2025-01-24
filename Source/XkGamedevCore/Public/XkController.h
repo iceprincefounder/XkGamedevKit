@@ -124,6 +124,9 @@ public:
 	/** Default UObject constructor. */
 	AXkController(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
+	TSubclassOf<AXkGamepadCursor> GamepadCursorClass;
+
 	/** Time Threshold to know if it was a short press */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float ShortPressThreshold;
@@ -151,9 +154,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float GamepadCursorMovingSpeed;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Strategic Chess Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	class UMaterialInterface* GamepadCursorMaterial;
 
 	/** MappingContext */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta=(AllowPrivateAccess = "true"))
