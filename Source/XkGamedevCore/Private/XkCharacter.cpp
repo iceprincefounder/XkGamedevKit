@@ -1,4 +1,4 @@
-// Copyright ©XUKAI. All Rights Reserved.
+// Copyright ©ICEPRINCE. All Rights Reserved.
 
 #include "XkCharacter.h"
 #include "UObject/ConstructorHelpers.h"

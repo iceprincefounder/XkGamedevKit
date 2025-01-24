@@ -1,4 +1,4 @@
-﻿// Copyright ©XUKAI. All Rights Reserved.
+﻿// Copyright ©ICEPRINCE. All Rights Reserved.
 
 #include "XkLandscape/XkLandscapeActors.h"
 #include "LandscapeStreamingProxy.h"

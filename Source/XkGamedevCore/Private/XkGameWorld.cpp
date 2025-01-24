@@ -1,7 +1,7 @@
 #include "XkGameWorld.h"
 #include "XkGameWorld.h"
 #include "XkGameWorld.h"
-// Copyright ©XUKAI. All Rights Reserved.
+// Copyright ©ICEPRINCE. All Rights Reserved.
 
 #include "XkGameWorld.h"
 #include "XkHexagon/XkHexagonPathfinding.h"
