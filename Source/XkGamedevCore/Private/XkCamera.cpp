@@ -6,11 +6,57 @@
 #include "Components/DecalComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/ArrowComponent.h"
+#include "Components/SceneCaptureComponent2D.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Materials/Material.h"
 #include "Engine/World.h"
+
+AXkCharacterCamera::AXkCharacterCamera(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	// Set size for player capsule
+	CapsuleComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Capsule"));
+	CapsuleComponent->InitCapsuleSize(42.f, 42.f);
+	CapsuleComponent->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
+	CapsuleComponent->CanCharacterStepUpOn = ECB_No;
+	CapsuleComponent->SetShouldUpdatePhysicsVolume(true);
+	CapsuleComponent->SetCanEverAffectNavigation(false);
+	CapsuleComponent->bDynamicObstacle = true;
+	RootComponent = CapsuleComponent;
+
+#if WITH_EDITORONLY_DATA
+	ArrowComponent = CreateEditorOnlyDefaultSubobject<UArrowComponent>(TEXT("Arrow"));
+	if (ArrowComponent)
+	{
+		ArrowComponent->ArrowColor = FColor(150, 200, 255);
+		ArrowComponent->bTreatAsASprite = true;
+		ArrowComponent->SpriteInfo.Category = TEXT("ID_Camera");
+		ArrowComponent->SpriteInfo.DisplayName = FText::FromString(TEXT("ID_Camera"));
+		ArrowComponent->SetupAttachment(CapsuleComponent);
+		ArrowComponent->bIsScreenSizeScaled = true;
+		ArrowComponent->SetSimulatePhysics(false);
+	}
+#endif // WITH_EDITORONLY_DATA
+
+	// Create a camera boom...
+	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	CameraBoom->SetupAttachment(RootComponent);
+	CameraBoom->SetUsingAbsoluteRotation(true); // Don't want arm to rotate when character does
+	CameraBoom->TargetArmLength = 400.0f;
+	CameraBoom->SetRelativeRotation(FRotator(0.0f, 0.f, 0.f));
+	CameraBoom->bDoCollisionTest = false; // Don't want to pull camera in when it collides with level
+	CameraBoom->bEnableCameraLag = true;
+	CameraBoom->bEnableCameraRotationLag = true;
+	CameraBoom->CameraLagSpeed = 20.0;
+	CameraBoom->CameraRotationLagSpeed = 20.0;
+
+	// Create a camera...
+	SceneCaptureComponent = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("CharacterCamera"));
+	SceneCaptureComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+}
+
 
 AXkTopDownCamera::AXkTopDownCamera(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
