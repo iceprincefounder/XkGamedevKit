@@ -17,6 +17,49 @@ class XKGAMEDEVCORE_API AXkCamera : public APawn
 
 
 UCLASS(Blueprintable)
+class XKGAMEDEVCORE_API AXkCharacterCamera : public AXkCamera
+{
+	GENERATED_BODY()
+
+	/** The CapsuleComponent being used for movement collision (by CharacterMovement). Always treated as being vertically aligned in simple collision check functions. */
+	UPROPERTY(Category="Character [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UCapsuleComponent> CapsuleComponent;
+
+	/** Character camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	class USceneCaptureComponent2D* SceneCaptureComponent;
+
+	/** Camera boom positioning the camera above the character */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	class USpringArmComponent* CameraBoom;
+
+#if WITH_EDITORONLY_DATA
+	/** Component shown in the editor only to indicate character facing */
+	UPROPERTY()
+	TObjectPtr<UArrowComponent> ArrowComponent;
+#endif
+
+public:
+	/** Default UObject constructor. */
+	AXkCharacterCamera(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+	/** Returns TopDownCameraComponent subobject **/
+	FORCEINLINE class USceneCaptureComponent2D* GetSceneCaptureComponent() const { return SceneCaptureComponent; }
+
+	/** Returns CameraBoom subobject **/
+	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
+
+	/** Returns CapsuleComponent subobject **/
+	FORCEINLINE class UCapsuleComponent* GetCapsuleComponent() const { return CapsuleComponent; }
+
+#if WITH_EDITORONLY_DATA
+	/** Returns ArrowComponent subobject **/
+	FORCEINLINE class UArrowComponent* GetArrowComponent() const { return ArrowComponent; }
+#endif
+};
+
+
+UCLASS(Blueprintable)
 class XKGAMEDEVCORE_API AXkTopDownCamera : public AXkCamera
 {
 	GENERATED_BODY()
@@ -89,7 +132,7 @@ public:
 	/** Returns ArrowComponent subobject **/
 	FORCEINLINE class UArrowComponent* GetArrowComponent() const { return ArrowComponent; }
 #endif
-	
+
 	FORCEINLINE virtual void SetOutlineColor(const FLinearColor& InColor);
 
 	FORCEINLINE virtual void AddMovement(const FVector2D& InputValue, const float Speed);
