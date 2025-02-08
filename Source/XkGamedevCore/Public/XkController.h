@@ -261,10 +261,10 @@ protected:
 	EXkControlsCursorArea ControlsCursorArea;
 
 	UPROPERTY(Transient)
-	FVector2D CachedMouseCursorLocation;
+	mutable FVector2D CachedMouseCursorLocation;
 
 	UPROPERTY(Transient)
-	FVector CachedGamepadCursorLocation;
+	mutable FVector CachedGamepadCursorLocation;
 
 	UPROPERTY(Transient)
 	float HoveringTime;

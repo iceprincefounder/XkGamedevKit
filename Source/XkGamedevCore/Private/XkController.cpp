@@ -221,7 +221,7 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	bShowMouseCursor = true;
 	DefaultMouseCursor = EMouseCursor::Default;
 	ShortPressThreshold = 0.1;
-	MaxHoveringThreshold = 0.5;
+	MaxHoveringThreshold = 0.25;
 	CameraScrollingSpeed = 1000.0;
 	CameraDraggingSpeed = 1500;
 	CameraRotatingSpeed = 120.0;
@@ -443,19 +443,7 @@ void AXkController::TickActor(float DeltaTime, enum ELevelTick TickType, FActorT
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkController_TickActor);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkController_TickActor);
 
-	if (IsOnUI())
-	{
-		return Super::TickActor(DeltaTime, TickType, ThisTickFunction);
-	}
-
-	if ((IsMouseCursorMoving() || IsGamepadCursorMoving()))
-	{
-		HoveringTime = 0.0f;
-	}
-	else
-	{
-		HoveringTime = (HoveringTime + DeltaTime);
-	}
+	HoveringTime = (IsMouseCursorMoving() || IsGamepadCursorMoving()) ? 0.0f : (HoveringTime + DeltaTime);
 
 	if (ControlsFlavor == EXkControlsFlavor::Keyboard)
 	{
@@ -475,7 +463,7 @@ void AXkController::TickActor(float DeltaTime, enum ELevelTick TickType, FActorT
 
 			float PercentX = MouseLocation.X / (float)ViewportSizeX;
 			float PercentY = MouseLocation.Y / (float)ViewportSizeY;
-			if (PercentX < 0.01 || PercentX > 0.99 || PercentY < 0.01 || PercentY > 0.99)
+			if (!IsOnUI() && (PercentX < 0.01 || PercentX > 0.99 || PercentY < 0.01 || PercentY > 0.99))
 			{
 				FVector2D MovementVector = FVector2D::ZeroVector;
 				if (PercentX < 0.01)
@@ -898,7 +886,7 @@ bool AXkController::IsMouseCursorMoving() const
 		if (!bIsCameraDraggingButtonPressing && !bIsCameraRotatingButtonPressing)
 		{
 			FVector2D MouseLocation;
-			return (GetMousePosition(MouseLocation.X, MouseLocation.Y) && FVector2D::Distance(MouseLocation, CachedMouseCursorLocation) != 0);
+			return (GetMousePosition(MouseLocation.X, MouseLocation.Y) && FVector2D::Distance(MouseLocation, CachedMouseCursorLocation) >= 3.0);
 		}
 	}
 	return false;
@@ -912,7 +900,7 @@ bool AXkController::IsGamepadCursorMoving() const
 		if (GamepadCursor.IsValid())
 		{
 			FVector GamepadCursorLocation = GamepadCursor->GetActorLocation();
-			return (FVector::Distance(GamepadCursorLocation, CachedGamepadCursorLocation) != 0);
+			return (FVector::Distance(GamepadCursorLocation, CachedGamepadCursorLocation) >= 3.0);
 		}
 	}
 	return false;
