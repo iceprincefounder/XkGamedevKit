@@ -215,8 +215,7 @@ public:
 
 	/** Sets the current controls flavor of the UI, if applicable. */
 	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXUGAMEDEV]")
-	virtual EXkControlsFlavor SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor);
-
+	virtual void SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor);
 protected:
 	virtual void SetupInputComponent() override;
 	

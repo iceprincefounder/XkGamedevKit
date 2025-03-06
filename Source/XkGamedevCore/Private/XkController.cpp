@@ -18,6 +18,7 @@
 #include "Components/SplineMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/CanvasPanelSlot.h"
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -265,7 +266,7 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 }
 
 
-EXkControlsFlavor AXkController::SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor)
+void AXkController::SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor)
 {
 	if (ControlsFlavor != NewControlsFlavor)
 	{
@@ -306,7 +307,6 @@ EXkControlsFlavor AXkController::SetControlsFlavor(const EXkControlsFlavor NewCo
 		FSlateApplication::Get().QueryCursor();
 		ControlsFlavorChangedEvent.Broadcast(NewControlsFlavor);
 	}
-	return ControlsFlavor;
 }
 
 
