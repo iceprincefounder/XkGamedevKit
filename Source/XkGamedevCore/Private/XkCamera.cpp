@@ -18,7 +18,7 @@ AXkCharacterCamera::AXkCharacterCamera(const FObjectInitializer& ObjectInitializ
 {
 	// Set size for player capsule
 	CapsuleComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Capsule"));
-	CapsuleComponent->InitCapsuleSize(42.f, 42.f);
+	CapsuleComponent->InitCapsuleSize(15.f, 15.f);
 	CapsuleComponent->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
 	CapsuleComponent->CanCharacterStepUpOn = ECB_No;
 	CapsuleComponent->SetShouldUpdatePhysicsVolume(true);
@@ -43,18 +43,46 @@ AXkCharacterCamera::AXkCharacterCamera(const FObjectInitializer& ObjectInitializ
 	// Create a camera boom...
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->SetUsingAbsoluteRotation(true); // Don't want arm to rotate when character does
+	CameraBoom->SetUsingAbsoluteRotation(false); // Use arm to rotate when character does
 	CameraBoom->TargetArmLength = 400.0f;
 	CameraBoom->SetRelativeRotation(FRotator(0.0f, 0.f, 0.f));
-	CameraBoom->bDoCollisionTest = false; // Don't want to pull camera in when it collides with level
-	CameraBoom->bEnableCameraLag = true;
-	CameraBoom->bEnableCameraRotationLag = true;
+	CameraBoom->bDoCollisionTest = false;
+	CameraBoom->bEnableCameraLag = false;
+	CameraBoom->bEnableCameraRotationLag = false;
 	CameraBoom->CameraLagSpeed = 20.0;
 	CameraBoom->CameraRotationLagSpeed = 20.0;
 
 	// Create a camera...
 	SceneCaptureComponent = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("CharacterCamera"));
 	SceneCaptureComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+}
+
+
+void AXkCharacterCamera::AddRotation(const FVector2D& InputValue, const float Speed)
+{
+	SCOPED_NAMED_EVENT(AXkCharacterCamera_AddRotation, FColor::Red);
+	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkCharacterCamera_AddRotation);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkCharacterCamera_AddRotation);
+
+	if (!ensure(GetWorld()))
+	{
+		return;
+	}
+	float DeltaSeconds = GetWorld()->GetDeltaSeconds();
+
+	float InputValueX = InputValue.X;
+
+	float InputValueY = InputValue.Y;
+
+	FRotator Rotator = CameraBoom->GetRelativeRotation();
+	float Pitch = Rotator.Pitch;
+	float Yaw = Rotator.Yaw;
+	float Roll = 0.0f;
+
+	Yaw += InputValueX * Speed * DeltaSeconds;
+	Yaw = FRotator::ClampAxis(Yaw);
+	FRotator NewRotator = FRotator(Pitch, Yaw, Roll);
+	CameraBoom->SetRelativeRotation(NewRotator);
 }
 
 

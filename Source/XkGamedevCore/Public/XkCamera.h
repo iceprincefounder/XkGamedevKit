@@ -56,6 +56,8 @@ public:
 	/** Returns ArrowComponent subobject **/
 	FORCEINLINE class UArrowComponent* GetArrowComponent() const { return ArrowComponent; }
 #endif
+
+	FORCEINLINE virtual void AddRotation(const FVector2D& InputValue, const float Speed);
 };
 
 
