@@ -41,8 +41,8 @@ AXkParabolaCurve::AXkParabolaCurve(const FObjectInitializer& ObjectInitializer)
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder2(TEXT("/XkGamedevKit/Materials/M_GuidelineParabolaMesh.M_GuidelineParabolaMesh"));
 	ParabolaMeshMaterial = ObjectFinder2.Object;
 
-	ParabolaStartScale = 0.075;
-	ParabolaEndScale = 0.075;
+	ParabolaStartScale = 0.05;
+	ParabolaEndScale = 0.05;
 	ParabolaPointsNum = 10;
 
 	PrimaryActorTick.bCanEverTick = false;
