@@ -64,7 +64,7 @@ void AXkParabolaCurve::OnConstruction(const FTransform& Transform)
 void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& End, const float ParaCurveArc)
 {
 	ParabolaSpline->ClearSplinePoints();
-	TArray<FVector> Points = UXkTargetMovement::CalcParaCurvePoints(Start, End, ParaCurveArc, ParabolaPointsNum);
+	TArray<FVector> Points = UXkTargetMovementComponent::CalcParaCurvePoints(Start, End, ParaCurveArc, ParabolaPointsNum);
 	for (int32 i = 0; i < Points.Num(); ++i)
 	{
 		ParabolaSpline->AddSplinePoint(Points[i], ESplineCoordinateSpace::World);
@@ -235,30 +235,39 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	bIsCameraDraggingButtonPressing = false;
 	bIsCameraRotatingButtonPressing = false;
 
-	static ConstructorHelpers::FObjectFinder<UInputMappingContext> ObjectFinder(TEXT("/XkGamedevKit/Inputs/IMC_XkController"));
-	DefaultMappingContext = ObjectFinder.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder2(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionClick"));
-	SetSelectionClickAction = ObjectFinder2.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder3(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionTouch"));
-	SetSelectionTouchAction = ObjectFinder3.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder4(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionClick"));
-	SetDeselectionClickAction = ObjectFinder4.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder5(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionTouch"));
-	SetDeselectionTouchAction = ObjectFinder5.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder6(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDragging"));
-	SetCameraDraggingAction = ObjectFinder6.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder7(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDraggingPress"));
-	SetCameraDraggingPressAction = ObjectFinder7.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder8(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotating"));
-	SetCameraRotatingAction = ObjectFinder8.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder9(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotatingPress"));
-	SetCameraRotatingPressAction = ObjectFinder9.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder10(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraZooming"));
-	SetCameraZoomingAction = ObjectFinder10.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder11(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadCursorMovement"));
-	SetGamepadCursorMovementAction = ObjectFinder11.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> ObjectFinder12(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadSwitch"));
-	SetGamepadSwitchAction = ObjectFinder12.Object;
+	static ConstructorHelpers::FObjectFinder<UInputMappingContext> XkControllerRealTime(TEXT("/XkGamedevKit/Inputs/IMC_XkControllerRealTime"));
+	DefaultRealTimeMappingContext = XkControllerRealTime.Object;
+	static ConstructorHelpers::FObjectFinder<UInputMappingContext> XkControllerTurnBased(TEXT("/XkGamedevKit/Inputs/IMC_XkControllerTurnBased"));
+	DefaultTurnBasedMappingContext = XkControllerTurnBased.Object;
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetCharacterMove(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCharacterMove"));
+	SetCharacterMoveAction = SetCharacterMove.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetCharacterJump(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCharacterJump"));
+	SetCharacterJumpAction = SetCharacterJump.Object;
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetCameraDragging(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDragging"));
+	SetCameraDraggingAction = SetCameraDragging.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetCameraDraggingPress(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraDraggingPress"));
+	SetCameraDraggingPressAction = SetCameraDraggingPress.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetCameraRotating(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotating"));
+	SetCameraRotatingAction = SetCameraRotating.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetCameraRotatingPress(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraRotatingPress"));
+	SetCameraRotatingPressAction = SetCameraRotatingPress.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetCameraZooming(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetCameraZooming"));
+	SetCameraZoomingAction = SetCameraZooming.Object;
+
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetSelectionClick(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionClick"));
+	SetSelectionClickAction = SetSelectionClick.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetSelectionTouch(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetSelectionTouch"));
+	SetSelectionTouchAction = SetSelectionTouch.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetDeselectionClick(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionClick"));
+	SetDeselectionClickAction = SetDeselectionClick.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetDeselectionTouch(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionTouch"));
+	SetDeselectionTouchAction = SetDeselectionTouch.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetGamepadCursorMovement(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadCursorMovement"));
+	SetGamepadCursorMovementAction = SetGamepadCursorMovement.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetGamepadNavigation(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadNavigation"));
+	SetGamepadNavigationAction = SetGamepadNavigation.Object;
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
@@ -356,6 +365,34 @@ void AXkController::SetupInputComponent()
 	// Set up action bindings
 	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent))
 	{
+		// Setup character input events of move
+		EnhancedInputComponent->BindAction(SetCharacterMoveAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
+		EnhancedInputComponent->BindAction(SetCharacterMoveAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCharacterMoveTriggered);
+
+		// Setup character input events of jump
+		EnhancedInputComponent->BindAction(SetCharacterJumpAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
+		EnhancedInputComponent->BindAction(SetCharacterJumpAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCharacterJumpTriggered);
+		EnhancedInputComponent->BindAction(SetCharacterJumpAction, ETriggerEvent::Completed, this, &AXkController::OnSetCharacterJumpCompleted);
+
+		// Setup camera input events of dragging
+		EnhancedInputComponent->BindAction(SetCameraDraggingAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
+		EnhancedInputComponent->BindAction(SetCameraDraggingAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCameraDraggingTriggered);
+		EnhancedInputComponent->BindAction(SetCameraDraggingPressAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCameraDraggingPressing);
+		EnhancedInputComponent->BindAction(SetCameraDraggingPressAction, ETriggerEvent::Completed, this, &AXkController::OnSetCameraDraggingReleased);
+		EnhancedInputComponent->BindAction(SetCameraDraggingPressAction, ETriggerEvent::Canceled, this, &AXkController::OnSetCameraDraggingReleased);
+		// Setup camera input events of rotating
+		EnhancedInputComponent->BindAction(SetCameraRotatingAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
+		EnhancedInputComponent->BindAction(SetCameraRotatingAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCameraRotatingTriggered);
+		EnhancedInputComponent->BindAction(SetCameraRotatingPressAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCameraRotatingPressing);
+		EnhancedInputComponent->BindAction(SetCameraRotatingPressAction, ETriggerEvent::Completed, this, &AXkController::OnSetCameraRotatingReleased);
+		EnhancedInputComponent->BindAction(SetCameraRotatingPressAction, ETriggerEvent::Canceled, this, &AXkController::OnSetCameraRotatingReleased);
+		// Setup camera input events of zooming
+		EnhancedInputComponent->BindAction(SetCameraZoomingAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
+		EnhancedInputComponent->BindAction(SetCameraZoomingAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCameraZoomingTriggered);
+		EnhancedInputComponent->BindAction(SetCameraZoomingAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCameraZoomingPressing);
+		EnhancedInputComponent->BindAction(SetCameraZoomingAction, ETriggerEvent::Completed, this, &AXkController::OnSetCameraZoomingReleased);
+		EnhancedInputComponent->BindAction(SetCameraZoomingAction, ETriggerEvent::Canceled, this, &AXkController::OnSetCameraZoomingReleased);
+
 		// Setup mouse input events of selection
 		EnhancedInputComponent->BindAction(SetSelectionClickAction, ETriggerEvent::Started, this, &AXkController::OnSetSelectionStarted);
 		EnhancedInputComponent->BindAction(SetSelectionClickAction, ETriggerEvent::Triggered, this, &AXkController::OnSetSelectionTriggered);
@@ -370,36 +407,17 @@ void AXkController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(SetDeselectionClickAction, ETriggerEvent::Completed, this, &AXkController::OnSetDeselectionReleased);
 		EnhancedInputComponent->BindAction(SetDeselectionClickAction, ETriggerEvent::Canceled, this, &AXkController::OnSetDeselectionReleased);
 
-		EnhancedInputComponent->BindAction(SetCameraDraggingAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
-		EnhancedInputComponent->BindAction(SetCameraDraggingAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCameraDraggingTriggered);
-		EnhancedInputComponent->BindAction(SetCameraDraggingPressAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCameraDraggingPressing);
-		EnhancedInputComponent->BindAction(SetCameraDraggingPressAction, ETriggerEvent::Completed, this, &AXkController::OnSetCameraDraggingReleased);
-		EnhancedInputComponent->BindAction(SetCameraDraggingPressAction, ETriggerEvent::Canceled, this, &AXkController::OnSetCameraDraggingReleased);
-
-		EnhancedInputComponent->BindAction(SetCameraRotatingAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
-		EnhancedInputComponent->BindAction(SetCameraRotatingAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCameraRotatingTriggered);
-		EnhancedInputComponent->BindAction(SetCameraRotatingPressAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCameraRotatingPressing);
-		EnhancedInputComponent->BindAction(SetCameraRotatingPressAction, ETriggerEvent::Completed, this, &AXkController::OnSetCameraRotatingReleased);
-		EnhancedInputComponent->BindAction(SetCameraRotatingPressAction, ETriggerEvent::Canceled, this, &AXkController::OnSetCameraRotatingReleased);
-
-		EnhancedInputComponent->BindAction(SetCameraZoomingAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
-		EnhancedInputComponent->BindAction(SetCameraZoomingAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCameraZoomingTriggered);
-		EnhancedInputComponent->BindAction(SetCameraZoomingAction, ETriggerEvent::Triggered, this, &AXkController::OnSetCameraZoomingPressing);
-		EnhancedInputComponent->BindAction(SetCameraZoomingAction, ETriggerEvent::Completed, this, &AXkController::OnSetCameraZoomingReleased);
-		EnhancedInputComponent->BindAction(SetCameraZoomingAction, ETriggerEvent::Canceled, this, &AXkController::OnSetCameraZoomingReleased);
-
-
 		EnhancedInputComponent->BindAction(SetGamepadCursorMovementAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
 		EnhancedInputComponent->BindAction(SetGamepadCursorMovementAction, ETriggerEvent::Triggered, this, &AXkController::OnSetGamepadCursorMovementTriggered);
 		EnhancedInputComponent->BindAction(SetGamepadCursorMovementAction, ETriggerEvent::Triggered, this, &AXkController::OnSetGamepadCursorMovementPressing);
 		EnhancedInputComponent->BindAction(SetGamepadCursorMovementAction, ETriggerEvent::Completed, this, &AXkController::OnSetGamepadCursorMovementReleased);
 		EnhancedInputComponent->BindAction(SetGamepadCursorMovementAction, ETriggerEvent::Canceled, this, &AXkController::OnSetGamepadCursorMovementReleased);
 
-		EnhancedInputComponent->BindAction(SetGamepadSwitchAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
-		EnhancedInputComponent->BindAction(SetGamepadSwitchAction, ETriggerEvent::Triggered, this, &AXkController::OnSetGamepadSwitchTriggered);
-		EnhancedInputComponent->BindAction(SetGamepadSwitchAction, ETriggerEvent::Triggered, this, &AXkController::OnSetGamepadSwitchPressing);
-		EnhancedInputComponent->BindAction(SetGamepadSwitchAction, ETriggerEvent::Completed, this, &AXkController::OnSetGamepadSwitchReleased);
-		EnhancedInputComponent->BindAction(SetGamepadSwitchAction, ETriggerEvent::Canceled, this, &AXkController::OnSetGamepadSwitchReleased);
+		EnhancedInputComponent->BindAction(SetGamepadNavigationAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
+		EnhancedInputComponent->BindAction(SetGamepadNavigationAction, ETriggerEvent::Triggered, this, &AXkController::OnSetGamepadNavigationTriggered);
+		EnhancedInputComponent->BindAction(SetGamepadNavigationAction, ETriggerEvent::Triggered, this, &AXkController::OnSetGamepadNavigationPressing);
+		EnhancedInputComponent->BindAction(SetGamepadNavigationAction, ETriggerEvent::Completed, this, &AXkController::OnSetGamepadNavigationReleased);
+		EnhancedInputComponent->BindAction(SetGamepadNavigationAction, ETriggerEvent::Canceled, this, &AXkController::OnSetGamepadNavigationReleased);
 
 		// Setup touch input events
 		EnhancedInputComponent->BindAction(SetSelectionTouchAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
@@ -422,7 +440,7 @@ void AXkController::BeginPlay()
 	//Add Input Mapping Context
 	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
 	{
-		Subsystem->AddMappingContext(DefaultMappingContext, 0);
+		Subsystem->AddMappingContext(DefaultRealTimeMappingContext, 0);
 	}
 	ControlsFlavor = EXkControlsFlavor::None;
 
@@ -548,6 +566,52 @@ void AXkController::OnInputStarted()
 void AXkController::OnInputPressing()
 {
 	FollowTime += GetWorld()->GetDeltaSeconds();
+}
+
+
+void AXkController::OnSetCharacterMoveTriggered(const FInputActionValue& Value)
+{
+	// input is a Vector2D
+	FVector2D MovementVector = Value.Get<FVector2D>();
+	if (AXkCharacter* ControlledCharacter = GetControlledCharacter())
+	{
+		// find out which way is forward
+		if (AXkTopDownCamera* TopDownCamera = GetTopDownCamera())
+		{
+			const FRotator Rotation = TopDownCamera->GetForwardRotator();
+			const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+			// get forward vector
+			const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+
+			// get right vector 
+			const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+			// add movement 
+			ControlledCharacter->EnableCharacterMovement();
+			ControlledCharacter->AddMovementInput(ForwardDirection, MovementVector.Y);
+			ControlledCharacter->AddMovementInput(RightDirection, MovementVector.X);
+			TopDownCamera->AddMoveTarget(ControlledCharacter->GetActorLocation());
+		}
+	}
+}
+
+
+void AXkController::OnSetCharacterJumpTriggered(const FInputActionValue& Value)
+{
+	if (AXkCharacter* ControlledCharacter = GetControlledCharacter())
+	{
+		ControlledCharacter->Jump();
+	}
+}
+
+
+void AXkController::OnSetCharacterJumpCompleted(const FInputActionValue& Value)
+{
+	if (AXkCharacter* ControlledCharacter = GetControlledCharacter())
+	{
+		ControlledCharacter->StopJumping();
+	}
 }
 
 
@@ -776,25 +840,25 @@ void AXkController::OnSetGamepadCursorMovementReleased()
 }
 
 
-void AXkController::OnSetGamepadSwitchTriggered(const FInputActionValue& Value)
+void AXkController::OnSetGamepadNavigationTriggered(const FInputActionValue& Value)
 {
 	FVector2D MovementVector = Value.Get<FVector2D>();
-	// @DEBUG: OnSetGamepadSwitchTriggered
+	// @DEBUG: OnSetGamepadNavigationTriggered
 	//if (FollowTime == 0.0f)
 	//{
-	//	FString Message = FString::Printf(TEXT("OnSetGamepadSwitchTriggered (%0.2f,%0.2f)"), MovementVector.X, MovementVector.Y);
+	//	FString Message = FString::Printf(TEXT("OnSetGamepadNavigationTriggered (%0.2f,%0.2f)"), MovementVector.X, MovementVector.Y);
 	//	GEngine->AddOnScreenDebugMessage(-1, 1.0, FColor::Green, *Message);
 	//}
 }
 
 
-void AXkController::OnSetGamepadSwitchPressing(const FInputActionValue& Value)
+void AXkController::OnSetGamepadNavigationPressing(const FInputActionValue& Value)
 {
 	OnInputPressing();
 }
 
 
-void AXkController::OnSetGamepadSwitchReleased()
+void AXkController::OnSetGamepadNavigationReleased()
 {
 }
 
@@ -933,6 +997,19 @@ class AXkTopDownCamera* AXkController::GetTopDownCamera() const
 	if (TopDownCamera && IsValid(TopDownCamera))
 	{
 		return TopDownCamera;
+	}
+	return nullptr;
+}
+
+
+AXkCharacter* AXkController::GetControlledCharacter() const
+{
+	for (TActorIterator<AXkCharacter> It(GetWorld()); It; ++It)
+	{
+		if (*It && IsValid(*It))
+		{
+			return *It;
+		}
 	}
 	return nullptr;
 }

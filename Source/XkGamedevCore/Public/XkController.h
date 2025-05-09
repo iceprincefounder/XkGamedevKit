@@ -10,6 +10,14 @@
 #include "XkController.generated.h"
 
 UENUM(BlueprintType, Blueprintable)
+enum class EXkControlsMode : uint8
+{
+	RealTime = 0,
+	TurnBased,
+};
+
+
+UENUM(BlueprintType, Blueprintable)
 enum class EXkControlsFlavor : uint8
 {
 	Keyboard,
@@ -157,19 +165,16 @@ public:
 
 	/** MappingContext */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta=(AllowPrivateAccess = "true"))
-	class UInputMappingContext* DefaultMappingContext;
+	class UInputMappingContext* DefaultRealTimeMappingContext;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta=(AllowPrivateAccess = "true"))
+	class UInputMappingContext* DefaultTurnBasedMappingContext;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta=(AllowPrivateAccess = "true"))
-	class UInputAction* SetSelectionClickAction;
+	class UInputAction* SetCharacterMoveAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta=(AllowPrivateAccess = "true"))
-	class UInputAction* SetSelectionTouchAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	class UInputAction* SetDeselectionClickAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	class UInputAction* SetDeselectionTouchAction;
+	class UInputAction* SetCharacterJumpAction;
 
 	/** Camera Dragging Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
@@ -191,23 +196,34 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetCameraZoomingAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta=(AllowPrivateAccess = "true"))
+	class UInputAction* SetSelectionClickAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta=(AllowPrivateAccess = "true"))
+	class UInputAction* SetSelectionTouchAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	class UInputAction* SetDeselectionClickAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	class UInputAction* SetDeselectionTouchAction;
+
 	/** Camera Scrolling Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetGamepadCursorMovementAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	class UInputAction* SetGamepadSwitchAction;
+	class UInputAction* SetGamepadNavigationAction;
+
+	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXUGAMEDEV]")
+	virtual EXkControlsMode GetControlsMode() const { return ControlsMode; };
+
+	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXUGAMEDEV]")
+	virtual void SetControlsMode(const EXkControlsMode NewControlsMode) { ControlsMode = NewControlsMode; };
 
 	/** Event delegate for when the controls flavor for the UI has changed. */
 	DECLARE_EVENT_OneParam(AXkController, FControlsFlavorChangedEvent, const EXkControlsFlavor);
 	FControlsFlavorChangedEvent& OnControlsFlavorChanged() { return ControlsFlavorChangedEvent; };
-
-	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
-	virtual FVector2D GetControlsCursorPositionOnScreen() const;
-
-	/** Returns the mouse area to switch mouse cursor. */
-	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
-	virtual EXkControlsCursorArea GetControlsCursorArea() const { return ControlsCursorArea; };
 
 	/** Returns the current controls flavor of the UI, if applicable. */
 	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
@@ -216,6 +232,14 @@ public:
 	/** Sets the current controls flavor of the UI, if applicable. */
 	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	virtual void SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor);
+
+	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
+	virtual FVector2D GetControlsCursorPositionOnScreen() const;
+
+	/** Returns the mouse area to switch mouse cursor. */
+	UFUNCTION(BlueprintPure, Category = "Input [KEVINTSUIXUGAMEDEV]")
+	virtual EXkControlsCursorArea GetControlsCursorArea() const { return ControlsCursorArea; };
+
 protected:
 	virtual void SetupInputComponent() override;
 	
@@ -226,14 +250,9 @@ protected:
 	/** Input handlers for SetDestination action. */
 	virtual void OnInputStarted();
 	virtual void OnInputPressing();
-	virtual void OnSetSelectionStarted() { OnInputStarted(); };
-	virtual void OnSetSelectionTriggered() {};
-	virtual void OnSetSelectionPressing() { OnInputPressing(); };
-	virtual void OnSetSelectionReleased() {};
-	virtual void OnSetDeselectionStarted() { OnInputStarted(); };
-	virtual void OnSetDeselectionTriggered() {};
-	virtual void OnSetDeselectionPressing() { OnInputPressing(); };
-	virtual void OnSetDeselectionReleased() {};
+	virtual void OnSetCharacterMoveTriggered(const FInputActionValue& Value);
+	virtual void OnSetCharacterJumpTriggered(const FInputActionValue& Value);
+	virtual void OnSetCharacterJumpCompleted(const FInputActionValue& Value);
 	virtual void OnSetCameraDraggingTriggered(const FInputActionValue& Value);
 	virtual void OnSetCameraDraggingPressing(const FInputActionValue& Value);
 	virtual void OnSetCameraDraggingReleased();
@@ -243,14 +262,25 @@ protected:
 	virtual void OnSetCameraZoomingTriggered(const FInputActionValue& Value);
 	virtual void OnSetCameraZoomingPressing(const FInputActionValue& Value) {};
 	virtual void OnSetCameraZoomingReleased() {};
+	virtual void OnSetSelectionStarted() { OnInputStarted(); };
+	virtual void OnSetSelectionTriggered() {};
+	virtual void OnSetSelectionPressing() { OnInputPressing(); };
+	virtual void OnSetSelectionReleased() {};
+	virtual void OnSetDeselectionStarted() { OnInputStarted(); };
+	virtual void OnSetDeselectionTriggered() {};
+	virtual void OnSetDeselectionPressing() { OnInputPressing(); };
+	virtual void OnSetDeselectionReleased() {};
 	virtual void OnSetGamepadCursorMovementTriggered(const FInputActionValue& Value);
 	virtual void OnSetGamepadCursorMovementPressing(const FInputActionValue& Value);
 	virtual void OnSetGamepadCursorMovementReleased();
-	virtual void OnSetGamepadSwitchTriggered(const FInputActionValue& Value);
-	virtual void OnSetGamepadSwitchPressing(const FInputActionValue& Value);
-	virtual void OnSetGamepadSwitchReleased();
+	virtual void OnSetGamepadNavigationTriggered(const FInputActionValue& Value);
+	virtual void OnSetGamepadNavigationPressing(const FInputActionValue& Value);
+	virtual void OnSetGamepadNavigationReleased();
 	virtual void OnTouchTriggered();
 	virtual void OnTouchReleased();
+
+	UPROPERTY(Transient)
+	EXkControlsMode ControlsMode;
 
 	UPROPERTY(Transient)
 	EXkControlsFlavor ControlsFlavor;
@@ -293,4 +323,5 @@ public:
 	virtual void SetGamepadCursorVisibility(const bool Input);
 	virtual class AXkGameState* GetGameState() const;
 	virtual class AXkTopDownCamera* GetTopDownCamera() const;
+	virtual class AXkCharacter* GetControlledCharacter() const;
 };

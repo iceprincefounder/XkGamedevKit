@@ -2,8 +2,6 @@
 
 #include "XkLandscape/XkGerstnerWaterWave.h"
 #include "XkLandscape/XkLandscapeComponents.h"
-#include "GerstnerWaterWaveViewExtension.h"
-#include "GerstnerWaterWaveSubsystem.h"
 #include "Containers/DynamicRHIResourceArray.h"
 #include "RenderingThread.h"
 #include "SceneView.h"

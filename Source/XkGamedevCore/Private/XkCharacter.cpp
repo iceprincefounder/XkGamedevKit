@@ -1,6 +1,7 @@
 // Copyright ©ICEPRINCE. All Rights Reserved.
 
 #include "XkCharacter.h"
+#include "XkController.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Components/DecalComponent.h"
@@ -13,6 +14,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Materials/Material.h"
 #include "Engine/World.h"
+
 
 UXkMovement::UXkMovement(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -37,17 +39,17 @@ AActor* UXkMovement::GetMovementActor() const
 }
 
 
-UXkTargetMovement::UXkTargetMovement(const FObjectInitializer& ObjectInitializer)
+UXkTargetMovementComponent::UXkTargetMovementComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	bBlinkMode = false;
 	bFailToGround = false;
 	MoveAcceler = 1.0f;
 	JumpAcceler = 1.0f;
-	ShotAcceler = 1.0f;
+	FlyAcceler = 1.0f;
 	SlideAcceler = 1.0f;
 	JumpArc = -0.5;
-	ShotArc = -0.1;
+	FlyArc = -0.1;
 	CapsuleHalfHeight = 0.0;
 
 	// Set default values
@@ -56,7 +58,7 @@ UXkTargetMovement::UXkTargetMovement(const FObjectInitializer& ObjectInitializer
 	RotateCostPoint = 0;
 	JumpCostPoint = 2;
 	SlideCostPoint = 0;
-	ShotCostPoint = 0;
+	FlyCostPoint = 0;
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryComponentTick.bCanEverTick = true;
@@ -64,13 +66,19 @@ UXkTargetMovement::UXkTargetMovement(const FObjectInitializer& ObjectInitializer
 }
 
 
-void UXkTargetMovement::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	SCOPED_NAMED_EVENT(UXkMovement_TickComponent, FColor::Red);
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_UXkMovement_TickComponent);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_UXkMovement_TickComponent);
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	// If the movement is not active, do nothing
+	if (!IsActive())
+	{
+		return;
+	}
 
 	check(GetMovementActor());
 
@@ -113,19 +121,19 @@ void UXkTargetMovement::TickComponent(float DeltaTime, enum ELevelTick TickType,
 	if ((PendingMoveTargets.Num() == 0 || ActionPoint == 0)
 		&& PendingRotateTargets.Num() == 0
 		&& (PendingJumpTargets.Num() == 0 || ActionPoint == 0)
-		&& PendingShotTargets.Num() == 0
+		&& PendingFlyTargets.Num() == 0
 		&& PendingSlideTargets.Num() == 0
-		&& !bIsMoving && !bIsRotating && !bIsJumping && !bIsShotting && !bIsSliding && bShouldDoAction)
+		&& !bIsMoving && !bIsRotating && !bIsJumping && !bIsFlying && !bIsSliding && bShouldDoAction)
 	{
 		bShouldDoAction = false;
-		MoveAcceler = JumpAcceler = ShotAcceler = SlideAcceler = 1.0f;
+		MoveAcceler = JumpAcceler = FlyAcceler = SlideAcceler = 1.0f;
 		OnMovementFinishEvent.Broadcast();
 		OnMovementReachTargetEvent.Broadcast(ActionPoint);
 		ClearActionPoint();
 		ClearMoveTargets();
 		ClearRotateTargets();
 		ClearJumpTargets();
-		ClearShotTargets();
+		ClearFlyTargets();
 		ClearSlideTargets();
 	}
 
@@ -228,8 +236,8 @@ void UXkTargetMovement::TickComponent(float DeltaTime, enum ELevelTick TickType,
 		if ((PendingJumpTargets.Num() == 0 || ActionPoint < JumpCostPoint) && CheckDistanceSafely(Location, CurrentJumpTarget))
 		{
 			bIsJumping = false;
-			bIsShotting = true;
-			CurrentShotTarget = GetMovementActor()->GetActorLocation();
+			bIsFlying = true;
+			CurrentFlyTarget = GetMovementActor()->GetActorLocation();
 			OnMovementReachTargetEvent.Broadcast(ActionPoint);
 		}
 		else if (PendingJumpTargets.Num() > 0 && ActionPoint >= JumpCostPoint && CheckDistanceSafely(Location, CurrentJumpTarget))
@@ -275,40 +283,40 @@ void UXkTargetMovement::TickComponent(float DeltaTime, enum ELevelTick TickType,
 	}
 
 	// 4. Shotting
-	if (bIsShotting)
+	if (bIsFlying)
 	{
-		if ((PendingShotTargets.Num() == 0 || ActionPoint < ShotCostPoint) && CheckDistanceSafely(Location, CurrentShotTarget))
+		if ((PendingFlyTargets.Num() == 0 || ActionPoint < FlyCostPoint) && CheckDistanceSafely(Location, CurrentFlyTarget))
 		{
-			bIsShotting = false;
+			bIsFlying = false;
 			bIsSliding = true;
 			CurrentSlideTarget = GetMovementActor()->GetActorLocation();
 			OnMovementReachTargetEvent.Broadcast(ActionPoint);
 		}
-		else if (PendingShotTargets.Num() > 0 && ActionPoint >= ShotCostPoint && CheckDistanceSafely(Location, CurrentShotTarget))
+		else if (PendingFlyTargets.Num() > 0 && ActionPoint >= FlyCostPoint && CheckDistanceSafely(Location, CurrentFlyTarget))
 		{
-			LastTarget = CurrentShotTarget;
-			CurrentShotTarget = PendingShotTargets.Pop(true);
+			LastTarget = CurrentFlyTarget;
+			CurrentFlyTarget = PendingFlyTargets.Pop(true);
 			OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			// decrease MovementPoint count
-			ActionPoint -= ShotCostPoint;
+			ActionPoint -= FlyCostPoint;
 		}
 		else
 		{
-			FVector TargetVector = FVector(CurrentShotTarget.X, CurrentShotTarget.Y, Location.Z);
+			FVector TargetVector = FVector(CurrentFlyTarget.X, CurrentFlyTarget.Y, Location.Z);
 			FVector StartVector = Location;
 			FVector MovingDir = (TargetVector - StartVector);
 			MovingDir.Normalize();
 			float CurrentVelocity = Velocity.Size();
-			float CurrentAcceleration = MaxAcceleration * ShotAcceler;
+			float CurrentAcceleration = MaxAcceleration * FlyAcceler;
 			CurrentVelocity += CurrentAcceleration * DeltaTime;
-			CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity * ShotAcceler);
+			CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity * FlyAcceler);
 			FVector NewLocation = bBlinkMode ? FMath::VInterpTo(StartVector, TargetVector, DeltaTime, CurrentVelocity) :
 				FMath::VInterpConstantTo(StartVector, TargetVector, DeltaTime, CurrentVelocity);
 			// Calculate the height of shot
 			if (LastTarget.IsSet())
 			{
 				float CurrLength = FVector::Dist2D(NewLocation, LastTarget.GetValue());
-				FVector CurrLocation = CalcParaCurve(LastTarget.GetValue(), CurrentShotTarget, ShotArc, CurrLength);
+				FVector CurrLocation = CalcParaCurve(LastTarget.GetValue(), CurrentFlyTarget, FlyArc, CurrLength);
 				NewLocation.Z = CurrLocation.Z;
 			}
 			Velocity = (NewLocation - Location) / DeltaTime;
@@ -365,7 +373,7 @@ void UXkTargetMovement::TickComponent(float DeltaTime, enum ELevelTick TickType,
 }
 
 
-void UXkTargetMovement::OnAction()
+void UXkTargetMovementComponent::OnAction()
 {
 	if (AActor* MovingActor = GetMovementActor())
 	{
@@ -378,7 +386,7 @@ void UXkTargetMovement::OnAction()
 }
 
 
-TArray<FVector> UXkTargetMovement::GetValidMovementTargets() const
+TArray<FVector> UXkTargetMovementComponent::GetValidMovementTargets() const
 {
 	TArray<FVector> Results;
 	TArray<FVector> CheckTargets = PendingMoveTargets;
@@ -391,7 +399,7 @@ TArray<FVector> UXkTargetMovement::GetValidMovementTargets() const
 }
 
 
-FVector UXkTargetMovement::GetFinalMovementTarget() const
+FVector UXkTargetMovementComponent::GetFinalMovementTarget() const
 {
 	FVector Result = FVector::ZeroVector;
 	if (AActor* MovingActor = GetMovementActor())
@@ -414,7 +422,7 @@ FVector UXkTargetMovement::GetFinalMovementTarget() const
 }
 
 
-FVector UXkTargetMovement::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel)
+FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel)
 {
 	FHitResult HitResult;
 	FVector Start = Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
@@ -429,7 +437,7 @@ FVector UXkTargetMovement::GetLineTraceLocation(const FVector& Input, const ECol
 }
 
 
-FVector UXkTargetMovement::CalcParaCurve(const FVector& Start, const FVector& End, const float CurveArc, const float CurveDist)
+FVector UXkTargetMovementComponent::CalcParaCurve(const FVector& Start, const FVector& End, const float CurveArc, const float CurveDist)
 {
 	// y = a*x^2 + b*x + c
 	// x = dist(start, end)
@@ -452,7 +460,7 @@ FVector UXkTargetMovement::CalcParaCurve(const FVector& Start, const FVector& En
 }
 
 
-TArray<FVector> UXkTargetMovement::CalcParaCurvePoints(const FVector& Start, const FVector& End, const float CurveArc, const int32 SegmentNum)
+TArray<FVector> UXkTargetMovementComponent::CalcParaCurvePoints(const FVector& Start, const FVector& End, const float CurveArc, const int32 SegmentNum)
 {
 	TArray<FVector> Points;
 	for (int32 i = 0; i <= SegmentNum; ++i)
@@ -466,7 +474,7 @@ TArray<FVector> UXkTargetMovement::CalcParaCurvePoints(const FVector& Start, con
 }
 
 
-bool UXkTargetMovement::CalcParaIntersection(const UObject* WorldContextObject, const FVector& Start, const FVector& End, const float CurveArc, const int32 SegmentNum, TArray<AActor*> IgnoreActors, const ECollisionChannel TraceChannel)
+bool UXkTargetMovementComponent::CalcParaIntersection(const UObject* WorldContextObject, const FVector& Start, const FVector& End, const float CurveArc, const int32 SegmentNum, TArray<AActor*> IgnoreActors, const ECollisionChannel TraceChannel)
 {
 	TArray<FVector> Points = CalcParaCurvePoints(Start, End, CurveArc, SegmentNum);
 
@@ -493,7 +501,7 @@ bool UXkTargetMovement::CalcParaIntersection(const UObject* WorldContextObject, 
 }
 
 
-UXkSplineMovement::UXkSplineMovement(const FObjectInitializer& ObjectInitializer)
+UXkSplineMovementComponent::UXkSplineMovementComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
 	// Activate ticking in order to update the cursor every frame.
@@ -504,13 +512,20 @@ UXkSplineMovement::UXkSplineMovement(const FObjectInitializer& ObjectInitializer
 }
 
 
-void UXkSplineMovement::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UXkSplineMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	SCOPED_NAMED_EVENT(UXkSplineMovement_TickComponent, FColor::Red);
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_UXkSplineMovement_TickComponent);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_UXkSplineMovement_TickComponent);
 
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	// If the movement is not active, do nothing
+	if (!IsActive())
+	{
+		return;
+	}
+
 	if (AActor* MovingActor = GetMovementActor())
 	{
 		if (!ShouldDoAction())
@@ -550,7 +565,7 @@ void UXkSplineMovement::TickComponent(float DeltaTime, enum ELevelTick TickType,
 }
 
 
-bool UXkSplineMovement::IsOnSpline() const
+bool UXkSplineMovementComponent::IsOnSpline() const
 {
 	if (TargetSpline.IsValid() && CurrentLength <= TargetSpline->GetSplineLength())
 	{
@@ -560,7 +575,7 @@ bool UXkSplineMovement::IsOnSpline() const
 }
 
 
-void UXkSplineMovement::SetTargetSpline(USplineComponent* Input)
+void UXkSplineMovementComponent::SetTargetSpline(USplineComponent* Input)
 {
 	TargetSpline = MakeWeakObjectPtr<USplineComponent>(Input);
 }
@@ -573,15 +588,27 @@ AXkCharacter::AXkCharacter(const FObjectInitializer& ObjectInitializer)
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.f);
 	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &AXkCharacter::OnHit);
 	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &AXkCharacter::OnBeginOverlap);
+
 	// Configure character movement
-	GetCharacterMovement()->bOrientRotationToMovement = true; // Rotate character to moving direction
-	GetCharacterMovement()->RotationRate = FRotator(0.f, 640.f, 0.f);
-	GetCharacterMovement()->bConstrainToPlane = true;
-	GetCharacterMovement()->bSnapToPlaneAtStart = true;
+	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
+	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f); // ...at this rotation rate
+
+	// Note: For faster iteration times these variables, and many more, can be tweaked in the Character Blueprint
+	// instead of recompiling to adjust them
+	GetCharacterMovement()->JumpZVelocity = 700.f;
+	GetCharacterMovement()->AirControl = 0.35f;
+	GetCharacterMovement()->MaxWalkSpeed = 500.f;
+	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
+	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	// disable receives decals by default
 	GetMesh()->SetReceivesDecals(false);
 	// Spawn and enable AI auto search path
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+	// Configure character movement
+	TargetMovement = CreateDefaultSubobject<UXkTargetMovementComponent>(TEXT("Target Movement"));
+	TargetMovement->bFailToGround = true;
+	TargetMovement->CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
@@ -592,4 +619,76 @@ AXkCharacter::AXkCharacter(const FObjectInitializer& ObjectInitializer)
 void AXkCharacter::TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction)
 {
     Super::TickActor(DeltaTime, TickType, ThisTickFunction);
+}
+
+
+bool AXkCharacter::IsCharacterFailing() const
+{
+	if (GetCharacterMovement()->IsActive())
+	{
+		return GetCharacterMovement()->IsFalling();
+	}
+	if (GetXkTargetMovement()->IsActive())
+	{
+		return GetXkTargetMovement()->IsFailing();
+	}
+	return false;
+}
+
+
+bool AXkCharacter::IsCharacterMoving() const
+{
+	if (GetCharacterMovement()->IsActive())
+	{
+		return GetCharacterMovement()->IsMovingOnGround();
+	}
+	else if (GetXkTargetMovement()->IsActive())
+	{
+		return GetXkTargetMovement()->IsMoving();
+	}
+	return false;
+}
+
+
+FVector AXkCharacter::GetCharacterVelocity() const
+{
+	if (GetCharacterMovement()->IsActive())
+	{
+		return GetCharacterMovement()->Velocity;
+	}
+	if (GetXkTargetMovement()->IsActive())
+	{
+		return GetXkTargetMovement()->Velocity;
+	}
+	return FVector::ZeroVector;
+}
+
+
+FVector AXkCharacter::GetCharacterAcceleration() const
+{
+	if (GetCharacterMovement()->IsActive())
+	{
+		return GetCharacterMovement()->GetCurrentAcceleration();
+	}
+	if (GetXkTargetMovement()->IsActive())
+	{
+		return GetXkTargetMovement()->Acceleration;
+	}
+	return FVector::ZeroVector;
+}
+
+
+void AXkCharacter::EnableCharacterMovement()
+{
+	GetCharacterMovement()->SetActive(true);
+	GetXkTargetMovement()->SetActive(false);
+	GetXkTargetMovement()->SetAutoActivate(false);
+}
+
+
+void AXkCharacter::DisableCharacterMovement()
+{
+	GetCharacterMovement()->SetActive(false);
+	GetXkTargetMovement()->SetActive(true);
+	GetXkTargetMovement()->SetAutoActivate(true);
 }

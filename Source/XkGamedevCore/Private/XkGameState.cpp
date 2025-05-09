@@ -98,7 +98,7 @@ void AXkGameState::OnSwitchToLastButton() const
 }
 
 
-void AXkGameState::OnSwitchToTheUp() const
+void AXkGameState::OnNavigationToTheTop() const
 {
 	if (TileViewWidget.IsValid())
 	{
@@ -122,7 +122,7 @@ void AXkGameState::OnSwitchToTheUp() const
 }
 
 
-void AXkGameState::OnSwitchToTheDown() const
+void AXkGameState::OnNavigationToTheBottom() const
 {
 	if (TileViewWidget.IsValid())
 	{
@@ -145,7 +145,7 @@ void AXkGameState::OnSwitchToTheDown() const
 }
 
 
-void AXkGameState::OnSwitchToTheLeft() const
+void AXkGameState::OnNavigationToTheLeft() const
 {
 	if (TileViewWidget.IsValid())
 	{
@@ -161,7 +161,7 @@ void AXkGameState::OnSwitchToTheLeft() const
 }
 
 
-void AXkGameState::OnSwitchToTheRight() const
+void AXkGameState::OnNavigationToTheRight() const
 {
 	if (TileViewWidget.IsValid())
 	{

@@ -62,19 +62,19 @@ public:
 
 	/** Gamepad pressed to switch to up button index.*/
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnSwitchToTheUp() const;
+	virtual void OnNavigationToTheTop() const;
 
 	/** Gamepad pressed to switch to down button index.*/
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnSwitchToTheDown() const;
+	virtual void OnNavigationToTheBottom() const;
 
 	/** Gamepad pressed to switch to left button index.*/
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnSwitchToTheLeft() const;
+	virtual void OnNavigationToTheLeft() const;
 
 	/** Gamepad pressed to switch to right button index.*/
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnSwitchToTheRight() const;
+	virtual void OnNavigationToTheRight() const;
 
 	/** Call current index button OnGameButtonPressedEvent event binded function which might bind at Blueprint.*/
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
