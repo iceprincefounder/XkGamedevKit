@@ -80,7 +80,6 @@ void AXkHexagonActor::PostEditMove(bool bFinished)
 			FVector NewLocation = FVector(Position.X, Position.Y, Location.Z);
 			HexagonNode->Position = FVector4f(NewLocation.X, NewLocation.Y, NewLocation.Z, 1.0f);
 			SetActorLocation(NewLocation, true);
-			ParentHexagonalWorld->CreateAll();
 		}
 	}
 }

@@ -112,7 +112,7 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 			int32 ManhattanDistanceToCenter = FXkHexagonAStarPathfinding::CalcManhattanDistance(HexagonCoord, FIntVector(0, 0, 0));
 			FVector4f Position = FVector4f(Pos.X, Pos.Y, 0.0, Radius);
 
-			FXkHexagonNode HexagonNode = FXkHexagonNode(EXkHexagonType::DeepWater | EXkHexagonType::Unavailable, Position, 0, HexagonCoord);
+			FXkHexagonNode HexagonNode = FXkHexagonNode(EXkHexagonType::Ocean | EXkHexagonType::Unavailable, Position, 0, HexagonCoord);
 			if (ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
 			{
 				ModifyHexagonalWorldNodes().Add(HexagonCoord, HexagonNode);
@@ -185,32 +185,6 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 }
 
 
-void AXkSphericalWorldWithOceanActor::GenerateGameWorld()
-{
-	TRACE_CPUPROFILER_EVENT_SCOPE(AXkSphericalWorldWithOceanActor::GenerateGameWorld);
-
-	//TArray<FXkHexagonNode*> HexagonalWorldNodes = GetHexagonalWorldNodes(EXkHexagonType::Land);
-	//InstancedHexagonComponent->ClearInstances();
-	//InstancedHexagonComponent->NumCustomDataFloats = 4;
-	//TArray<FTransform> Transforms;
-	//TArray<float>& CustomData = InstancedHexagonComponent->PerInstanceSMCustomData;
-	//CustomData.Init(0.0, InstancedHexagonComponent->NumCustomDataFloats * HexagonalWorldNodes.Num());
-	//Transforms.Init(FTransform(), InstancedHexagonComponent->NumCustomDataFloats * HexagonalWorldNodes.Num());
-	//for (int32 i = 0; i < HexagonalWorldNodes.Num(); i++)
-	//{
-	//	FXkHexagonNode* Node = HexagonalWorldNodes[i];
-	//	FVector4f Position = Node->Position;
-	//	FVector Location = FVector(Position.X, Position.Y, Position.Z);
-	//	Transforms[i] = FTransform(Location);
-	//	CustomData[i * InstancedHexagonComponent->NumCustomDataFloats + 0] = Node->CustomData[0];
-	//	CustomData[i * InstancedHexagonComponent->NumCustomDataFloats + 1] = Node->CustomData[1];
-	//	CustomData[i * InstancedHexagonComponent->NumCustomDataFloats + 2] = Node->CustomData[2];
-	//	CustomData[i * InstancedHexagonComponent->NumCustomDataFloats + 3] = Node->CustomData[3];
-	//}
-	//InstancedHexagonComponent->AddInstances(Transforms, false, false);
-}
-
-
 void AXkSphericalWorldWithOceanActor::GenerateCanvas()
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(AXkSphericalWorldWithOceanActor::GenerateCanvas);
@@ -250,6 +224,7 @@ void AXkSphericalWorldWithOceanActor::GenerateCanvas()
 
 void AXkSphericalWorldWithOceanActor::RegenerateWorld()
 {
-	CreateAll();
-	UpdateAll();
+	GenerateHexagons();
+	GenerateHexagonalWorld();
+	GenerateCanvas();
 }
