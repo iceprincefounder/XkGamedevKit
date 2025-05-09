@@ -11,10 +11,6 @@
 // 1024 x 1024
 #define	MAX_HEXAGON_NODE_COUNT 1048576
 
-template<typename T0, typename T1>
-extern void BuildHexagon(TArray<T0>& OutBaseVertices, TArray<T1>& OutBaseIndices, TArray<T0>& OutEdgeVertices, TArray<T1>& OutEdgeIndices,
-	float Radius, float Height, float BaseInnerGap, float BaseOuterGap, float EdgeInnerGap, float EdgeOuterGap);
-
 static float Sin30 = FMath::Sin(UE_DOUBLE_PI / (180.0) * 30.0);
 static float Cos30 = FMath::Cos(UE_DOUBLE_PI / (180.0) * 30.0);
 static float XkSin30 = 0.5;
@@ -24,29 +20,6 @@ static float XkCos30x2 = 1.7320508075688772935274463415059;
 static float XkCos45 = 0.70710678118654752440084436210485;
 static float XkCos60 = 0.5;
 static float XkCos30xCos45x2 = 1.224744871391589049098642037353;
-
-static int RandRangeIntMT (float seed, int min, int max)
-{
-	std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
-	std::uniform_int_distribution<> dis(min, max); // Define a uniform distribution from min to max
-	return dis(gen); // Generate random number
-};
-
-static float RandRangeFloatMT(float seed, float min, float max)
-{
-	std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
-	std::uniform_real_distribution<> dis(min, max); // Define a uniform distribution from min to max
-	return dis(gen); // Generate random number
-};
-
-static bool RandRangeBoolMT(float seed)
-{
-	std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
-	std::uniform_int_distribution<> dis(0, 1); // Define a uniform distribution from 0 to 1
-	return dis(gen) == 1; // Generate random number
-};
-
-class AXkHexagonActor;
 
 USTRUCT(BlueprintType, Blueprintable)
 struct FXkPathCostValue
@@ -144,13 +117,10 @@ struct FXkHexagonSplat
 {
 	GENERATED_BODY()
 
-	FXkHexagonSplat() : TargetType(EXkHexagonType::Unavailable), Height(100.0f), Splats() {};
+	FXkHexagonSplat() : TargetType(EXkHexagonType::Unavailable),  Splats() {};
 public:
 	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
 	EXkHexagonType TargetType;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
-	float Height;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
 	TArray<uint8> Splats;
@@ -304,11 +274,67 @@ protected:
 	FXkHexagonalWorldNodeTable* HexagonalWorldTable;
 };
 
+template<typename T0, typename T1>
+extern void BuildHexagon(TArray<T0>& OutBaseVertices, TArray<T1>& OutBaseIndices, TArray<T0>& OutEdgeVertices, TArray<T1>& OutEdgeIndices,
+	float Radius, float Height, float BaseInnerGap, float BaseOuterGap, float EdgeInnerGap, float EdgeOuterGap);
 
-/**
- * XkHexagon DStar Pathfinding Algorithm
- */
-class XkHexagonDStarPathfinding
+static int RandRangeIntMT(int seed, int min, int max)
 {
-	// TODO
+	std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
+	std::uniform_int_distribution<> dis(min, max); // Define a uniform distribution from min to max
+	return dis(gen); // Generate random number
 };
+
+static float RandRangeFloatMT(int seed, float min, float max)
+{
+	std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
+	std::uniform_real_distribution<> dis(min, max); // Define a uniform distribution from min to max
+	return dis(gen); // Generate random number
+};
+
+static bool RandRangeBoolMT(int seed)
+{
+	std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
+	std::uniform_int_distribution<> dis(0, 1); // Define a uniform distribution from 0 to 1
+	return dis(gen) == 1; // Generate random number
+};
+
+static bool HexagonNodeIsValid(const FXkHexagonNode* Node)
+{
+	if (Node)
+	{
+		return true;
+	}
+	return false;
+}
+
+
+static int32 HexagonNodeRandomSeed(FXkHexagonNode* Node)
+{
+	check(Node);
+	FVector Vector = FVector(Node->Position.X, Node->Position.Y, Node->Position.Z);
+	FString VectorString = FString::Printf(TEXT("%f,%f,%f"), Vector.X, Vector.Y, Vector.Z);
+	uint32 Hash = GetTypeHash(VectorString);
+	return static_cast<int32>(Hash);
+}
+
+
+static float HexagonNodeGetZ(FXkHexagonNode* Node)
+{
+	check(Node);
+	return Node->Position.Z;
+}
+
+
+static void HexagonNodeSetZ(FXkHexagonNode* Node, const float Height)
+{
+	check(Node);
+	Node->Position.Z = Height;
+}
+
+
+static uint8 HexagonNodeGetSplatID(FXkHexagonNode* Node)
+{
+	check(Node);
+	return Node->Splatmap;
+}
