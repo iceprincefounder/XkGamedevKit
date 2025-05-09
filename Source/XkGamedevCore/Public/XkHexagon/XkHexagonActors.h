@@ -186,9 +186,6 @@ public:
 
 	FORCEINLINE virtual TMap<FIntVector, FXkHexagonNode>& ModifyHexagonalWorldNodes() const { return HexagonalWorldTable.Nodes; };
 
-	FORCEINLINE virtual void CreateAll() {};
-	FORCEINLINE virtual void UpdateAll() {};
-
 private:
 	UPROPERTY(Transient)
 	mutable FXkHexagonalWorldNodeTable HexagonalWorldTable;

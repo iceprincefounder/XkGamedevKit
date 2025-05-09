@@ -70,9 +70,6 @@ public:
 	virtual void GenerateHexagonalWorld();
 
 	UFUNCTION(BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	virtual void GenerateGameWorld();
-
-	UFUNCTION(BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	virtual void GenerateCanvas();
 
 	UFUNCTION(CallInEditor, BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")

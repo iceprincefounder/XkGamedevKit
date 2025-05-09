@@ -110,13 +110,11 @@ enum class EXkHexagonType : uint8
 {
 	Unavailable = 1 << 0,
 	Land = 1 << 1,
-	Desert = 1 << 2,
-	Sand = 1 << 3,
-	Mountain = 1 << 4,
-	Frost = 1 << 5,
-	ShallowWater = 1 << 6,
-	DeepWater = 1 << 7,
+	Beach = 1 << 2,
+	Ocean = 1 << 3,
+	Sand = 1 << 4,
 };
+
 
 inline EXkHexagonType operator|(const EXkHexagonType lhs, const EXkHexagonType rhs)
 {
@@ -167,57 +165,22 @@ struct XKGAMEDEVCORE_API FXkHexagonNode
 	GENERATED_BODY()
 
 public:
-	struct XKGAMEDEVCORE_API FXkHexagonLine
-	{
-		FXkHexagonLine() : A(FVector::ZeroVector), B(FVector::ZeroVector) {};
-		FXkHexagonLine(const FVector& InStart, const FVector& InEnd) : A(InStart), B(InEnd) {};
-		~FXkHexagonLine() {};
-
-		FVector A;
-		FVector B;
-
-		inline FXkHexagonLine& operator= (const FXkHexagonLine& rhs)
-		{
-			A = rhs.A;
-			B = rhs.B;
-			return *this;
-		};
-
-		inline bool operator== (const FXkHexagonLine& rhs) const
-		{
-			// This is the max gap between two hexagons.
-			float Tolerance = FVector::Dist(A, B) * 0.5;
-			if (A == rhs.A && B == rhs.B)
-			{
-				return true;
-			}
-			else if (FVector::Dist(A, rhs.B) < Tolerance && FVector::Dist(B, rhs.A) < Tolerance)
-			{
-				return true;
-			}
-			else if (FVector::Dist(A, rhs.A) < Tolerance && FVector::Dist(B, rhs.B) < Tolerance)
-			{
-				return true;
-			}
-			return false;
-		};
-	};
-
 	FXkHexagonNode()
 	{
 		Type = EXkHexagonType::Unavailable;
 		Position = FVector4f::Zero();
-		CustomData = FVector4f::Zero();
 		Splatmap = 0;
 		Coord = FIntVector::ZeroValue;
+		CustomData = FVector4f::Zero();
 	};
 	FXkHexagonNode(
 		const EXkHexagonType InType, const FVector4f& InPosition, const uint8 InSplatmap, const FIntVector& InCoord) :
 		Type(InType),
 		Position(InPosition),
-		CustomData(FVector4f::Zero()),
 		Splatmap(InSplatmap),
-		Coord(InCoord) {};
+		Coord(InCoord),
+		CustomData(FVector4f::Zero())
+		{};
 	~FXkHexagonNode()
 	{
 	};
@@ -228,15 +191,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	FVector4f Position; // Position.W for hexagon radius.
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
-	FVector4f CustomData;
-
 	/* Material texture id.*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	uint8 Splatmap;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	FIntVector Coord;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
+	FVector4f CustomData;
 
 	UPROPERTY(Transient)
 	FXkPathCostValue Cost;
@@ -264,17 +227,6 @@ public:
 		Results.Add(Location + FVector(-Radius, 0.0, 0.0));
 		Results.Add(Location + FVector(-Radius * XkSin30, XkCos30 * Radius, 0.0));
 		Results.Add(Location + FVector(Radius * XkSin30, XkCos30 * Radius, 0.0));
-		return Results;
-	};
-	TArray<FXkHexagonLine> GetEdgeLines() const {
-		TArray<FXkHexagonLine> Results;
-		TArray<FVector> Vertices = GetVertices();
-		Results.Add(FXkHexagonLine(Vertices[0], Vertices[1]));
-		Results.Add(FXkHexagonLine(Vertices[1], Vertices[2]));
-		Results.Add(FXkHexagonLine(Vertices[2], Vertices[3]));
-		Results.Add(FXkHexagonLine(Vertices[3], Vertices[4]));
-		Results.Add(FXkHexagonLine(Vertices[4], Vertices[5]));
-		Results.Add(FXkHexagonLine(Vertices[5], Vertices[0]));
 		return Results;
 	};
 };
