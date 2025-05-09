@@ -37,20 +37,15 @@ class XKGAMEDEVCORE_API UXkMovement : public UActorComponent
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
 	FOnMovementFinishEvent OnMovementFinishEvent;
+
 public:
-	UFUNCTION(BlueprintCallable, Category = "Movement [KEVINTSUIXUGAMEDEV]")
-	FORCEINLINE FVector GetVelocity() const { return Velocity; };
-
-	UFUNCTION(BlueprintCallable, Category = "Movement [KEVINTSUIXUGAMEDEV]")
-	FORCEINLINE FVector GetAcceleration() const { return Acceleration; };
-
 	FORCEINLINE virtual bool ShouldDoAction() const { return bShouldDoAction; }
-	FORCEINLINE virtual bool IsOnAction() const { return bIsMoving || bIsRotating || bIsJumping || bIsShotting || bIsSliding; }
-	FORCEINLINE virtual void OnAction() { bShouldDoAction = true; bIsMoving = bIsRotating = bIsJumping = bIsShotting = bIsSliding = false; };
+	FORCEINLINE virtual bool IsOnAction() const { return bIsMoving || bIsRotating || bIsJumping || bIsFlying || bIsSliding; }
+	FORCEINLINE virtual void OnAction() { bShouldDoAction = true; bIsMoving = bIsRotating = bIsJumping = bIsFlying = bIsSliding = false; };
 	FORCEINLINE virtual bool IsMoving() const { return bIsMoving; };
 	FORCEINLINE virtual bool IsRotating() const { return bIsRotating; };
 	FORCEINLINE virtual bool IsJumping() const { return bIsJumping; };
-	FORCEINLINE virtual bool IsShotting() const { return bIsShotting; };
+	FORCEINLINE virtual bool IsFlying() const { return bIsFlying; };
 	FORCEINLINE virtual bool IsSliding() const { return bIsSliding; };
 	FORCEINLINE virtual AActor* GetMovementActor() const;
 
@@ -83,8 +78,8 @@ protected:
 	bool bIsRotating;
 	/** Is on jumping, work during tick.*/
 	bool bIsJumping;
-	/** Is on shotting, work during tick.*/
-	bool bIsShotting;
+	/** Is on flying, work during tick.*/
+	bool bIsFlying;
 	/** Is on sliding, work during tick.*/
 	bool bIsSliding;
 	/** Is on falling, work during tick.*/
@@ -96,7 +91,7 @@ protected:
  * Movement base on multiple targets input. 
  */
 UCLASS(Blueprintable)
-class XKGAMEDEVCORE_API UXkTargetMovement : public UXkMovement
+class XKGAMEDEVCORE_API UXkTargetMovementComponent : public UXkMovement
 {
 	GENERATED_BODY()
 
@@ -132,13 +127,13 @@ class XKGAMEDEVCORE_API UXkTargetMovement : public UXkMovement
 	TArray<FVector> PendingJumpTargets;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	int32 ShotCostPoint;
+	int32 FlyCostPoint;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	FVector CurrentShotTarget;
+	FVector CurrentFlyTarget;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TArray<FVector> PendingShotTargets;
+	TArray<FVector> PendingFlyTargets;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	int32 SlideCostPoint;
@@ -163,7 +158,7 @@ public:
 	float JumpAcceler;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	float ShotAcceler;
+	float FlyAcceler;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float SlideAcceler;
@@ -172,7 +167,7 @@ public:
 	float JumpArc;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	float ShotArc;
+	float FlyArc;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float CapsuleHalfHeight;
@@ -184,7 +179,7 @@ public:
 	bool IsFailing() const { return bIsJumping || bIsFalling; };
 
 	/** Default UObject constructor. */
-	UXkTargetMovement(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+	UXkTargetMovementComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	//~ Begin ActorComponent Interface
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -194,7 +189,7 @@ public:
 	FORCEINLINE virtual void OnAction() override;
 	//~ End UXkMovement Interface
 	
-	//~ Begin UXkTargetMovement Interface
+	//~ Begin UXkTargetMovementComponent Interface
 	FORCEINLINE virtual void AddActiontPoint(const uint8 Input) { ActionPoint += Input; };
 	FORCEINLINE virtual void ClearActionPoint() { ActionPoint = 0; };
 	FORCEINLINE virtual uint8 GetActionPoint() const { return ActionPoint; };
@@ -216,11 +211,11 @@ public:
 	FORCEINLINE virtual void SetJumpArc(const float Arc) { JumpArc = Arc; };
 	FORCEINLINE virtual void SetJumpAcceler(const float Acceler) { JumpAcceler = Acceler; };
 	//~ Shotting
-	FORCEINLINE virtual void AddShotTarget(const FVector& Target) { PendingShotTargets.Insert(Target, 0); };
-	FORCEINLINE virtual void ClearShotTargets() { PendingShotTargets.Empty(); };
-	FORCEINLINE virtual void SetShotCost(const int32 Cost) { ShotCostPoint = Cost; };
-	FORCEINLINE virtual void SetShotArc(const float Arc) { ShotArc = Arc; };
-	FORCEINLINE virtual void SetShotAcceler(const float Acceler) { ShotAcceler = Acceler; };
+	FORCEINLINE virtual void AddFlyTarget(const FVector& Target) { PendingFlyTargets.Insert(Target, 0); };
+	FORCEINLINE virtual void ClearFlyTargets() { PendingFlyTargets.Empty(); };
+	FORCEINLINE virtual void SetFlyCost(const int32 Cost) { FlyCostPoint = Cost; };
+	FORCEINLINE virtual void SetFlyArc(const float Arc) { FlyArc = Arc; };
+	FORCEINLINE virtual void SetFlyAcceler(const float Acceler) { FlyAcceler = Acceler; };
 	//~ Sliding
 	FORCEINLINE virtual void AddSlideTarget(const FVector& Target) { PendingSlideTargets.Insert(Target, 0); };
 	FORCEINLINE virtual void ClearSlideTargets() { PendingSlideTargets.Empty(); };
@@ -232,7 +227,7 @@ public:
 	/** Final movement target base on current movement point.*/
 	FORCEINLINE virtual FVector GetFinalMovementTarget() const;
 	FORCEINLINE virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn);
-	//~ End UXkTargetMovement Interface
+	//~ End UXkTargetMovementComponent Interface
 
 	static FVector CalcParaCurve(const FVector& Start, const FVector& End, const float CurveArc, const float CurveDist);
 	static TArray<FVector> CalcParaCurvePoints(const FVector& Start, const FVector& End, const float CurveArc, const int32 SegmentNum);
@@ -248,13 +243,13 @@ private:
  * Movement base on spline input
  */
 UCLASS(Blueprintable)
-class XKGAMEDEVCORE_API UXkSplineMovement : public UXkMovement
+class XKGAMEDEVCORE_API UXkSplineMovementComponent : public UXkMovement
 {
 	GENERATED_BODY()
 
 public:
 	/** Default UObject constructor. */
-	UXkSplineMovement(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+	UXkSplineMovementComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	// Called every frame.
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
@@ -277,6 +272,8 @@ class XKGAMEDEVCORE_API AXkCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+	UPROPERTY(Category= "Character [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess = "true"))
+	TObjectPtr<UXkTargetMovementComponent> TargetMovement;
 public:
 	/** Default UObject constructor. */
 	AXkCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
@@ -284,9 +281,25 @@ public:
 	// Called every frame.
 	virtual void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 
+	UFUNCTION(Category = "Character [KEVINTSUIXUGAMEDEV]", BlueprintCallable, meta = (BlueprintThreadSafe))
+	FORCEINLINE bool IsCharacterFailing() const;
+
+	UFUNCTION(Category = "Character [KEVINTSUIXUGAMEDEV]", BlueprintCallable, meta = (BlueprintThreadSafe))
+	virtual bool IsCharacterMoving() const;
+
+	UFUNCTION(Category = "Character [KEVINTSUIXUGAMEDEV]", BlueprintCallable, meta = (BlueprintThreadSafe))
+	FORCEINLINE FVector GetCharacterVelocity() const;
+
+	UFUNCTION(Category = "Character [KEVINTSUIXUGAMEDEV]", BlueprintCallable, meta = (BlueprintThreadSafe))
+	FORCEINLINE FVector GetCharacterAcceleration() const;
+
 	UFUNCTION()
 	virtual void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit) {};
 	
 	UFUNCTION()
 	virtual void OnBeginOverlap(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& Hit) {};
+
+	FORCEINLINE UXkTargetMovementComponent* GetXkTargetMovement() const { return TargetMovement; }
+	virtual void EnableCharacterMovement();
+	virtual void DisableCharacterMovement();
 };
