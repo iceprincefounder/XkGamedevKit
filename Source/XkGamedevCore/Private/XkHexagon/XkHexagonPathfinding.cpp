@@ -227,33 +227,43 @@ int32 FXkHexagonAStarPathfinding::CalcManhattanDistance(const FIntVector& PointA
 
 FIntVector FXkHexagonAStarPathfinding::CalcHexagonCoord(const float PositionX, const float PositionY, const float HexagonRadius)
 {
-	float HexagonUnitLength = HexagonRadius + HexagonRadius * XkCos60;
+	double HexagonUnitLength = HexagonRadius + HexagonRadius * XkCos60;
 	FIntVector HexagonCoord = FIntVector(0, 0, 0);
 	FVector HexagonVec = FVector(PositionX, PositionY, 0.0);
-	float Length = HexagonVec.Size();
+	double Length = HexagonVec.Size();
 	HexagonVec.Normalize();
-	FVector XAxis = FVector(1.0, 0.0, 0.0);
-	XAxis.Normalize();
-	FVector YAxis = FRotator(0, -120, 0).RotateVector(XAxis);
-	YAxis.Normalize();
-	FVector ZAxis = FRotator(0, 120, 0).RotateVector(XAxis);
-	ZAxis.Normalize();
-	float YProjectionLength = Length * FVector::DotProduct(HexagonVec, YAxis);
-	float ZProjectionLength = Length * FVector::DotProduct(HexagonVec, ZAxis);
-	float X = PositionX / HexagonUnitLength;
-	float Y = YProjectionLength / HexagonUnitLength;
-	float Z = ZProjectionLength / HexagonUnitLength;
-	HexagonCoord.X = FMath::RoundToInt(X);
-	HexagonCoord.Y = FMath::RoundToInt(Y);
-	HexagonCoord.Z = FMath::RoundToInt(Z);
+	FVector XAxis = HexagonNodeXAxis();
+	FVector YAxis = HexagonNodeYAxis();
+	FVector ZAxis = HexagonNodeZAxis();
+	double YProjectionLength = Length * FVector::DotProduct(HexagonVec, YAxis);
+	double ZProjectionLength = Length * FVector::DotProduct(HexagonVec, ZAxis);
+	double X = PositionX / HexagonUnitLength;
+	double Y = YProjectionLength / HexagonUnitLength;
+	double Z = ZProjectionLength / HexagonUnitLength;
+	HexagonCoord.X = FMath::RoundToInt32(X);
+	HexagonCoord.Y = FMath::RoundToInt32(Y);
+	HexagonCoord.Z = FMath::RoundToInt32(Z);
+	double Min = FMath::Min3(FMath::Abs(X), FMath::Abs(Y), FMath::Abs(Z));
+	if (FMath::Abs(X) == Min)
+	{
+		HexagonCoord.X = -(HexagonCoord.Y + HexagonCoord.Z);
+	}
+	else if (FMath::Abs(Y) == Min)
+	{
+		HexagonCoord.Y = -(HexagonCoord.X + HexagonCoord.Z);
+	}
+	else if (FMath::Abs(Z) == Min)
+	{
+		HexagonCoord.Z = -(HexagonCoord.X + HexagonCoord.Y);
+	}
 	return HexagonCoord;
 }
 
 
 FVector2D FXkHexagonAStarPathfinding::CalcHexagonPosition(const int32 IndexX, const int32 IndexY, const float Distance)
 {
-	float Pos_X = Distance * 1.5 * IndexX;
-	float Pos_Y = XkCos30 * Distance * 2.0 * IndexY;
+	double Pos_X = Distance * 1.5 * IndexX;
+	double Pos_Y = XkCos30 * Distance * 2.0 * IndexY;
 	if (IndexX % 2 != 0)
 	{
 		Pos_Y += (XkCos30 * Distance);

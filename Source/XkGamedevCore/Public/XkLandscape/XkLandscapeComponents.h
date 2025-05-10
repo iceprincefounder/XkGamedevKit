@@ -22,6 +22,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Landscape [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface *Material;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXUGAMEDEV]")
+	bool bDisableLandscapeBody;
+
 	UXkLandscapeComponent(const FObjectInitializer& ObjectInitializer);
 
 	//~ Begin UPrimitiveComponent interface
@@ -55,6 +58,8 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "LandscapeWithWater [KEVINTSUIXUGAMEDEV]")
 	bool bDisableWaterBody;
+
+	UXkLandscapeWithWaterComponent(const FObjectInitializer& ObjectInitializer);
 
 	FMaterialRelevance GetWaterMaterialRelevance(ERHIFeatureLevel::Type InFeatureLevel) const;
 

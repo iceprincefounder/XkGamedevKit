@@ -90,7 +90,6 @@ public:
 	TObjectPtr<class UXkHexagonArrowComponent> SceneRoot;
 
 	UPROPERTY(VisibleDefaultsOnly, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
-	//UPROPERTY()
 	TObjectPtr<class UXkInstancedHexagonComponent> InstancedHexagonComponent;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
@@ -137,6 +136,9 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
 	int32 MaxManhattanDistance;
+
+	UPROPERTY(VisibleAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	float HorizonHeight;
 
 	friend class AXkHexagonActor;
 

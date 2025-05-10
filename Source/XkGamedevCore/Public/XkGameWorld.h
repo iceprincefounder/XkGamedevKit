@@ -35,9 +35,6 @@ public:
 	FVector2D PositionRandomRange;
 
 	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	float HexagonHorizonHeight;
-
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
 	TArray<FXkHexagonSplat> HexagonSplats;
 
 	/* The splat id in the range of HexagonSplatMaskRange would do discard in VS. */

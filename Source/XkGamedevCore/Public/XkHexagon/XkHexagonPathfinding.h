@@ -85,7 +85,6 @@ enum class EXkHexagonType : uint8
 	Land = 1 << 1,
 	Beach = 1 << 2,
 	Ocean = 1 << 3,
-	Sand = 1 << 4,
 };
 
 
@@ -278,28 +277,63 @@ template<typename T0, typename T1>
 extern void BuildHexagon(TArray<T0>& OutBaseVertices, TArray<T1>& OutBaseIndices, TArray<T0>& OutEdgeVertices, TArray<T1>& OutEdgeIndices,
 	float Radius, float Height, float BaseInnerGap, float BaseOuterGap, float EdgeInnerGap, float EdgeOuterGap);
 
-static int RandRangeIntMT(int seed, int min, int max)
+FORCEINLINE static int RandRangeIntMT(int seed, int min, int max)
 {
 	std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
 	std::uniform_int_distribution<> dis(min, max); // Define a uniform distribution from min to max
 	return dis(gen); // Generate random number
 };
 
-static float RandRangeFloatMT(int seed, float min, float max)
+FORCEINLINE static float RandRangeFloatMT(int seed, float min, float max)
 {
 	std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
 	std::uniform_real_distribution<> dis(min, max); // Define a uniform distribution from min to max
 	return dis(gen); // Generate random number
 };
 
-static bool RandRangeBoolMT(int seed)
+FORCEINLINE static bool RandRangeBoolMT(int seed)
 {
 	std::mt19937 gen(seed); // Initialize Mersenne Twister algorithm generator with seed value
 	std::uniform_int_distribution<> dis(0, 1); // Define a uniform distribution from 0 to 1
 	return dis(gen) == 1; // Generate random number
 };
 
-static bool HexagonNodeIsValid(const FXkHexagonNode* Node)
+
+FORCEINLINE uint32_t PackFloatsToUint32(float a, float b, float c) 
+{
+	uint32_t binaryA, binaryB, binaryC;
+	std::memcpy(&binaryA, &a, sizeof(float));
+	std::memcpy(&binaryB, &b, sizeof(float));
+	std::memcpy(&binaryC, &c, sizeof(float));
+
+	uint32_t result = ((binaryA >> 22) & 0x3FF) << 20 |
+		((binaryB >> 22) & 0x3FF) << 10 |
+		((binaryC >> 22) & 0x3FF);
+	return result;
+}
+
+FORCEINLINE static FVector HexagonNodeXAxis()
+{
+	FVector XAxis = FVector(1.0, 0.0, 0.0);
+	XAxis.Normalize();
+	return XAxis;
+}
+
+FORCEINLINE static FVector HexagonNodeYAxis()
+{
+	FVector YAxis = FRotator(0, -120, 0).RotateVector(HexagonNodeXAxis());
+	YAxis.Normalize();
+	return YAxis;
+}
+
+FORCEINLINE static FVector HexagonNodeZAxis()
+{
+	FVector ZAxis = FRotator(0, 120, 0).RotateVector(HexagonNodeXAxis());
+	ZAxis.Normalize();
+	return ZAxis;
+}
+
+FORCEINLINE static bool HexagonNodeIsValid(const FXkHexagonNode* Node)
 {
 	if (Node)
 	{
@@ -309,31 +343,30 @@ static bool HexagonNodeIsValid(const FXkHexagonNode* Node)
 }
 
 
-static int32 HexagonNodeRandomSeed(FXkHexagonNode* Node)
+FORCEINLINE static int32 HexagonNodeRandomSeed(FXkHexagonNode* Node)
 {
 	check(Node);
 	FVector Vector = FVector(Node->Position.X, Node->Position.Y, Node->Position.Z);
-	FString VectorString = FString::Printf(TEXT("%f,%f,%f"), Vector.X, Vector.Y, Vector.Z);
-	uint32 Hash = GetTypeHash(VectorString);
+	uint32 Hash = PackFloatsToUint32(Vector.X, Vector.Y, Vector.Z);
 	return static_cast<int32>(Hash);
 }
 
 
-static float HexagonNodeGetZ(FXkHexagonNode* Node)
+FORCEINLINE static float HexagonNodeGetZ(FXkHexagonNode* Node)
 {
 	check(Node);
 	return Node->Position.Z;
 }
 
 
-static void HexagonNodeSetZ(FXkHexagonNode* Node, const float Height)
+FORCEINLINE static void HexagonNodeSetZ(FXkHexagonNode* Node, const float Height)
 {
 	check(Node);
 	Node->Position.Z = Height;
 }
 
 
-static uint8 HexagonNodeGetSplatID(FXkHexagonNode* Node)
+FORCEINLINE static uint8 HexagonNodeGetSplatID(FXkHexagonNode* Node)
 {
 	check(Node);
 	return Node->Splatmap;

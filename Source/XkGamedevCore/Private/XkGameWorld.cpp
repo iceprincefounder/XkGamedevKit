@@ -51,7 +51,6 @@ AXkSphericalWorldWithOceanActor::AXkSphericalWorldWithOceanActor(const FObjectIn
 	bShowSpawnedActorBaseMesh = true;
 	bShowSpawnedActorEdgeMesh = true;
 	PositionRandomRange = FVector2D(0.0, 0.0);
-	HexagonHorizonHeight = 100.0f;
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
@@ -80,7 +79,7 @@ void AXkSphericalWorldWithOceanActor::OnConstruction(const FTransform& Transform
 		}
 	}
 #endif
-	CanvasRendererComponent->HorizonHeight = HexagonHorizonHeight;
+	CanvasRendererComponent->HorizonHeight = HorizonHeight;
 	CanvasRendererComponent->SplatMaskRange = HexagonSplatMaskRange;
 }
 
@@ -165,20 +164,20 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 			{
 				if (Node->Type == HexagonSplat.TargetType)
 				{
-					Node->Position.Z = HexagonHorizonHeight;
+					Node->Position.Z = HorizonHeight;
 					Node->Splatmap = HexagonSplat.Splats[RandRangeIntMT(RandomSeed, 0, HexagonSplat.Splats.Num() - 1)];
 				}
 			}
 		}
 		else if (Node && ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
 		{
-			Node->Type = EXkHexagonType::Sand;
+			Node->Type = EXkHexagonType::Beach;
 			int32 RandomSeed = HexagonNodeRandomSeed(Node);
 			for (const FXkHexagonSplat& HexagonSplat : HexagonSplats)
 			{
 				if (Node->Type == HexagonSplat.TargetType)
 				{
-					Node->Position.Z = HexagonHorizonHeight;
+					Node->Position.Z = HorizonHeight;
 					Node->Splatmap = HexagonSplat.Splats[RandRangeIntMT(RandomSeed, 0, HexagonSplat.Splats.Num() - 1)];
 				}
 			}
