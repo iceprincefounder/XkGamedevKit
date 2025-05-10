@@ -107,13 +107,16 @@ void AXkGameState::OnNavigationToTheTop() const
 		int32 RowNum = WidthSize / TileViewWidget->GetEntryWidth();
 		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
 		int32 Num = TileViewWidget->GetNumItems();
-		int32 TotalRawNum = FMath::CeilToInt32((float)Num / (float)RowNum) * RowNum;
-		CurrentIndex = (CurrentIndex - RowNum + TotalRawNum) % TotalRawNum;
-		if (CurrentIndex >= Num)
+		if (Num > 0)
 		{
-			CurrentIndex -= RowNum;
+			int32 TotalRawNum = FMath::CeilToInt32((float)Num / (float)RowNum) * RowNum;
+			CurrentIndex = (CurrentIndex - RowNum + TotalRawNum) % TotalRawNum;
+			if (CurrentIndex >= Num)
+			{
+				CurrentIndex -= RowNum;
+			}
+			TileViewWidget->SetSelectedIndex(CurrentIndex);
 		}
-		TileViewWidget->SetSelectedIndex(CurrentIndex);
 	}
 	else
 	{
@@ -130,13 +133,16 @@ void AXkGameState::OnNavigationToTheBottom() const
 		int32 RowNum = WidthSize / TileViewWidget->GetEntryWidth();
 		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
 		int32 Num = TileViewWidget->GetNumItems();
-		int32 TotalRawNum = FMath::CeilToInt32((float)Num / (float)RowNum) * RowNum;
-		CurrentIndex = (CurrentIndex + RowNum) % TotalRawNum;
-		if (CurrentIndex >= Num)
+		if (Num > 0)
 		{
+			int32 TotalRawNum = FMath::CeilToInt32((float)Num / (float)RowNum) * RowNum;
 			CurrentIndex = (CurrentIndex + RowNum) % TotalRawNum;
+			if (CurrentIndex >= Num)
+			{
+				CurrentIndex = (CurrentIndex + RowNum) % TotalRawNum;
+			}
+			TileViewWidget->SetSelectedIndex(CurrentIndex);
 		}
-		TileViewWidget->SetSelectedIndex(CurrentIndex);
 	}
 	else
 	{
@@ -151,8 +157,11 @@ void AXkGameState::OnNavigationToTheLeft() const
 	{
 		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
 		int32 Num = TileViewWidget->GetNumItems();
-		CurrentIndex = (CurrentIndex - 1 + Num) % Num;
-		TileViewWidget->SetSelectedIndex(CurrentIndex);
+		if (Num > 0)
+		{
+			CurrentIndex = (CurrentIndex - 1 + Num) % Num;
+			TileViewWidget->SetSelectedIndex(CurrentIndex);
+		}
 	}
 	else
 	{
@@ -167,8 +176,11 @@ void AXkGameState::OnNavigationToTheRight() const
 	{
 		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
 		int32 Num = TileViewWidget->GetNumItems();
-		CurrentIndex = (CurrentIndex + 1 + Num) % Num;
-		TileViewWidget->SetSelectedIndex(CurrentIndex);
+		if (Num > 0)
+		{
+			CurrentIndex = (CurrentIndex + 1 + Num) % Num;
+			TileViewWidget->SetSelectedIndex(CurrentIndex);
+		}
 	}
 	else
 	{

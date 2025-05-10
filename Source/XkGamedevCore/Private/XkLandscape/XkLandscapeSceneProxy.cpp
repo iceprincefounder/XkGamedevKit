@@ -188,7 +188,8 @@ FXkQuadtreeSceneProxy::~FXkQuadtreeSceneProxy()
 FXkLandscapeSceneProxy::FXkLandscapeSceneProxy(const UXkLandscapeComponent* InComponent, const FName ResourceName, FMaterialRenderProxy* InMaterialRenderProxy)
 	:FXkQuadtreeSceneProxy(InComponent, ResourceName, InMaterialRenderProxy),
 	MaterialRenderProxy(InMaterialRenderProxy),
-	MaterialRelevance(InComponent->GetMaterialRelevance(GetScene().GetFeatureLevel()))
+	MaterialRelevance(InComponent->GetMaterialRelevance(GetScene().GetFeatureLevel())),
+	bDisableLandscapeBody(InComponent->bDisableLandscapeBody)
 {
 	PatchSize = 65;
 	BuildPatch(PatchData.Vertices, PatchData.Indices, PatchSize);
@@ -255,6 +256,11 @@ void FXkLandscapeSceneProxy::GetDynamicMeshElements(const TArray<const FSceneVie
 		if (NunInst > 0)
 		{
 			const_cast<FXkLandscapeSceneProxy*>(this)->UpdateInstanceBuffer(FrameTag);
+
+			if (bDisableLandscapeBody)
+			{
+				return;
+			}
 
 			// Draw the far mesh.
 			FMeshBatch& Mesh = Collector.AllocateMesh();
@@ -588,7 +594,8 @@ void FXkLandscapeSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
 FXkLandscapeWithWaterSceneProxy::FXkLandscapeWithWaterSceneProxy(const UXkLandscapeWithWaterComponent* InComponent, const FName ResourceName, FMaterialRenderProxy* InMaterialRenderProxy, FMaterialRenderProxy* InWaterMaterialRenderProxy)
 	:FXkLandscapeSceneProxy(InComponent, ResourceName, InMaterialRenderProxy),
 	WaterMaterialRenderProxy(InWaterMaterialRenderProxy),
-	WaterMaterialRelevance(InComponent->GetWaterMaterialRelevance(GetScene().GetFeatureLevel()))
+	WaterMaterialRelevance(InComponent->GetWaterMaterialRelevance(GetScene().GetFeatureLevel())),
+	bDisableWaterBody(InComponent->bDisableWaterBody)
 {
 	WaterVertexFactory = new FXkQuadtreeVertexFactory(GetScene().GetFeatureLevel());
 
@@ -626,7 +633,7 @@ void FXkLandscapeWithWaterSceneProxy::GetDynamicMeshElements(const TArray<const 
 
 	FXkLandscapeSceneProxy::GetDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector);
 
-	if (static_cast<UXkLandscapeWithWaterComponent*>(OwnerComponent)->bDisableWaterBody)
+	if (bDisableWaterBody)
 	{
 		return;
 	}

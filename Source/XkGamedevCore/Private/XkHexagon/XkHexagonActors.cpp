@@ -41,10 +41,8 @@ AXkHexagonActor::AXkHexagonActor(const FObjectInitializer& ObjectInitializer)
 	ProcMesh->SetTranslucentSortPriority(9999);
 #endif
 
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder2(TEXT("/XkGamedevKit/Materials/M_HexagonBase.M_HexagonBase"));
-	BaseMaterial = ObjectFinder2.Object;
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder3(TEXT("/XkGamedevKit/Materials/M_HexagonEdge.M_HexagonEdge"));
-	EdgeMaterial = ObjectFinder3.Object;
+	BaseMaterial = StaticProcMesh->GetMaterial(0);
+	EdgeMaterial = StaticProcMesh->GetMaterial(1);
 }
 
 
@@ -190,6 +188,10 @@ void AXkHexagonActor::InitHexagon(const FIntVector& InCoord)
 		if (HexagonNode)
 		{
 			FVector4f Position = HexagonNode->Position;
+			if (HexagonNode->Type == EXkHexagonType::Ocean)
+			{
+				Position.Z = ParentHexagonalWorld->HorizonHeight;
+			}
 			FVector NewLocation = FVector(Position.X, Position.Y, Position.Z + 2.0 /* Fix Z-Fighting, Leave 1.0 for other surface.*/);
 			SetActorLocation(NewLocation, true);
 		}
@@ -244,6 +246,7 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 	BaseColor = FLinearColor(1.0, 1.0, 1.0, 0.0);
 	EdgeColor = FLinearColor(1.0, 1.0, 1.0, 0.0);
 	MaxManhattanDistance = 64;
+	HorizonHeight = 100.0;
 
 	PathfindingMaxStep = 9999;
 	BacktrackingMaxStep = 9999;
@@ -361,7 +364,13 @@ FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNode(const FVector& InPosition
 {
 	FIntVector InputCoord = HexagonAStarPathfinding.CalcHexagonCoord(
 		InPosition.X, InPosition.Y, (Radius + GapWidth));
-	return GetHexagonNode(InputCoord);
+	FXkHexagonNode* HexagonNode = GetHexagonNode(InputCoord);
+	if (HexagonNode)
+	{
+		return HexagonNode;
+	}
+
+	return HexagonNode;
 }
 
 

@@ -13,8 +13,9 @@ static FAutoConsoleVariableRef CVarVisQuadtreeBounds(
 	TEXT("Vis Quadtree Bounds"));
 
 
-UXkLandscapeComponent::UXkLandscapeComponent(const FObjectInitializer& ObjectInitializer) :
-	UXkQuadtreeComponent(ObjectInitializer)
+UXkLandscapeComponent::UXkLandscapeComponent(const FObjectInitializer& ObjectInitializer) 
+	: UXkQuadtreeComponent(ObjectInitializer)
+	, bDisableLandscapeBody(false)
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	SetComponentTickEnabled(true);
@@ -114,6 +115,13 @@ void UXkLandscapeComponent::FetchPatchData(TArray<FVector4f>& OutVertices, TArra
 		OutVertices = LocalSceneProxy->PatchData.Vertices;
 		OutIndices = LocalSceneProxy->PatchData.Indices;
 	}
+}
+
+
+UXkLandscapeWithWaterComponent::UXkLandscapeWithWaterComponent(const FObjectInitializer& ObjectInitializer)
+	: UXkLandscapeComponent(ObjectInitializer)
+	, bDisableWaterBody(false)
+{
 }
 
 

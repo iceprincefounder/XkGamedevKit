@@ -119,6 +119,8 @@ protected:
 
 	uint8 PatchSize;
 	FPatchData PatchData;
+
+	bool bDisableLandscapeBody;
 };
 
 
@@ -160,6 +162,8 @@ protected:
 
 	uint8 WaterPatchSize;
 	FPatchData WaterPatchData;
+
+	bool bDisableWaterBody;
 };
 
 
