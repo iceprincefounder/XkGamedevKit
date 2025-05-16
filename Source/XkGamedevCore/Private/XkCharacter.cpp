@@ -640,7 +640,8 @@ bool AXkCharacter::IsCharacterMoving() const
 {
 	if (GetCharacterMovement()->IsActive())
 	{
-		return GetCharacterMovement()->IsMovingOnGround();
+		FVector Velocity = GetCharacterMovement()->Velocity;
+		return GetCharacterMovement()->IsWalking() && (Velocity.SizeSquared() > FMath::Square(GetCharacterMovement()->MinAnalogWalkSpeed));
 	}
 	else if (GetXkTargetMovement()->IsActive())
 	{

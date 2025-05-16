@@ -77,36 +77,17 @@ public:
 /**
  * Hexagon Type
  */
-//UENUM(BlueprintType, meta = (Bitflags))
-UENUM()
+UENUM(BlueprintType, meta = (Bitflags))
 enum class EXkHexagonType : uint8
 {
+	None		= 0x00,
 	Unavailable = 1 << 0,
-	Land = 1 << 1,
-	Beach = 1 << 2,
-	Ocean = 1 << 3,
+	Land		= 1 << 1,
+	Beach		= 1 << 2,
+	Ocean		= 1 << 3,
 };
+ENUM_CLASS_FLAGS(EXkHexagonType);
 
-
-inline EXkHexagonType operator|(const EXkHexagonType lhs, const EXkHexagonType rhs)
-{
-	return static_cast<EXkHexagonType>(static_cast<uint32>(lhs) | static_cast<uint32>(rhs));
-}
-
-inline EXkHexagonType operator&(const EXkHexagonType lhs, const EXkHexagonType rhs)
-{
-	return static_cast<EXkHexagonType>(static_cast<uint32>(lhs) & static_cast<uint32>(rhs));
-}
-
-inline bool operator==(const EXkHexagonType lhs, const EXkHexagonType rhs)
-{
-	return ((static_cast<uint32>(lhs) & static_cast<uint32>(rhs))) == static_cast<uint32>(rhs);
-}
-
-inline bool operator!=(const EXkHexagonType lhs, const EXkHexagonType rhs)
-{
-	return ((static_cast<uint32>(lhs) & static_cast<uint32>(rhs))) != static_cast<uint32>(rhs);
-}
 
 /**
  * Hexagon Splat
@@ -333,7 +314,7 @@ FORCEINLINE static FVector HexagonNodeZAxis()
 	return ZAxis;
 }
 
-FORCEINLINE static bool HexagonNodeIsValid(const FXkHexagonNode* Node)
+FORCEINLINE static bool HexagonNodeIsValidLowLevel(const FXkHexagonNode* Node)
 {
 	if (Node)
 	{
@@ -342,15 +323,25 @@ FORCEINLINE static bool HexagonNodeIsValid(const FXkHexagonNode* Node)
 	return false;
 }
 
+FORCEINLINE static bool HexagonNodeIsValid(const FXkHexagonNode* Node)
+{
+	return Node && !EnumHasAnyFlags(Node->Type, EXkHexagonType::Unavailable);
+}
+
+FORCEINLINE static bool HexagonNodeHasType(const FXkHexagonNode* Node, const EXkHexagonType InType)
+{
+	return Node && EnumHasAnyFlags(Node->Type, InType);
+}
 
 FORCEINLINE static int32 HexagonNodeRandomSeed(FXkHexagonNode* Node)
 {
 	check(Node);
 	FVector Vector = FVector(Node->Position.X, Node->Position.Y, Node->Position.Z);
-	uint32 Hash = PackFloatsToUint32(Vector.X, Vector.Y, Vector.Z);
+	FString Seed = Vector.ToString();
+	//uint32 Hash = PackFloatsToUint32(Vector.X, Vector.Y, Vector.Z);
+	uint32 Hash = GetTypeHash(Seed);
 	return static_cast<int32>(Hash);
 }
-
 
 FORCEINLINE static float HexagonNodeGetZ(FXkHexagonNode* Node)
 {
@@ -358,13 +349,11 @@ FORCEINLINE static float HexagonNodeGetZ(FXkHexagonNode* Node)
 	return Node->Position.Z;
 }
 
-
 FORCEINLINE static void HexagonNodeSetZ(FXkHexagonNode* Node, const float Height)
 {
 	check(Node);
 	Node->Position.Z = Height;
 }
-
 
 FORCEINLINE static uint8 HexagonNodeGetSplatID(FXkHexagonNode* Node)
 {

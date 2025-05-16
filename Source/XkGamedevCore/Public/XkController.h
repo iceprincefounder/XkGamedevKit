@@ -50,10 +50,22 @@ class XKGAMEDEVCORE_API AXkParabolaCurve : public AActor
 	TObjectPtr<class USplineComponent> ParabolaSpline;
 
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TArray<class USplineMeshComponent*> ParabolaSplineMeshes;
+	TObjectPtr<class UStaticMeshComponent> ParabolaStartMeshComponent;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UStaticMeshComponent> ParabolaEndMeshComponent;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	TArray<class USplineMeshComponent*> ParabolaSplineMeshComponents;
 
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UStaticMesh* ParabolaMesh;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UStaticMesh* ParabolaStartMesh;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UStaticMesh* ParabolaEndMesh;
 
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UMaterialInterface* ParabolaMeshMaterial;

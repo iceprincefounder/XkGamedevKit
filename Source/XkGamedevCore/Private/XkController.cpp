@@ -36,8 +36,24 @@ AXkParabolaCurve::AXkParabolaCurve(const FObjectInitializer& ObjectInitializer)
 	ParabolaSpline->SetupAttachment(RootComponent);
 	ParabolaSpline->SetClosedLoop(false);
 
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_SplineMeshTube.SM_SplineMeshTube"));
-	ParabolaMesh = ObjectFinder.Object;
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SplineMeshTube(TEXT("/XkGamedevKit/Meshes/SM_SplineMeshTube.SM_SplineMeshTube"));
+	ParabolaMesh = SplineMeshTube.Object;
+
+	ParabolaStartMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ParabolaStartMesh"));
+	ParabolaStartMeshComponent->SetupAttachment(ParabolaSpline);
+	ParabolaStartMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ParabolaStartMeshComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SplineMeshSphere(TEXT("/XkGamedevKit/Meshes/SM_SplineMeshSphere.SM_SplineMeshSphere"));
+	ParabolaStartMesh = SplineMeshSphere.Object;
+	ParabolaStartMeshComponent->SetStaticMesh(ParabolaStartMesh);
+	ParabolaEndMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ParabolaEndMesh"));
+	ParabolaEndMeshComponent->SetupAttachment(ParabolaSpline);
+	ParabolaEndMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ParabolaEndMeshComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> SplineMeshCylinder(TEXT("/XkGamedevKit/Meshes/SM_SplineMeshRing.SM_SplineMeshRing"));
+	ParabolaEndMesh = SplineMeshCylinder.Object;
+	ParabolaEndMeshComponent->SetStaticMesh(ParabolaEndMesh);
+
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder2(TEXT("/XkGamedevKit/Materials/M_GuidelineParabolaMesh.M_GuidelineParabolaMesh"));
 	ParabolaMeshMaterial = ObjectFinder2.Object;
 
@@ -73,7 +89,7 @@ void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& 
 	TArray<TObjectPtr<class USplineMeshComponent>> TempSplineMeshes;
 	for (int32 Index = 0; Index < (ParabolaSpline->GetNumberOfSplinePoints() - 1); ++Index)
 	{
-		USplineMeshComponent* SplineMesh = ParabolaSplineMeshes.IsValidIndex(Index) ? ParabolaSplineMeshes[Index] : nullptr;
+		USplineMeshComponent* SplineMesh = ParabolaSplineMeshComponents.IsValidIndex(Index) ? ParabolaSplineMeshComponents[Index] : nullptr;
 		if (!SplineMesh || !IsValid(SplineMesh))
 		{
 			SplineMesh = NewObject<USplineMeshComponent>(this);
@@ -96,15 +112,23 @@ void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& 
 		TempSplineMeshes.Add(SplineMesh);
 	}
 
-	for (int32 Index = 0; Index < ParabolaSplineMeshes.Num(); ++Index)
+	for (int32 Index = 0; Index < ParabolaSplineMeshComponents.Num(); ++Index)
 	{
-		USplineMeshComponent* SplineMesh = ParabolaSplineMeshes[Index];
+		USplineMeshComponent* SplineMesh = ParabolaSplineMeshComponents[Index];
 		if (SplineMesh && IsValid(SplineMesh) && !TempSplineMeshes.Contains(SplineMesh))
 		{
 			SplineMesh->DestroyComponent();
 		}
 	}
-	ParabolaSplineMeshes = TempSplineMeshes;
+	ParabolaSplineMeshComponents = TempSplineMeshes;
+
+	ParabolaStartMeshComponent->SetStaticMesh(ParabolaStartMesh);
+	ParabolaStartMeshComponent->SetWorldLocation(Start);
+	ParabolaStartMeshComponent->SetWorldScale3D(FVector(ParabolaStartScale));
+
+	ParabolaEndMeshComponent->SetStaticMesh(ParabolaEndMesh);
+	ParabolaEndMeshComponent->SetWorldLocation(End);
+	ParabolaEndMeshComponent->SetWorldScale3D(FVector(ParabolaEndScale));
 }
 
 

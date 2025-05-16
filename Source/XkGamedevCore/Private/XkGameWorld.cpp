@@ -113,7 +113,7 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 			int32 ManhattanDistanceToCenter = FXkHexagonAStarPathfinding::CalcManhattanDistance(HexagonCoord, FIntVector(0, 0, 0));
 			FVector4f Position = FVector4f(Pos.X, Pos.Y, 0.0, Radius);
 
-			FXkHexagonNode HexagonNode = FXkHexagonNode(EXkHexagonType::Ocean | EXkHexagonType::Unavailable, Position, 0, HexagonCoord);
+			FXkHexagonNode HexagonNode = FXkHexagonNode(EXkHexagonType::Unavailable | EXkHexagonType::Ocean, Position, 0, HexagonCoord);
 			if (ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
 			{
 				ModifyHexagonalWorldNodes().Add(HexagonCoord, HexagonNode);
