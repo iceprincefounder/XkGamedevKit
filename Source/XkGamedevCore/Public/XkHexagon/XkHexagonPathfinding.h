@@ -279,20 +279,6 @@ FORCEINLINE static bool RandRangeBoolMT(int seed)
 	return dis(gen) == 1; // Generate random number
 };
 
-
-FORCEINLINE uint32_t PackFloatsToUint32(float a, float b, float c) 
-{
-	uint32_t binaryA, binaryB, binaryC;
-	std::memcpy(&binaryA, &a, sizeof(float));
-	std::memcpy(&binaryB, &b, sizeof(float));
-	std::memcpy(&binaryC, &c, sizeof(float));
-
-	uint32_t result = ((binaryA >> 22) & 0x3FF) << 20 |
-		((binaryB >> 22) & 0x3FF) << 10 |
-		((binaryC >> 22) & 0x3FF);
-	return result;
-}
-
 FORCEINLINE static FVector HexagonNodeXAxis()
 {
 	FVector XAxis = FVector(1.0, 0.0, 0.0);
