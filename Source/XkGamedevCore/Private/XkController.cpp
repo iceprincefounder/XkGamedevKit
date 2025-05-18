@@ -128,6 +128,19 @@ void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& 
 
 	ParabolaEndMeshComponent->SetStaticMesh(ParabolaEndMesh);
 	ParabolaEndMeshComponent->SetWorldLocation(End);
+
+	FHitResult HitResult;
+	if (GetWorld()->LineTraceSingleByChannel(HitResult, End + FVector(0.0, 0.0, 10.0), End - FVector(0.0, 0.0, 10.0), ECC_Camera))
+	{
+		FVector Normal = HitResult.Normal;
+		Normal.Normalize();
+
+		// Create a rotation that aligns the Z-axis with the normal
+		FRotator Rotation = FRotationMatrix::MakeFromZ(Normal).Rotator();
+
+		// Apply the rotation to ParabolaEndMeshComponent
+		ParabolaEndMeshComponent->SetWorldRotation(Rotation);
+	}
 	ParabolaEndMeshComponent->SetWorldScale3D(FVector(ParabolaEndScale));
 }
 
