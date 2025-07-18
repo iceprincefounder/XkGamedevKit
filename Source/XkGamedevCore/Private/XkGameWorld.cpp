@@ -220,7 +220,6 @@ void AXkSphericalWorldWithOceanActor::GenerateCanvas()
 	CanvasRendererComponent->SetCanvasExtent(CanvasExtent);
 	CanvasRendererComponent->CreateBuffers(OutVertices, OutIndices, InstancePositionData, InstanceWeightData);
 	CanvasRendererComponent->DrawHeightWeightCanvas_MultiFrame();
-	//CanvasRendererComponent->DrawHeightWeightCanvas_MultiFrame();
 }
 
 

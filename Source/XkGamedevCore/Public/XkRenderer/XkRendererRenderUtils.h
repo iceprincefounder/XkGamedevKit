@@ -133,7 +133,7 @@ class XKGAMEDEVCORE_API FXkCanvasRenderPS : public FGlobalShader
 	SHADER_USE_PARAMETER_STRUCT(FXkCanvasRenderPS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FXkCanvasRenderParameters, Parameters)
+		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SourceTexture0)
 		RENDER_TARGET_BINDING_SLOTS() // Holds our output
 		END_SHADER_PARAMETER_STRUCT()
 

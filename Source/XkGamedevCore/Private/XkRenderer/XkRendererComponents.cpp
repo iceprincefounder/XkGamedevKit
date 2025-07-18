@@ -17,6 +17,7 @@
 #include "ShaderParameterMetadata.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
+#include "HairStrandsInterface.h"
 
 
 static bool CaptureDrawCanvas = 0;
@@ -249,6 +250,10 @@ void UXkCanvasRendererComponent::DrawPrimaryCanvas_Internal()
 				Canvas0->GetResource()->GetTexture2DRHI(), TEXT("Canvas0"));
 			FRDGTextureRef Canvas0_RDG = GraphBuilder.RegisterExternalTexture(Canvas0_RT);
 
+			TRefCountPtr<IPooledRenderTarget> Canvas0_Temp_RT = CreateRenderTarget(
+				Canvas0->GetResource()->GetTexture2DRHI(), TEXT("Canvas0_Temp"));
+			FRDGTextureRef Canvas0_Temp_RDG = GraphBuilder.RegisterExternalTexture(Canvas0_Temp_RT);
+
 			TRefCountPtr<IPooledRenderTarget> Canvas1_RT = CreateRenderTarget(
 				Canvas1->GetResource()->GetTexture2DRHI(), TEXT("Canvas1"));
 			FRDGTextureRef Canvas1_RDG = GraphBuilder.RegisterExternalTexture(Canvas1_RT);
@@ -258,10 +263,7 @@ void UXkCanvasRendererComponent::DrawPrimaryCanvas_Internal()
 			CopyTextureInfo.NumMips = 1;
 			CopyTextureInfo.Size = TextureSize;
 
-			const ETextureCreateFlags TextureFlags = TexCreate_ShaderResource | TexCreate_UAV | TexCreate_GenerateMipCapable | TexCreate_RenderTargetable;
-			const FRDGTextureDesc Desc = FRDGTextureDesc::Create2D(FIntPoint(TextureSize.X, TextureSize.Y),
-				Canvas0_RDG->Desc.Format, Canvas0_RDG->Desc.ClearValue, TextureFlags, 1 /*NumMips*/);
-			FRDGTextureRef CanvasTemp_RDG = GraphBuilder.CreateTexture(Desc, TEXT("CanvasTemp"));
+			AddCopyTexturePass(GraphBuilder, Canvas0_RDG, Canvas0_Temp_RDG, CopyTextureInfo);
 
 			FXkCanvasRenderVS::FParameters* VertexShaderParams =
 				GraphBuilder.AllocParameters<FXkCanvasRenderVS::FParameters>();
@@ -285,8 +287,7 @@ void UXkCanvasRendererComponent::DrawPrimaryCanvas_Internal()
 			VertexShaderParams->Parameters = PassUniformBuffer;
 			VertexShaderParams->InstancePositionBuffer = InstancePositionBuf->ShaderResourceViewRHI.GetReference();
 			VertexShaderParams->InstanceWeightBuffer = InstanceWeightBuf->ShaderResourceViewRHI.GetReference();
-			PixelShaderParams->Parameters = PassUniformBuffer;
-
+			PixelShaderParams->SourceTexture0 = Canvas0_Temp_RDG;
 			PixelShaderParams->RenderTargets[0] = FRenderTargetBinding(Canvas0_RDG, ERenderTargetLoadAction::EClear, /*InMipIndex = */0);
 			PixelShaderParams->RenderTargets[1] = FRenderTargetBinding(Canvas1_RDG, ERenderTargetLoadAction::EClear, /*InMipIndex = */0);
 			FIntRect Viewport = FIntRect(0, 0, TextureSize.X, TextureSize.Y);
