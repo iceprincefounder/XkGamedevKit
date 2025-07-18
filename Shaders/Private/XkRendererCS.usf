@@ -119,4 +119,9 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 	}
 	TargetTexture[PixelCoord] = float4(Source.x, Source.y, saturate(MinimalDistance / MaxDistance), Source.w);
 #endif
+
+#if WEIGHT_FILTER
+	float4 Source = SourceTexture1.Load(uint3(PixelCoord, 0));
+	TargetTexture[PixelCoord] = float4(Source.x, Source.y, Source.z, Source.w);
+#endif
 }

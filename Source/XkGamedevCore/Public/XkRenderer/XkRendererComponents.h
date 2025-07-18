@@ -64,6 +64,7 @@ public:
 	virtual void SetCanvasExtent(const FVector4f& Input) { CanvasExtent = Input; }
 
 	virtual bool IsBuffersValid() const;
+	virtual bool IsRenderDataValid() const;
 	virtual void CreateBuffers(
 		const TArray<FVector4f> Vertices,
 		const TArray<uint32> Indices,
@@ -72,9 +73,15 @@ public:
 	virtual void UpdateBuffers(
 		const TArray<FVector4f> Positions,
 		const TArray<FVector4f> Weights);
-	virtual void DrawCanvas();
+
+	virtual void DrawHeightSplatCanvas_MultiFrame();
+	virtual void DrawHeightWeightCanvas_MultiFrame();
 
 private:
+	void DrawPrimaryCanvas_Internal();
+	template<typename T>
+	void DrawFilteringCanvas_Internal(UTextureRenderTarget2D* Output);
+
 	/* Vertex buffer for hexagonal world nodes*/
 	FXkCanvasVertexBuffer VertexBuffer;
 	/* Index buffer for hexagonal world nodes*/
@@ -83,4 +90,6 @@ private:
 	FXkCanvasInstanceBuffer InstancePositionBuffer;
 	/* Vertex instance buffer for hexagonal world nodes*/
 	FXkCanvasInstanceBuffer InstanceWeightBuffer;
+
+	TArray<TFunction<void()>> PendingMultiFrameTasks;
 };

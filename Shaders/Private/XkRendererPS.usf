@@ -29,7 +29,7 @@ void MainPS(
 	out float4 OutColor0	: SV_Target0, 
 	out float4 OutColor1	: SV_Target1)
 {
-	float3 PreviewColor = Parameters.Color.rgb * Hue2RGB(float(Height.y) * 1.71f); ;
+	float3 PreviewColor = Parameters.Color.rgb * Hue2RGB(float(Height.y) * 1.71f);
 	OutColor0 = float4(PreviewColor, Height.x);
 	OutColor1 = Weight;
 }

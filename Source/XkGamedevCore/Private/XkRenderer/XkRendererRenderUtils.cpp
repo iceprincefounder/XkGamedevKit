@@ -212,8 +212,8 @@ void FXkCanvasRenderCS::ModifyCompilationEnvironment(const FGlobalShaderPermutat
 }
 
 
-template<typename T, typename P>
-void XkCanvasComputeDispatch(FRDGBuilder& GraphBuilder, P* InCSParameters, const FIntVector& DispatchCount)
+template<typename T>
+void XkCanvasComputeDispatch(FRDGBuilder& GraphBuilder, FXkCanvasRenderCS::FParameters* InCSParameters, const FIntVector& DispatchCount)
 {
 	FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 	TShaderMapRef<T> ComputeShader(ShaderMap);
@@ -247,4 +247,5 @@ IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderPS, "/Plugin/XkGamedevKit/Private/XkRende
 IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderCS, "/Plugin/XkGamedevKit/Private/XkRendererCS.usf", "MainCS", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderHeightCS, "/Plugin/XkGamedevKit/Private/XkRendererCS.usf", "MainCS", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderNormalCS, "/Plugin/XkGamedevKit/Private/XkRendererCS.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderWeightCS, "/Plugin/XkGamedevKit/Private/XkRendererCS.usf", "MainCS", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderSdfCS, "/Plugin/XkGamedevKit/Private/XkRendererCS.usf", "MainCS", SF_Compute);

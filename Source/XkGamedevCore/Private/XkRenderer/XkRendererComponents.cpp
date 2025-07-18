@@ -62,6 +62,11 @@ UXkCanvasRendererComponent::~UXkCanvasRendererComponent()
 void UXkCanvasRendererComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (IsRenderDataValid() && PendingMultiFrameTasks.Num() > 0)
+	{
+		PendingMultiFrameTasks[0]();
+		PendingMultiFrameTasks.RemoveAt(0);
+	}
 }
 
 
@@ -85,11 +90,15 @@ FVector2D UXkCanvasRendererComponent::GetCanvasSize() const
 
 bool UXkCanvasRendererComponent::IsBuffersValid() const
 {
-	if (VertexBuffer.IsInitialized() && IndexBuffer.IsInitialized() && InstancePositionBuffer.IsInitialized() && InstanceWeightBuffer.IsInitialized())
-	{
-			return true;
-	}
-	return false;
+	return (VertexBuffer.IsInitialized() && IndexBuffer.IsInitialized() && 
+		InstancePositionBuffer.IsInitialized() && InstanceWeightBuffer.IsInitialized());
+}
+
+
+bool UXkCanvasRendererComponent::IsRenderDataValid() const
+{
+	return (CanvasRT0 && CanvasRT1 && InstancePositionBuffer.GetInstanceNum() > 0 
+		&& InstanceWeightBuffer.GetInstanceNum() > 0);
 }
 
 
@@ -131,7 +140,6 @@ void UXkCanvasRendererComponent::UpdateBuffers(const TArray<FVector4f> Positions
 		return;
 	}
 
-
 	ENQUEUE_RENDER_COMMAND(UXkCanvasRendererComponent_UpdateBuffers)([&]
 	(FRHICommandListImmediate& RHICmdList)
 		{
@@ -155,17 +163,61 @@ void UXkCanvasRendererComponent::UpdateBuffers(const TArray<FVector4f> Positions
 }
 
 
-void UXkCanvasRendererComponent::DrawCanvas()
+void UXkCanvasRendererComponent::DrawHeightSplatCanvas_MultiFrame()
 {
-	if (!CanvasRT0 || !CanvasRT1 || InstancePositionBuffer.GetInstanceNum() == 0 || InstanceWeightBuffer.GetInstanceNum() == 0)
+	if (!IsRenderDataValid())
+	{
+		return;
+	}
+
+	PendingMultiFrameTasks.Empty();
+	PendingMultiFrameTasks.Add([this]()
+	{
+		DrawPrimaryCanvas_Internal();
+		DrawFilteringCanvas_Internal<FXkCanvasRenderHeightCS>(CanvasRT0);
+		DrawFilteringCanvas_Internal<FXkCanvasRenderNormalCS>(CanvasRT0);
+	});
+	PendingMultiFrameTasks.Add([this]()
+	{
+		DrawFilteringCanvas_Internal<FXkCanvasRenderSdfCS>(CanvasRT0);
+	});
+}
+
+
+void UXkCanvasRendererComponent::DrawHeightWeightCanvas_MultiFrame()
+{
+	if (!IsRenderDataValid())
+	{
+		return;
+	}
+
+	PendingMultiFrameTasks.Empty();
+	PendingMultiFrameTasks.Add([this]()
+		{
+			DrawPrimaryCanvas_Internal();
+			DrawFilteringCanvas_Internal<FXkCanvasRenderHeightCS>(CanvasRT0);
+			DrawFilteringCanvas_Internal<FXkCanvasRenderNormalCS>(CanvasRT0);
+		});
+	PendingMultiFrameTasks.Add([this]()
+		{
+			DrawFilteringCanvas_Internal<FXkCanvasRenderSdfCS>(CanvasRT0);
+		});
+	PendingMultiFrameTasks.Add([this]()
+		{
+			DrawFilteringCanvas_Internal<FXkCanvasRenderWeightCS>(CanvasRT1);
+		});
+}
+
+
+void UXkCanvasRendererComponent::DrawPrimaryCanvas_Internal()
+{
+	if (!IsRenderDataValid())
 	{
 		return;
 	}
 
 	UTextureRenderTarget2D* Canvas0 = CanvasRT0;
 	UTextureRenderTarget2D* Canvas1 = CanvasRT1;
-	FIntVector4 TextureFilter = FIntVector4(ConvolutionRangeX, ConvolutionRangeY, ConvolutionRangeZ, 0);
-	FIntVector4 SuperResMask = FIntVector4(SplatMaskRange.X, SplatMaskRange.Y, 2, 4);
 	FVector4f Center = CanvasCenter;
 	FVector4f Extent = CanvasExtent;
 	FXkCanvasVertexBuffer* VertexBuf = &VertexBuffer;
@@ -175,8 +227,8 @@ void UXkCanvasRendererComponent::DrawCanvas()
 	FXkCanvasRenderVS::FParameters VertexShaderParamsToCopy;
 	FXkCanvasRenderPS::FParameters PixelShaderParamsToCopy;
 	FMatrix44f LocalToWorld = FMatrix44f(GetOwner()->GetTransform().ToMatrixWithScale());
-	RenderCaptureInterface::FScopedCapture RenderCapture(CaptureDrawCanvas, TEXT("CaptureDrawCanvas"));
-	ENQUEUE_RENDER_COMMAND(UXkRendererComponent_DrawCanvas)([Canvas0, Canvas1, TextureFilter, SuperResMask, LocalToWorld, Center, Extent,
+	RenderCaptureInterface::FScopedCapture RenderCapture(CaptureDrawCanvas, TEXT("CaptureHeightSplatCanvas"));
+	ENQUEUE_RENDER_COMMAND(UXkRendererComponent_HeightSplatCanvas)([Canvas0, Canvas1, LocalToWorld, Center, Extent,
 		VertexShaderParamsToCopy, PixelShaderParamsToCopy, VertexBuf, IndexBuf, InstancePositionBuf, InstanceWeightBuf]
 		(FRHICommandListImmediate& RHICmdList)
 		{
@@ -240,6 +292,69 @@ void UXkCanvasRendererComponent::DrawCanvas()
 			FIntRect Viewport = FIntRect(0, 0, TextureSize.X, TextureSize.Y);
 			XkCanvasRendererDraw(GraphBuilder, NumInstances, Viewport, VertexShaderParams, PixelShaderParams,
 				VertexBuf, IndexBuf);
+			GraphBuilder.Execute();
+		});
+}
+
+
+template<typename T>
+inline void UXkCanvasRendererComponent::DrawFilteringCanvas_Internal(UTextureRenderTarget2D* Output)
+{
+	if (!IsRenderDataValid())
+	{
+		return;
+	}
+
+	UTextureRenderTarget2D* Canvas0 = CanvasRT0;
+	UTextureRenderTarget2D* Canvas1 = CanvasRT1;
+	FIntVector4 TextureFilter = FIntVector4(ConvolutionRangeX, ConvolutionRangeY, ConvolutionRangeZ, 0);
+	FIntVector4 SuperResMask = FIntVector4(SplatMaskRange.X, SplatMaskRange.Y, 2, 4);
+	FVector4f Center = CanvasCenter;
+	FVector4f Extent = CanvasExtent;
+	FMatrix44f LocalToWorld = FMatrix44f(GetOwner()->GetTransform().ToMatrixWithScale());
+	RenderCaptureInterface::FScopedCapture RenderCapture(CaptureDrawCanvas, TEXT("CaptureDrawFilteringCanvas"));
+	ENQUEUE_RENDER_COMMAND(UXkRendererComponent_DrawFilteringCanvas)([Output, Canvas0, Canvas1, LocalToWorld, Center, Extent, TextureFilter, SuperResMask]
+	(FRHICommandListImmediate& RHICmdList)
+		{
+			TRACE_CPUPROFILER_EVENT_SCOPE(UXkCanvasRendererComponent_DrawCanvas);
+
+			FRDGBuilder GraphBuilder(RHICmdList, RDG_EVENT_NAME("CaptureDrawCanvas"));
+
+			// This great func CreateRenderTarget() would create RT and manage it, it's awesome~
+			TRefCountPtr<IPooledRenderTarget> Output_RT = CreateRenderTarget(
+				Output->GetResource()->GetTexture2DRHI(), TEXT("Output"));
+			FRDGTextureRef Output_RDG = GraphBuilder.RegisterExternalTexture(Output_RT);
+
+			TRefCountPtr<IPooledRenderTarget> Canvas0_RT = CreateRenderTarget(
+				Canvas0->GetResource()->GetTexture2DRHI(), TEXT("Canvas0"));
+			FRDGTextureRef Canvas0_RDG = GraphBuilder.RegisterExternalTexture(Canvas0_RT);
+
+			TRefCountPtr<IPooledRenderTarget> Canvas1_RT = CreateRenderTarget(
+				Canvas1->GetResource()->GetTexture2DRHI(), TEXT("Canvas1"));
+			FRDGTextureRef Canvas1_RDG = GraphBuilder.RegisterExternalTexture(Canvas1_RT);
+
+			FIntVector TextureSize = Canvas0_RDG->Desc.GetSize();
+			FRHICopyTextureInfo CopyTextureInfo;
+			CopyTextureInfo.NumMips = 1;
+			CopyTextureInfo.Size = TextureSize;
+
+			const ETextureCreateFlags TextureFlags = TexCreate_ShaderResource | TexCreate_UAV | TexCreate_GenerateMipCapable | TexCreate_RenderTargetable;
+			const FRDGTextureDesc Desc = FRDGTextureDesc::Create2D(FIntPoint(TextureSize.X, TextureSize.Y),
+				Output_RDG->Desc.Format, Output_RDG->Desc.ClearValue, TextureFlags, 1 /*NumMips*/);
+			FRDGTextureRef CanvasTemp_RDG = GraphBuilder.CreateTexture(Desc, TEXT("CanvasTemp"));
+
+			TRDGUniformBufferRef<FXkCanvasRenderParameters> PassUniformBuffer = nullptr;
+			auto* BuildParameters = GraphBuilder.AllocParameters<FXkCanvasRenderParameters>();
+			{
+				// Object data
+				BuildParameters->LocalToWorld = FMatrix44f(LocalToWorld);
+				BuildParameters->Center = Center;
+				// Extent.X : world size x, Extent.Y : world size y, Extent.Z : unscaled patch coverage, Extent.W : unscaled world size
+				BuildParameters->Extent = Extent;
+				BuildParameters->Color = FVector4f(1.0f, 1.0f, 1.0f, 1.0f);
+				PassUniformBuffer = GraphBuilder.CreateUniformBuffer(BuildParameters);
+			}
+
 			FXkCanvasRenderCS::FParameters* ComputerShaderParams =
 				GraphBuilder.AllocParameters<FXkCanvasRenderCS::FParameters>();
 			ComputerShaderParams->TextureFilter = FIntVector4(TextureFilter.X, TextureFilter.Y, TextureFilter.Z, TextureSize.X);
@@ -253,12 +368,8 @@ void UXkCanvasRendererComponent::DrawCanvas()
 				FMath::CeilToInt((float)TextureSize.X / FXkCanvasRenderCS::ThreadGroupSizeX),
 				FMath::CeilToInt((float)TextureSize.Y / FXkCanvasRenderCS::ThreadGroupSizeY),
 				1);
-			XkCanvasComputeDispatch<FXkCanvasRenderHeightCS>(GraphBuilder, ComputerShaderParams, GroupCount);
-			AddCopyTexturePass(GraphBuilder, CanvasTemp_RDG, Canvas0_RDG, CopyTextureInfo);
-			XkCanvasComputeDispatch<FXkCanvasRenderNormalCS>(GraphBuilder, ComputerShaderParams, GroupCount);
-			AddCopyTexturePass(GraphBuilder, CanvasTemp_RDG, Canvas0_RDG, CopyTextureInfo);
-			XkCanvasComputeDispatch<FXkCanvasRenderSdfCS>(GraphBuilder, ComputerShaderParams, GroupCount);
-			AddCopyTexturePass(GraphBuilder, CanvasTemp_RDG, Canvas0_RDG, CopyTextureInfo);
+			XkCanvasComputeDispatch<T>(GraphBuilder, ComputerShaderParams, GroupCount);
+			AddCopyTexturePass(GraphBuilder, CanvasTemp_RDG, Output_RDG, CopyTextureInfo);
 			GraphBuilder.Execute();
 		});
 }

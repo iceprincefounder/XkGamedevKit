@@ -142,13 +142,15 @@ class XKGAMEDEVCORE_API FXkCanvasRenderPS : public FGlobalShader
 };
 
 
-extern void XKGAMEDEVCORE_API XkCanvasRendererDraw(FRDGBuilder& GraphBuilder,
+extern void XKGAMEDEVCORE_API XkCanvasRendererDraw(
+	FRDGBuilder& GraphBuilder,
 	const uint32 NumInstances,
 	const FIntRect& InDestinationBounds,
 	FXkCanvasRenderVS::FParameters* InVSParameters,
 	FXkCanvasRenderPS::FParameters* InPSParameters,
 	FXkCanvasVertexBuffer* InVertexBuffer,
-	FXkCanvasIndexBuffer* InIndexBuffer);
+	FXkCanvasIndexBuffer* InIndexBuffer
+	);
 
 /**
  * Computer shader to filter the canvas render targets.
@@ -190,6 +192,20 @@ class XKGAMEDEVCORE_API FXkCanvasRenderHeightCS : public FXkCanvasRenderCS
 };
 
 
+class XKGAMEDEVCORE_API FXkCanvasRenderWeightCS : public FXkCanvasRenderCS
+{
+	DECLARE_GLOBAL_SHADER(FXkCanvasRenderWeightCS);
+	SHADER_USE_PARAMETER_STRUCT(FXkCanvasRenderWeightCS, FXkCanvasRenderCS);
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) { return true; };
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FXkCanvasRenderCS::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+		OutEnvironment.SetDefine(TEXT("WEIGHT_FILTER"), 1);
+	}
+};
+
+
 class XKGAMEDEVCORE_API FXkCanvasRenderNormalCS : public FXkCanvasRenderCS
 {
 	DECLARE_GLOBAL_SHADER(FXkCanvasRenderNormalCS);
@@ -218,5 +234,10 @@ class XKGAMEDEVCORE_API FXkCanvasRenderSdfCS : public FXkCanvasRenderCS
 };
 
 
-template<typename T, typename P>
-extern void XKGAMEDEVCORE_API XkCanvasComputeDispatch(FRDGBuilder& GraphBuilder, P* InCSParameters, const FIntVector& DispatchCount);
+template<typename T>
+extern void XKGAMEDEVCORE_API XkCanvasComputeDispatch(
+	FRDGBuilder& GraphBuilder, 
+	FXkCanvasRenderCS::FParameters* InCSParameters,
+	const FIntVector&
+	DispatchCount
+	);
