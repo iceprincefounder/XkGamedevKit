@@ -119,15 +119,15 @@ public:
 	{
 		Type = EXkHexagonType::Unavailable;
 		Position = FVector4f::Zero();
-		Splatmap = 0;
+		Weights = FVector4f::Zero();
 		Coord = FIntVector::ZeroValue;
 		CustomData = FVector4f::Zero();
 	};
 	FXkHexagonNode(
-		const EXkHexagonType InType, const FVector4f& InPosition, const uint8 InSplatmap, const FIntVector& InCoord) :
+		const EXkHexagonType InType, const FVector4f& InPosition, const FVector4f InWeights, const FIntVector& InCoord) :
 		Type(InType),
 		Position(InPosition),
-		Splatmap(InSplatmap),
+		Weights(InWeights),
 		Coord(InCoord),
 		CustomData(FVector4f::Zero())
 		{};
@@ -141,9 +141,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	FVector4f Position; // Position.W for hexagon radius.
 
-	/* Material texture id.*/
+	/* Material texture weights.*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
-	uint8 Splatmap;
+	FVector4f Weights;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	FIntVector Coord;
@@ -159,7 +159,7 @@ public:
 		Type = rhs.Type;
 		Position = rhs.Position;
 		CustomData = rhs.CustomData;
-		Splatmap = rhs.Splatmap;
+		Weights = rhs.Weights;
 		Coord = rhs.Coord;
 		Cost = rhs.Cost;
 		return *this;
@@ -344,5 +344,11 @@ FORCEINLINE static void HexagonNodeSetZ(FXkHexagonNode* Node, const float Height
 FORCEINLINE static uint8 HexagonNodeGetSplatID(FXkHexagonNode* Node)
 {
 	check(Node);
-	return Node->Splatmap;
+	return (uint8)(Node->Weights.W * 255.0f);
+}
+
+FORCEINLINE static void HexagonNodeSetSplatID(FXkHexagonNode* Node, const uint8 SplatID)
+{
+	check(Node);
+	Node->Weights.W = (float)SplatID / 255.0f;
 }

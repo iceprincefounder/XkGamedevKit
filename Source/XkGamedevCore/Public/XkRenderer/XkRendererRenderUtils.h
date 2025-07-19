@@ -151,7 +151,6 @@ class XKGAMEDEVCORE_API FXkCanvasRenderCS : public FGlobalShader
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER(FIntVector4, TextureSize)		// #0 Texture size X #1 Texture size Y  #2 Texture size Z  #3 Mips
 		SHADER_PARAMETER(FIntVector4, TextureFilter)	// #0 Height range #1 Normal range #3 SDF range #4 Weight
-		SHADER_PARAMETER(FIntVector4, SuperResMask)		// #0 Low splat id #1 High splat id #3 SuperRes minimal value #4 SuperRes scale factor
 		SHADER_PARAMETER(FVector4f, Center)				// @TODO: just computer the pixel area which changed by game logic
 		SHADER_PARAMETER(FVector4f, Extent)
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SourceTexture0)

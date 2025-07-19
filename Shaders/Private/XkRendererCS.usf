@@ -8,7 +8,6 @@
 
 int4 TextureSize;
 int4 TextureFilter;
-int4 SuperResMask;
 float4 Center;
 float4 Extent;
 Texture2D<float4> SourceTexture0;
@@ -28,15 +27,8 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 
 #if HEIGHT_FILTER
 	int Range = (int) TextureFilter.x;
-	// Only apply super resolution outside mask area to height filter
-	const float4 WeightmapValue = SourceTexture1.Load(uint3(PixelCoord, 0)).a;
-	const uint SplatID = (uint)floor(WeightmapValue.a * 255.0f);
-	if	(SplatID >= (uint)SuperResMask.x && SplatID < (uint)SuperResMask.y)
-	{
-		Range = max(Range, SuperResMask.z) * SuperResMask.w;
-	}	
-	float Sum = 0.0f;       // values sum of height which store in z component
-	int SumCount = 0;
+	float HeightValueSum = 0.0f; // values sum of height which store in z component
+	int TotalFilteredCount = 0;
 	for (int x = -Range; x <= Range; x++)
 	{
 		for (int y = -Range; y <= Range; y++)
@@ -46,14 +38,14 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 			if (any(PixelCoordOffset <= TextureSize.xy))
 			{
 				float4 PixelValue = SourceTexture0.Load(uint3(PixelCoordOffset, 0));
-				Sum += PixelValue.w;
-				SumCount++;
+				HeightValueSum += PixelValue.w;
+				TotalFilteredCount++;
 			}
 		}
 	}
 
 	float4 Source = SourceTexture0.Load(uint3(PixelCoord, 0));
-	TargetTexture[PixelCoord] = float4(Source.x, Source.y, Source.z, Sum / SumCount);
+	TargetTexture[PixelCoord] = float4(Source.x, Source.y, Source.z, HeightValueSum / TotalFilteredCount);
 #endif
 	
 #if NORMAL_FILTER
@@ -98,7 +90,7 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 		{
 			const uint2 PixelCoordOffset = uint2(DispatchThreadId.x + Stripe * x, DispatchThreadId.y + Stripe * y);
 			BRANCH
-			if (any(PixelCoordOffset <= TextureSize.xy))
+			if (any(PixelCoordOffset <= TextureSize.xy) && length(float2(x, y)) <= Range)
 			{
 				float4 PixelValue = SourceTexture0.Load(uint3(PixelCoordOffset, 0));
 				float PixelHeight = (PixelValue.w - 0.5f) * 2.0f * HeightScale;
@@ -118,7 +110,23 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 #endif
 
 #if WEIGHT_FILTER
-	float4 Source = SourceTexture1.Load(uint3(PixelCoord, 0));
-	TargetTexture[PixelCoord] = float4(Source.x, Source.y, Source.z, Source.w);
+	int Range = (int) TextureFilter.w;
+	float4 WeightsValueSum = 0.0f; // values sum of weights
+	int TotalFilteredCount = 0;
+	for (int x = -Range; x <= Range; x++)
+	{
+		for (int y = -Range; y <= Range; y++)
+		{
+			const uint2 PixelCoordOffset = uint2(DispatchThreadId.x + x, DispatchThreadId.y + y);
+			BRANCH
+			if (any(PixelCoordOffset <= TextureSize.xy) && length(float2(x, y)) <= Range)
+			{
+				float4 PixelValue = SourceTexture1.Load(uint3(PixelCoordOffset, 0));
+				WeightsValueSum += PixelValue;
+				TotalFilteredCount++;
+			}
+		}
+	}
+	TargetTexture[PixelCoord] = WeightsValueSum / TotalFilteredCount;
 #endif
 }

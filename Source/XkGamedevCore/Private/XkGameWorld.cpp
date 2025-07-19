@@ -113,7 +113,7 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 			int32 ManhattanDistanceToCenter = FXkHexagonAStarPathfinding::CalcManhattanDistance(HexagonCoord, FIntVector(0, 0, 0));
 			FVector4f Position = FVector4f(Pos.X, Pos.Y, 0.0, Radius);
 
-			FXkHexagonNode HexagonNode = FXkHexagonNode(EXkHexagonType::Unavailable | EXkHexagonType::Ocean, Position, 0, HexagonCoord);
+			FXkHexagonNode HexagonNode = FXkHexagonNode(EXkHexagonType::Unavailable | EXkHexagonType::Ocean, Position, FVector4f::Zero(), HexagonCoord);
 			if (ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
 			{
 				ModifyHexagonalWorldNodes().Add(HexagonCoord, HexagonNode);
@@ -165,7 +165,7 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 				if (Node->Type == HexagonSplat.TargetType)
 				{
 					Node->Position.Z = HorizonHeight;
-					Node->Splatmap = HexagonSplat.Splats[RandRangeIntMT(RandomSeed, 0, HexagonSplat.Splats.Num() - 1)];
+					Node->Weights.W = (float)HexagonSplat.Splats[RandRangeIntMT(RandomSeed, 0, HexagonSplat.Splats.Num() - 1)] / 255.0f;
 				}
 			}
 		}
@@ -178,7 +178,7 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 				if (Node->Type == HexagonSplat.TargetType)
 				{
 					Node->Position.Z = HorizonHeight;
-					Node->Splatmap = HexagonSplat.Splats[RandRangeIntMT(RandomSeed, 0, HexagonSplat.Splats.Num() - 1)];
+					Node->Weights.W = (float)HexagonSplat.Splats[RandRangeIntMT(RandomSeed, 0, HexagonSplat.Splats.Num() - 1)] / 255.0f;
 				}
 			}
 		}
@@ -204,10 +204,10 @@ void AXkSphericalWorldWithOceanActor::GenerateCanvas()
 	{
 		const FXkHexagonNode& Node = HexagonalWorldNodes[i];
 		FVector4f InstancePositionValue = Node.Position;
-		FVector4f InstanceWeightValue = FVector4f(FVector3f(1.0), (float)Node.Splatmap / 255.0f);
+		FVector4f InstanceWeightsValue = Node.Weights;
 
 		InstancePositionData.Add(InstancePositionValue);
-		InstanceWeightData.Add(InstanceWeightValue);
+		InstanceWeightData.Add(InstanceWeightsValue);
 	}
 
 	FVector2D Resolution = CanvasRendererComponent->GetCanvasSize();

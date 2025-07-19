@@ -296,12 +296,11 @@ inline void UXkCanvasRendererComponent::DrawFilteringCanvas_Internal(UTextureRen
 	UTextureRenderTarget2D* Canvas0 = CanvasRT0;
 	UTextureRenderTarget2D* Canvas1 = CanvasRT1;
 	FIntVector4 TextureFilter = FIntVector4(ConvolutionRangeX, ConvolutionRangeY, ConvolutionRangeZ, ConvolutionRangeW);
-	FIntVector4 SuperResMask = FIntVector4(SplatMaskRange.X, SplatMaskRange.Y, 2, 4);
 	FVector4f Center = CanvasCenter;
 	FVector4f Extent = CanvasExtent;
 	FMatrix44f LocalToWorld = FMatrix44f(GetOwner()->GetTransform().ToMatrixWithScale());
 	RenderCaptureInterface::FScopedCapture RenderCapture(CaptureDrawCanvas, TEXT("CaptureDrawFilteringCanvas"));
-	ENQUEUE_RENDER_COMMAND(UXkRendererComponent_DrawFilteringCanvas)([Output, Canvas0, Canvas1, LocalToWorld, Center, Extent, TextureFilter, SuperResMask]
+	ENQUEUE_RENDER_COMMAND(UXkRendererComponent_DrawFilteringCanvas)([Output, Canvas0, Canvas1, LocalToWorld, Center, Extent, TextureFilter]
 	(FRHICommandListImmediate& RHICmdList)
 		{
 			TRACE_CPUPROFILER_EVENT_SCOPE(UXkCanvasRendererComponent_DrawCanvas);
@@ -335,7 +334,6 @@ inline void UXkCanvasRendererComponent::DrawFilteringCanvas_Internal(UTextureRen
 				GraphBuilder.AllocParameters<FXkCanvasRenderCS::FParameters>();
 			ComputerShaderParams->TextureSize = FIntVector4(TextureSize.X, TextureSize.Y, TextureSize.Z, 1);
 			ComputerShaderParams->TextureFilter = TextureFilter;
-			ComputerShaderParams->SuperResMask = SuperResMask;
 			ComputerShaderParams->Center = Center; // @TODO: just computer the pixel area which changed by game logic
 			ComputerShaderParams->Extent = Extent;
 			ComputerShaderParams->SourceTexture0 = Canvas0_RDG;
