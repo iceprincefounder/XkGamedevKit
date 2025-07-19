@@ -241,7 +241,6 @@ void XkCanvasComputeDispatch(FRDGBuilder& GraphBuilder, FXkCanvasRenderCS::FPara
 }
 
 
-IMPLEMENT_UNIFORM_BUFFER_STRUCT(FXkCanvasRenderParameters, "Parameters");
 IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderVS, "/Plugin/XkGamedevKit/Private/XkRendererVS.usf", "MainVS", SF_Vertex);
 IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderPS, "/Plugin/XkGamedevKit/Private/XkRendererPS.usf", "MainPS", SF_Pixel);
 IMPLEMENT_GLOBAL_SHADER(FXkCanvasRenderCS, "/Plugin/XkGamedevKit/Private/XkRendererCS.usf", "MainCS", SF_Compute);

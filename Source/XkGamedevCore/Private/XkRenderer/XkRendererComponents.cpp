@@ -196,6 +196,10 @@ void UXkCanvasRendererComponent::DrawHeightWeightCanvas_MultiFrame()
 	PendingMultiFrameTasks.Add([this]()
 		{
 			DrawPrimaryCanvas_Internal();
+			DrawFilteringCanvas_Internal<FXkCanvasRenderNormalCS>(CanvasRT0);
+		});
+	PendingMultiFrameTasks.Add([this]()
+		{
 			DrawFilteringCanvas_Internal<FXkCanvasRenderHeightCS>(CanvasRT0);
 			DrawFilteringCanvas_Internal<FXkCanvasRenderNormalCS>(CanvasRT0);
 		});
@@ -228,12 +232,12 @@ void UXkCanvasRendererComponent::DrawPrimaryCanvas_Internal()
 	FXkCanvasRenderVS::FParameters VertexShaderParamsToCopy;
 	FXkCanvasRenderPS::FParameters PixelShaderParamsToCopy;
 	FMatrix44f LocalToWorld = FMatrix44f(GetOwner()->GetTransform().ToMatrixWithScale());
-	RenderCaptureInterface::FScopedCapture RenderCapture(CaptureDrawCanvas, TEXT("CaptureHeightSplatCanvas"));
-	ENQUEUE_RENDER_COMMAND(UXkRendererComponent_HeightSplatCanvas)([Canvas0, Canvas1, LocalToWorld, Center, Extent,
+	RenderCaptureInterface::FScopedCapture RenderCapture(CaptureDrawCanvas, TEXT("DrawPrimaryCanvas"));
+	ENQUEUE_RENDER_COMMAND(UXkRendererComponent_DrawPrimaryCanvas)([Canvas0, Canvas1, LocalToWorld, Center, Extent,
 		VertexShaderParamsToCopy, PixelShaderParamsToCopy, VertexBuf, IndexBuf, InstancePositionBuf, InstanceWeightBuf]
 		(FRHICommandListImmediate& RHICmdList)
 		{
-			TRACE_CPUPROFILER_EVENT_SCOPE(UXkCanvasRendererComponent_DrawCanvas);
+			TRACE_CPUPROFILER_EVENT_SCOPE(UXkCanvasRendererComponent_DrawPrimaryCanvas);
 
 			VertexBuf->InitRHI();
 			IndexBuf->InitRHI();
@@ -250,20 +254,11 @@ void UXkCanvasRendererComponent::DrawPrimaryCanvas_Internal()
 				Canvas0->GetResource()->GetTexture2DRHI(), TEXT("Canvas0"));
 			FRDGTextureRef Canvas0_RDG = GraphBuilder.RegisterExternalTexture(Canvas0_RT);
 
-			TRefCountPtr<IPooledRenderTarget> Canvas0_Temp_RT = CreateRenderTarget(
-				Canvas0->GetResource()->GetTexture2DRHI(), TEXT("Canvas0_Temp"));
-			FRDGTextureRef Canvas0_Temp_RDG = GraphBuilder.RegisterExternalTexture(Canvas0_Temp_RT);
-
 			TRefCountPtr<IPooledRenderTarget> Canvas1_RT = CreateRenderTarget(
 				Canvas1->GetResource()->GetTexture2DRHI(), TEXT("Canvas1"));
 			FRDGTextureRef Canvas1_RDG = GraphBuilder.RegisterExternalTexture(Canvas1_RT);
 
 			FIntVector TextureSize = Canvas0_RDG->Desc.GetSize();
-			FRHICopyTextureInfo CopyTextureInfo;
-			CopyTextureInfo.NumMips = 1;
-			CopyTextureInfo.Size = TextureSize;
-
-			AddCopyTexturePass(GraphBuilder, Canvas0_RDG, Canvas0_Temp_RDG, CopyTextureInfo);
 
 			FXkCanvasRenderVS::FParameters* VertexShaderParams =
 				GraphBuilder.AllocParameters<FXkCanvasRenderVS::FParameters>();
@@ -273,21 +268,12 @@ void UXkCanvasRendererComponent::DrawPrimaryCanvas_Internal()
 				GraphBuilder.AllocParameters<FXkCanvasRenderPS::FParameters>();
 			*PixelShaderParams = PixelShaderParamsToCopy;
 
-			TRDGUniformBufferRef<FXkCanvasRenderParameters> PassUniformBuffer = nullptr;
-			auto* BuildParameters = GraphBuilder.AllocParameters<FXkCanvasRenderParameters>();
-			{
-				// Object data
-				BuildParameters->LocalToWorld = FMatrix44f(LocalToWorld);
-				BuildParameters->Center = Center;
-				// Extent.X : world size x, Extent.Y : world size y, Extent.Z : unscaled patch coverage, Extent.W : unscaled world size
-				BuildParameters->Extent = Extent;
-				BuildParameters->Color = FVector4f(1.0f, 1.0f, 1.0f, 1.0f);
-				PassUniformBuffer = GraphBuilder.CreateUniformBuffer(BuildParameters);
-			}
-			VertexShaderParams->Parameters = PassUniformBuffer;
+			VertexShaderParams->LocalToWorld = FMatrix44f(LocalToWorld);
+			VertexShaderParams->Center = Center;
+			// Extent.X : world size x, Extent.Y : world size y, Extent.Z : unscaled patch coverage, Extent.W : unscaled world size
+			VertexShaderParams->Extent = Extent;
 			VertexShaderParams->InstancePositionBuffer = InstancePositionBuf->ShaderResourceViewRHI.GetReference();
 			VertexShaderParams->InstanceWeightBuffer = InstanceWeightBuf->ShaderResourceViewRHI.GetReference();
-			PixelShaderParams->SourceTexture0 = Canvas0_Temp_RDG;
 			PixelShaderParams->RenderTargets[0] = FRenderTargetBinding(Canvas0_RDG, ERenderTargetLoadAction::EClear, /*InMipIndex = */0);
 			PixelShaderParams->RenderTargets[1] = FRenderTargetBinding(Canvas1_RDG, ERenderTargetLoadAction::EClear, /*InMipIndex = */0);
 			FIntRect Viewport = FIntRect(0, 0, TextureSize.X, TextureSize.Y);
@@ -343,18 +329,6 @@ inline void UXkCanvasRendererComponent::DrawFilteringCanvas_Internal(UTextureRen
 			const FRDGTextureDesc Desc = FRDGTextureDesc::Create2D(FIntPoint(TextureSize.X, TextureSize.Y),
 				Output_RDG->Desc.Format, Output_RDG->Desc.ClearValue, TextureFlags, 1 /*NumMips*/);
 			FRDGTextureRef CanvasTemp_RDG = GraphBuilder.CreateTexture(Desc, TEXT("CanvasTemp"));
-
-			TRDGUniformBufferRef<FXkCanvasRenderParameters> PassUniformBuffer = nullptr;
-			auto* BuildParameters = GraphBuilder.AllocParameters<FXkCanvasRenderParameters>();
-			{
-				// Object data
-				BuildParameters->LocalToWorld = FMatrix44f(LocalToWorld);
-				BuildParameters->Center = Center;
-				// Extent.X : world size x, Extent.Y : world size y, Extent.Z : unscaled patch coverage, Extent.W : unscaled world size
-				BuildParameters->Extent = Extent;
-				BuildParameters->Color = FVector4f(1.0f, 1.0f, 1.0f, 1.0f);
-				PassUniformBuffer = GraphBuilder.CreateUniformBuffer(BuildParameters);
-			}
 
 			FXkCanvasRenderCS::FParameters* ComputerShaderParams =
 				GraphBuilder.AllocParameters<FXkCanvasRenderCS::FParameters>();

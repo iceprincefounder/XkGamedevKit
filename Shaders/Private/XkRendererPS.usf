@@ -9,8 +9,6 @@
 # include "/Engine/Private/Common.ush"
 # include "/Engine/Private/Landscape/LandscapeCommon.ush"
 
-Texture2D<float4> SourceTexture0;
-
 // https://www.ronja-tutorials.com/post/041-hsv-colorspace/
 float3 Hue2RGB(float hue)
 {
@@ -31,9 +29,6 @@ void MainPS(
 	out float4 OutColor0	: SV_Target0, 
 	out float4 OutColor1	: SV_Target1)
 {
-	// Sample the source textures
-	float4 Source0 = SourceTexture0.Load(int3(SVPos.xy, 0));
-	OutColor0 = Source0;
-	OutColor0.a = Height.x; // Set alpha to the height value
-    OutColor1 = Weight;
+	OutColor0 = float4(1.0, 1.0, 1.0, Height.x); // Set alpha to the height value
+	OutColor1 = Weight;
 }

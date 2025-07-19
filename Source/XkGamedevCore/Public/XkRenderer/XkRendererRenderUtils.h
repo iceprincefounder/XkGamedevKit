@@ -92,17 +92,6 @@ public:
 
 extern XKGAMEDEVCORE_API TGlobalResource<FXkCanvasIndexBuffer> GXkCanvasIndexBuffer;
 
-
-/////////////////////////////////////////////////////////////////////////////////////////////////
-// BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT #1 Parameters Name #2 API to export!!!
-// @Note: I debugged this shit for hours finally know I should put XKGAMEDEVCORE_API into second args to fix compile issue.
-BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT(FXkCanvasRenderParameters, XKGAMEDEVCORE_API)
-SHADER_PARAMETER(FMatrix44f, LocalToWorld)
-SHADER_PARAMETER(FVector4f, Center)
-SHADER_PARAMETER(FVector4f, Extent)
-SHADER_PARAMETER(FVector4f, Color)
-END_GLOBAL_SHADER_PARAMETER_STRUCT()
-
 /**
  * Vertex Shader that resterilizes a procedural mesh into texture.
  */
@@ -110,14 +99,14 @@ class XKGAMEDEVCORE_API FXkCanvasRenderVS : public FGlobalShader
 {
 	DECLARE_GLOBAL_SHADER(FXkCanvasRenderVS);
 	SHADER_USE_PARAMETER_STRUCT(FXkCanvasRenderVS, FGlobalShader);
-
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		// Input
-		SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FXkCanvasRenderParameters, Parameters)
+		SHADER_PARAMETER(FMatrix44f, LocalToWorld)
+		SHADER_PARAMETER(FVector4f, Center)
+		SHADER_PARAMETER(FVector4f, Extent)
 		SHADER_PARAMETER_SRV(Buffer<float4>, InstancePositionBuffer)
 		SHADER_PARAMETER_SRV(Buffer<float4>, InstanceWeightBuffer)
 		RENDER_TARGET_BINDING_SLOTS() // Holds our output
-		END_SHADER_PARAMETER_STRUCT()
+	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) { return true; };
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& InParameters, FShaderCompilerEnvironment& OutEnvironment);
@@ -133,9 +122,8 @@ class XKGAMEDEVCORE_API FXkCanvasRenderPS : public FGlobalShader
 	SHADER_USE_PARAMETER_STRUCT(FXkCanvasRenderPS, FGlobalShader);
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SourceTexture0)
 		RENDER_TARGET_BINDING_SLOTS() // Holds our output
-		END_SHADER_PARAMETER_STRUCT()
+	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters) { return true; };
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& InParameters, FShaderCompilerEnvironment& OutEnvironment);
