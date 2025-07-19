@@ -34,6 +34,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	uint8 ConvolutionRangeZ;
 
+	/* Weight convolution range (aka Filter).*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
+	uint8 ConvolutionRangeW;
+
 	/* XYZ for center of land, W for land height, to calculate ocean SDF.*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	FVector4f CanvasCenter;

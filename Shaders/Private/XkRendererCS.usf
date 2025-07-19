@@ -6,6 +6,7 @@
 
 #include "/Engine/Private/Common.ush"
 
+int4 TextureSize;
 int4 TextureFilter;
 int4 SuperResMask;
 float4 Center;
@@ -19,16 +20,17 @@ RWTexture2D<float4> TargetTexture;
 void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 {
 	BRANCH
-	if (any(DispatchThreadId > TextureFilter.ww))
+	if (any(DispatchThreadId > TextureSize.xy))
 	{
 		return;
 	}
 	const uint2 PixelCoord = uint2(DispatchThreadId.x, DispatchThreadId.y);
-	const float4 WeightmapValue = SourceTexture1.Load(uint3(PixelCoord, 0)).a;
-	const uint SplatID = (uint)floor(WeightmapValue.a * 255.0f);
+
 #if HEIGHT_FILTER
 	int Range = (int) TextureFilter.x;
 	// Only apply super resolution outside mask area to height filter
+	const float4 WeightmapValue = SourceTexture1.Load(uint3(PixelCoord, 0)).a;
+	const uint SplatID = (uint)floor(WeightmapValue.a * 255.0f);
 	if	(SplatID >= (uint)SuperResMask.x && SplatID < (uint)SuperResMask.y)
 	{
 		Range = max(Range, SuperResMask.z) * SuperResMask.w;
@@ -41,7 +43,7 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 		{
 			const uint2 PixelCoordOffset = uint2(DispatchThreadId.x + x, DispatchThreadId.y + y);
 			BRANCH
-			if (any(PixelCoordOffset <= TextureFilter.ww))
+			if (any(PixelCoordOffset <= TextureSize.xy))
 			{
 				float4 PixelValue = SourceTexture0.Load(uint3(PixelCoordOffset, 0));
 				Sum += PixelValue.w;
@@ -56,14 +58,9 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 	
 #if NORMAL_FILTER
 	int Range = (int) TextureFilter.y;
-	// Only apply super resolution outside mask area to height filter
-	if	(SplatID >= (uint)SuperResMask.x && SplatID <= (uint)SuperResMask.y)
-	{
-		Range = max(Range, SuperResMask.z) * SuperResMask.w;
-	}
 	const float HeightScale = Extent.w - Extent.z;
 	float4 Source = SourceTexture0.Load(uint3(PixelCoord, 0));
-	float2 WorldSizePrePixel = Extent.xy / TextureFilter.ww;
+	float2 WorldSizePrePixel = Extent.xy / TextureSize.xy;
 	const uint2 PixelCoordOffsetX = uint2(DispatchThreadId.x + Range, DispatchThreadId.y);
 	const uint2 PixelCoordOffsetY = uint2(DispatchThreadId.x, DispatchThreadId.y + Range);
 	float A_H = Source.w;
@@ -86,7 +83,7 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 	float4 Source = SourceTexture0.Load(uint3(PixelCoord, 0));
 	float HeightScale = Extent.w - Extent.z;
 	float CurrentHeight = (Source.w - 0.5f) * 2.0f * HeightScale;
-	float2 WorldSizePrePixel = Extent.xy / TextureFilter.ww;
+	float2 WorldSizePrePixel = Extent.xy / TextureSize.xy;
 	float MaxDistance = length(float2((float)Range, (float)Range)) * WorldSizePrePixel;
 	float MinimalDistance = 1000.0f;
 	BRANCH
@@ -101,7 +98,7 @@ void MainCS(int2 DispatchThreadId : SV_DispatchThreadID)
 		{
 			const uint2 PixelCoordOffset = uint2(DispatchThreadId.x + Stripe * x, DispatchThreadId.y + Stripe * y);
 			BRANCH
-			if (any(PixelCoordOffset <= TextureFilter.ww))
+			if (any(PixelCoordOffset <= TextureSize.xy))
 			{
 				float4 PixelValue = SourceTexture0.Load(uint3(PixelCoordOffset, 0));
 				float PixelHeight = (PixelValue.w - 0.5f) * 2.0f * HeightScale;

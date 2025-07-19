@@ -36,6 +36,7 @@ UXkCanvasRendererComponent::UXkCanvasRendererComponent(const FObjectInitializer&
 	ConvolutionRangeX = 2;
 	ConvolutionRangeY = 2;
 	ConvolutionRangeZ = 4;
+	ConvolutionRangeW = 4;
 
 	CanvasCenter = FVector4f::Zero();
 	CanvasCenter.W = 200.0f; // CanvasCenter.W for land height range, to calculate ocean SDF
@@ -294,7 +295,7 @@ inline void UXkCanvasRendererComponent::DrawFilteringCanvas_Internal(UTextureRen
 
 	UTextureRenderTarget2D* Canvas0 = CanvasRT0;
 	UTextureRenderTarget2D* Canvas1 = CanvasRT1;
-	FIntVector4 TextureFilter = FIntVector4(ConvolutionRangeX, ConvolutionRangeY, ConvolutionRangeZ, 0);
+	FIntVector4 TextureFilter = FIntVector4(ConvolutionRangeX, ConvolutionRangeY, ConvolutionRangeZ, ConvolutionRangeW);
 	FIntVector4 SuperResMask = FIntVector4(SplatMaskRange.X, SplatMaskRange.Y, 2, 4);
 	FVector4f Center = CanvasCenter;
 	FVector4f Extent = CanvasExtent;
@@ -332,7 +333,8 @@ inline void UXkCanvasRendererComponent::DrawFilteringCanvas_Internal(UTextureRen
 
 			FXkCanvasRenderCS::FParameters* ComputerShaderParams =
 				GraphBuilder.AllocParameters<FXkCanvasRenderCS::FParameters>();
-			ComputerShaderParams->TextureFilter = FIntVector4(TextureFilter.X, TextureFilter.Y, TextureFilter.Z, TextureSize.X);
+			ComputerShaderParams->TextureSize = FIntVector4(TextureSize.X, TextureSize.Y, TextureSize.Z, 1);
+			ComputerShaderParams->TextureFilter = TextureFilter;
 			ComputerShaderParams->SuperResMask = SuperResMask;
 			ComputerShaderParams->Center = Center; // @TODO: just computer the pixel area which changed by game logic
 			ComputerShaderParams->Extent = Extent;
