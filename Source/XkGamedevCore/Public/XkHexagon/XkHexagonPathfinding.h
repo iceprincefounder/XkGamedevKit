@@ -85,6 +85,10 @@ enum class EXkHexagonType : uint8
 	Land		= 1 << 1,
 	Beach		= 1 << 2,
 	Ocean		= 1 << 3,
+	WeightR		= 1 << 4,
+	WeightG		= 1 << 5,
+	WeightB		= 1 << 6,
+	WeightA		= 1 << 7,
 };
 ENUM_CLASS_FLAGS(EXkHexagonType);
 
@@ -105,6 +109,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
 	TArray<uint8> Splats;
 };
+
 
 /**
  * Hexagon Node
