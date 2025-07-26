@@ -94,24 +94,6 @@ ENUM_CLASS_FLAGS(EXkHexagonType);
 
 
 /**
- * Hexagon Splat
- */
-USTRUCT(BlueprintType, Blueprintable)
-struct FXkHexagonSplat
-{
-	GENERATED_BODY()
-
-	FXkHexagonSplat() : TargetType(EXkHexagonType::Unavailable),  Splats() {};
-public:
-	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
-	EXkHexagonType TargetType;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonSplat [KEVINTSUIXUGAMEDEV]")
-	TArray<uint8> Splats;
-};
-
-
-/**
  * Hexagon Node
  */
 USTRUCT(BlueprintType, Blueprintable)

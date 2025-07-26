@@ -159,28 +159,14 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 		if (Node && ManhattanDistanceToCenter < GroundManhattanDistance)
 		{
 			Node->Type = EXkHexagonType::Land;
-			int32 RandomSeed = HexagonNodeRandomSeed(Node);
-			for (const FXkHexagonSplat& HexagonSplat : HexagonSplats)
-			{
-				if (Node->Type == HexagonSplat.TargetType)
-				{
-					Node->Position.Z = HorizonHeight;
-					Node->Weights.W = (float)HexagonSplat.Splats[RandRangeIntMT(RandomSeed, 0, HexagonSplat.Splats.Num() - 1)] / 255.0f;
-				}
-			}
+			Node->Position.Z = HorizonHeight;
+			Node->Weights = FVector4f(1.0f, 0.0f, 0.0f, 0.0f);
 		}
 		else if (Node && ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
 		{
 			Node->Type = EXkHexagonType::Beach;
-			int32 RandomSeed = HexagonNodeRandomSeed(Node);
-			for (const FXkHexagonSplat& HexagonSplat : HexagonSplats)
-			{
-				if (Node->Type == HexagonSplat.TargetType)
-				{
-					Node->Position.Z = HorizonHeight;
-					Node->Weights.W = (float)HexagonSplat.Splats[RandRangeIntMT(RandomSeed, 0, HexagonSplat.Splats.Num() - 1)] / 255.0f;
-				}
-			}
+			Node->Position.Z = HorizonHeight;
+			Node->Weights = FVector4f(0.0f, 0.0f, 0.0f, 1.0f);
 		}
 	}
 }
