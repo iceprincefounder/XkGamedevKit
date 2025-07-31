@@ -26,8 +26,12 @@ public:
 	/** Destructor. */
 	virtual ~FXkCanvasMapVertexDeclaration() {}
 
-	virtual void InitRHI()
-	{
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+	virtual void InitRHI(FRHICommandListBase& RHICmdList) override
+#else
+	virtual void InitRHI() override
+#endif
+		{
 		FVertexDeclarationElementList Elements;
 		uint16 Stride = sizeof(FXkVertex);
 		Elements.Add(FVertexElement(0, STRUCT_OFFSET(FXkVertex, Position), VET_Float4, 0, Stride));
@@ -49,7 +53,11 @@ extern XKGAMEDEVCORE_API TGlobalResource<FXkCanvasMapVertexDeclaration> GXkVerte
 class XKGAMEDEVCORE_API FXkCanvasInstanceBuffer : public FVertexBufferWithSRV
 {
 public:
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+	virtual void InitRHI(FRHICommandListBase& RHICmdList) override;
+#else
 	virtual void InitRHI() override;
+#endif
 
 	int32 GetInstanceNum() const { return Data.Num(); }
 
@@ -64,8 +72,11 @@ class XKGAMEDEVCORE_API FXkCanvasVertexBuffer : public FVertexBuffer
 {
 public:
 	/** Initialize the RHI for this rendering resource */
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+	void InitRHI(FRHICommandListBase& RHICmdList) override;
+#else
 	void InitRHI() override;
-
+#endif
 	int32 GetVertexNum() const { return Positions.Num(); }
 
 	TArray<FVector4f> Positions;
@@ -82,7 +93,11 @@ class XKGAMEDEVCORE_API FXkCanvasIndexBuffer : public FIndexBuffer
 {
 public:
 	/** Initialize the RHI for this rendering resource */
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+	void InitRHI(FRHICommandListBase& RHICmdList) override;
+#else
 	void InitRHI() override;
+#endif
 
 	int32 GetTriangleNum() const { return Indices.Num() / 3; }
 	int32 GetIndexCountNum() const { return Indices.Num(); }

@@ -14,6 +14,8 @@
 #include "DynamicMeshBuilder.h"
 #include "UObject/UObjectIterator.h"
 #include "StaticMeshResources.h"
+#include "MaterialDomain.h"
+#include "DataDrivenShaderPlatformInfo.h"
 
 static bool FreezeQuadtreeCulling = 0;
 static FAutoConsoleVariableRef CVarFreezeQuadtreeCulling(
@@ -50,7 +52,11 @@ FXkQuadtreeVertexFactory::FXkQuadtreeVertexFactory(ERHIFeatureLevel::Type InFeat
 }
 
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+void FXkQuadtreeVertexFactory::InitRHI(FRHICommandListBase& RHICmdList)
+#else
 void FXkQuadtreeVertexFactory::InitRHI()
+#endif
 {
 	FVertexDeclarationElementList Elements;
 
@@ -294,7 +300,11 @@ void FXkLandscapeSceneProxy::GetDynamicMeshElements(const TArray<const FSceneVie
 }
 
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+void FXkLandscapeSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
+#else
 void FXkLandscapeSceneProxy::CreateRenderThreadResources()
+#endif
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeSceneProxy::CreateRenderThreadResources);
 	check(IsInRenderingThread());
@@ -686,14 +696,20 @@ void FXkLandscapeWithWaterSceneProxy::GetDynamicMeshElements(const TArray<const 
 	}
 }
 
-
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+void FXkLandscapeWithWaterSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
+#else
 void FXkLandscapeWithWaterSceneProxy::CreateRenderThreadResources()
+#endif
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::CreateRenderThreadResources);
 	check(IsInRenderingThread());
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+	FXkLandscapeSceneProxy::CreateRenderThreadResources(RHICmdList);
+#else
 	FXkLandscapeSceneProxy::CreateRenderThreadResources();
-
+#endif
 	WaterVertexFactory->SetVertexStreams(&WaterVertexPositionBuffer_GPU, &WaterInstancePositionBuffer_GPU, &WaterInstanceMorphBuffer_GPU);
 	WaterVertexFactory->InitResource();
 }

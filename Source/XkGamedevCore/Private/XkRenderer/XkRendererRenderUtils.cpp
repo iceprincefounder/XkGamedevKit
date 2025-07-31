@@ -9,7 +9,11 @@ TGlobalResource<FXkCanvasMapVertexDeclaration> GXkVertexDeclaration;
 TGlobalResource<FXkCanvasVertexBuffer> GXkCanvasVertexBuffer;
 TGlobalResource<FXkCanvasIndexBuffer> GXkCanvasIndexBuffer;
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+void FXkCanvasInstanceBuffer::InitRHI(FRHICommandListBase& RHICmdList)
+#else
 void FXkCanvasInstanceBuffer::InitRHI()
+#endif
 {
 	if (Data.Num() == 0)
 	{
@@ -48,7 +52,11 @@ void FXkCanvasInstanceBuffer::InitRHI()
 }
 
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+void FXkCanvasVertexBuffer::InitRHI(FRHICommandListBase& RHICmdList)
+#else
 void FXkCanvasVertexBuffer::InitRHI()
+#endif
 {
 	check(Positions.Num() == UVs.Num());
 	TResourceArray<FXkVertex, VERTEXBUFFER_ALIGNMENT> RawData;
@@ -90,8 +98,11 @@ void FXkCanvasVertexBuffer::InitRHI()
 	VertexBufferRHI = RHICreateVertexBuffer(RawData.GetResourceDataSize(), BUF_Static, CreateInfo);
 }
 
-
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+void FXkCanvasIndexBuffer::InitRHI(FRHICommandListBase& RHICmdList)
+#else
 void FXkCanvasIndexBuffer::InitRHI()
+#endif
 {
 	TResourceArray<uint32, INDEXBUFFER_ALIGNMENT> RawData;
 	if (Indices.Num() == 0)
@@ -211,6 +222,12 @@ void FXkCanvasRenderCS::ModifyCompilationEnvironment(const FGlobalShaderPermutat
 	OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), ThreadGroupSizeY);
 }
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+template void XkCanvasComputeDispatch<FXkCanvasRenderHeightCS>(FRDGBuilder&, FXkCanvasRenderCS::FParameters*, const FIntVector3&);
+template void XkCanvasComputeDispatch<FXkCanvasRenderNormalCS>(FRDGBuilder&, FXkCanvasRenderCS::FParameters*, const FIntVector3&);
+template void XkCanvasComputeDispatch<FXkCanvasRenderSdfCS>(FRDGBuilder&, FXkCanvasRenderCS::FParameters*, const FIntVector3&);
+template void XkCanvasComputeDispatch<FXkCanvasRenderWeightCS>(FRDGBuilder&, FXkCanvasRenderCS::FParameters*, const FIntVector3&);
+#endif
 
 template<typename T>
 void XkCanvasComputeDispatch(FRDGBuilder& GraphBuilder, FXkCanvasRenderCS::FParameters* InCSParameters, const FIntVector& DispatchCount)

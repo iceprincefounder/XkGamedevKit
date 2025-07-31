@@ -392,7 +392,11 @@ public:
 		return Result;
 	}
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+	virtual void CreateRenderThreadResources(FRHICommandListBase& RHICmdList) override
+#else
 	virtual void OnTransformChanged() override
+#endif
 	{
 		Origin = GetLocalToWorld().GetOrigin();
 	}

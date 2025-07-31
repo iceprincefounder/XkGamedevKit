@@ -346,6 +346,15 @@ TArray<FIntVector> FXkHexagonAStarPathfinding::CalcHexagonSurroundingCoord(const
 	return Results;
 }
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+template void BuildHexagon<FVector, int32>(
+	TArray<FVector>&, TArray<int>&, TArray<FVector>&, TArray<int>&,
+	float, float, float, float, float, float);
+template void BuildHexagon<FVector4f, uint32>(
+	TArray<FVector4f>&, TArray<uint32>&, TArray<FVector4f>&, TArray<uint32>&,
+	float, float, float, float, float, float);
+#endif
+
 template<typename T0, typename T1>
 void BuildHexagon(TArray<T0>& OutBaseVertices, TArray<T1>& OutBaseIndices, TArray<T0>& OutEdgeVertices, TArray<T1>& OutEdgeIndices,
 	float Radius, float Height, float BaseInnerGap, float BaseOuterGap, float EdgeInnerGap, float EdgeOuterGap)

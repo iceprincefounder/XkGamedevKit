@@ -28,8 +28,11 @@ public:
 	/**
 	* Constructs render resources for this vertex factory.
 	*/
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+	virtual void InitRHI(FRHICommandListBase& RHICmdList) override;
+#else
 	virtual void InitRHI() override;
-
+#endif
 	/**
 	* Release render resources for this vertex factory.
 	*/
@@ -82,7 +85,11 @@ public:
 		const FSceneViewFamily& ViewFamily,
 		uint32 VisibilityMap,
 		class FMeshElementCollector& Collector) const override;
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+	virtual void CreateRenderThreadResources(FRHICommandListBase& RHICmdList) override;
+#else
 	virtual void CreateRenderThreadResources() override;
+#endif
 	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override;
 	virtual bool CanBeOccluded() const override { return false; };
 	//~ End FPrimitiveSceneProxy Interface

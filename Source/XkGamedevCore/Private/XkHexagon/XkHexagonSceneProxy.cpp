@@ -14,6 +14,8 @@
 #include "UObject/UObjectIterator.h"
 #include "StaticMeshResources.h"
 #include "MeshMaterialShader.h"
+#include "MaterialDomain.h"
+#include "DataDrivenShaderPlatformInfo.h"
 
 
 class FXkHexagonalWorldVertexFactoryShaderParameters : public FVertexFactoryShaderParameters
@@ -45,8 +47,11 @@ FXkHexagonalWorldVertexFactory::FXkHexagonalWorldVertexFactory(ERHIFeatureLevel:
 	VertexPositionVertexBuffer = NULL;
 }
 
-
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+void FXkHexagonalWorldVertexFactory::InitRHI(FRHICommandListBase& RHICmdList)
+#else
 void FXkHexagonalWorldVertexFactory::InitRHI()
+#endif
 {
 	FVertexDeclarationElementList Elements;
 
@@ -319,7 +324,11 @@ void FXkHexagonalWorldSceneProxy::GetDynamicMeshElements(const TArray<const FSce
 }
 
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+void FXkHexagonalWorldSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
+#else
 void FXkHexagonalWorldSceneProxy::CreateRenderThreadResources()
+#endif
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::CreateRenderThreadResources);
 	check(IsInRenderingThread());

@@ -118,10 +118,17 @@ void UXkCanvasRendererComponent::CreateBuffers(const TArray<FVector4f> Vertices,
 	(FRHICommandListImmediate& RHICmdList)
 		{
 			TRACE_CPUPROFILER_EVENT_SCOPE(UXkCanvasRendererComponent_CreateBuffers);
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+			VertexBuffer.InitRHI(RHICmdList);
+			IndexBuffer.InitRHI(RHICmdList);
+			InstancePositionBuffer.InitRHI(RHICmdList);
+			InstanceWeightBuffer.InitRHI(RHICmdList);
+#else
 			VertexBuffer.InitRHI();
 			IndexBuffer.InitRHI();
 			InstancePositionBuffer.InitRHI();
 			InstanceWeightBuffer.InitRHI();
+#endif
 		});
 	FlushRenderingCommands();
 
@@ -240,11 +247,17 @@ void UXkCanvasRendererComponent::DrawPrimaryCanvas_Internal()
 		{
 			TRACE_CPUPROFILER_EVENT_SCOPE(UXkCanvasRendererComponent_DrawPrimaryCanvas);
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+			VertexBuf->InitRHI(RHICmdList);
+			IndexBuf->InitRHI(RHICmdList);
+			InstancePositionBuf->InitRHI(RHICmdList);
+			InstanceWeightBuf->InitRHI(RHICmdList);
+#else
 			VertexBuf->InitRHI();
 			IndexBuf->InitRHI();
 			InstancePositionBuf->InitRHI();
 			InstanceWeightBuf->InitRHI();
-
+#endif
 			FRDGBuilder GraphBuilder(RHICmdList, RDG_EVENT_NAME("CaptureDrawCanvas"));
 
 			uint32 NumInstances = InstancePositionBuf->Data.Num();

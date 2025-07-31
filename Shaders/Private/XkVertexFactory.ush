@@ -1,8 +1,10 @@
 // Copyright 2022, Kai Xu (kevintsuixu), All rights reserved.
-// Simular with LandscapeFactoryCommon.ush and WaterMeshFactoryCommon.ush
+// Similar with LandscapeFactoryCommon.ush and WaterMeshFactoryCommon.ush
 
 # include "/Engine/Private/Common.ush"
 # include "/Engine/Private/VertexFactoryCommon.ush"
+
+#define UE_VERSION 503
 
 struct FVertexFactoryInput
 {
@@ -80,16 +82,27 @@ void SetPrimitiveId(inout FVertexFactoryInterpolantsVSToPS Interpolants, uint Pr
 /** [VertexFactory Interface] */
 float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
 {
+#if UE_VERSION <= 502
 	FLWCMatrix LocalToWorld = GetPrimitiveData(Intermediates).LocalToWorld;
+#else
+	FDFMatrix LocalToWorld = GetPrimitiveData(Intermediates).LocalToWorld;
+#endif
 	return TransformLocalToTranslatedWorld(Intermediates.TranslatedWorldPos, LocalToWorld);
 }
 
 /** [VertexFactory Interface] */
 float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
 {
+#if UE_VERSION <= 502
 	FLWCMatrix LocalToWorld = GetPrimitiveData(Intermediates).LocalToWorld;
 	FLWCVector3 WorldPosition = TransformLocalToWorld(Intermediates.TranslatedWorldPos, LocalToWorld);
 	return float4(LWCToFloat(LWCAdd(WorldPosition, ResolvedView.PrevPreViewTranslation)), 1.0f);
+#else
+	FDFMatrix LocalToWorld = GetPrimitiveData(Intermediates).LocalToWorld;
+	float3 WorldPosition = TransformLocalToTranslatedWorld(Intermediates.TranslatedWorldPos, LocalToWorld);
+	float3 Delta = DFFastLocalSubtractDemote(ResolvedView.PrevPreViewTranslation, ResolvedView.PreViewTranslation);
+	return float4(WorldPosition - Delta, 1.0f);
+#endif
 }
 
 /** [VertexFactory Interface] */

@@ -169,7 +169,7 @@ void AXkHexagonActor::UpdateProcMesh()
 		TArray<FVector2D> BaseUV0s = GenerateUV(BaseVertices, ParentHexagonalWorld->Radius);
 		ProcMesh->CreateMeshSection(BASE_SECTION_INDEX, BaseVertices, BaseIndices, TArray<FVector>(), BaseUV0s, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
 		ProcMesh->SetMaterial(BASE_SECTION_INDEX, BaseMID);
-		ProcMesh->Bounds = FBoxSphereBounds(BaseVertices, BaseVertices.Num());
+		ProcMesh->Bounds = FBoxSphereBounds(FBox(BaseVertices));
 
 		TArray<FVector2D> EdgeUV0s = GenerateUV(EdgeVertices, ParentHexagonalWorld->Radius);
 		ProcMesh->CreateMeshSection(EDGE_SECTION_INDEX, EdgeVertices, EdgeIndices, TArray<FVector>(), EdgeUV0s, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
