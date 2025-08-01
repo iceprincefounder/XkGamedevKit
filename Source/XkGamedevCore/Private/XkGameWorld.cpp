@@ -1,6 +1,3 @@
-#include "XkGameWorld.h"
-#include "XkGameWorld.h"
-#include "XkGameWorld.h"
 // Copyright ©ICEPRINCE. All Rights Reserved.
 
 #include "XkGameWorld.h"
@@ -39,13 +36,17 @@ AXkSphericalWorldWithOceanActor::AXkSphericalWorldWithOceanActor(const FObjectIn
 	SphericalLandscapeComponent->WaterMaterial = ObjectFinder.Object;
 	SphericalLandscapeComponent->SetupAttachment(RootComponent);
 
+	HexagonBasedFortressComponent = CreateDefaultSubobject<UXkHexagonBasedFortressComponent>(TEXT("HexagonBasedFortress"));
+	HexagonBasedFortressComponent->SetupAttachment(RootComponent);
+
 	CanvasRendererComponent = CreateDefaultSubobject<UXkCanvasRendererComponent>(TEXT("CanvasRenderer"));
 
 	static ConstructorHelpers::FObjectFinder<UMaterialParameterCollection> ObjectFinder2(TEXT("/XkGamedevKit/Materials/MPC_HexagonalWorld"));
 	HexagonMPC = ObjectFinder2.Object;
 
-	GroundManhattanDistance = 20;
-	ShorelineManhattanDistance = 5;
+	GroundManhattanDistance = 28;
+	ShorelineManhattanDistance = 4;
+
 	bSpawnActors = false;
 	SpawnActorsMaxMhtDist = 10;
 	bShowSpawnedActorBaseMesh = true;
@@ -80,7 +81,6 @@ void AXkSphericalWorldWithOceanActor::OnConstruction(const FTransform& Transform
 	}
 #endif
 	CanvasRendererComponent->HorizonHeight = HorizonHeight;
-	CanvasRendererComponent->SplatMaskRange = HexagonSplatMaskRange;
 }
 
 
@@ -169,6 +169,12 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 			Node->Weights = FVector4f(0.0f, 0.0f, 0.0f, 1.0f);
 		}
 	}
+}
+
+
+void AXkSphericalWorldWithOceanActor::GenerateHexagonBasedFortress()
+{
+	HexagonBasedFortressComponent->UpdateDynamicMeshComponent();
 }
 
 

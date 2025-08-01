@@ -23,34 +23,33 @@ public:
 	TObjectPtr<class UXkSphericalLandscapeWithWaterComponent> SphericalLandscapeComponent;
 
 	UPROPERTY(VisibleAnywhere, Category = "SphericalWorldWithOcean [KEVINTSUIXUGAMEDEV]")
+	TObjectPtr<class UXkHexagonBasedFortressComponent> HexagonBasedFortressComponent;
+
+	UPROPERTY(VisibleAnywhere, Category = "SphericalWorldWithOcean [KEVINTSUIXUGAMEDEV]")
 	TObjectPtr<class UXkCanvasRendererComponent> CanvasRendererComponent;
 
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	int32 GroundManhattanDistance;
 
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	int32 ShorelineManhattanDistance;
 
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	FVector2D PositionRandomRange;
 
-	/* The splat id in the range of HexagonSplatMaskRange would do discard in VS. */
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
-	FVector2D HexagonSplatMaskRange;
-
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	UMaterialParameterCollection* HexagonMPC;
 
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	bool bSpawnActors;
 
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	int32 SpawnActorsMaxMhtDist;
 
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	bool bShowSpawnedActorBaseMesh;
 
-	UPROPERTY(EditAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	bool bShowSpawnedActorEdgeMesh;
 
 	AXkSphericalWorldWithOceanActor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
@@ -60,16 +59,19 @@ public:
 	void OnConstruction(const FTransform& Transform) override;
 	//~ End Actor Interface
 
-	UFUNCTION(BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	virtual void GenerateHexagons();
 
-	UFUNCTION(BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	virtual void GenerateHexagonalWorld();
 
-	UFUNCTION(BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
+	virtual void GenerateHexagonBasedFortress();
+
+	UFUNCTION(BlueprintCallable, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	virtual void GenerateCanvas();
 
-	UFUNCTION(CallInEditor, BlueprintCallable, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(CallInEditor, BlueprintCallable, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	void RegenerateWorld();
 
 public:

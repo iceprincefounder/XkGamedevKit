@@ -137,7 +137,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
 	int32 MaxManhattanDistance;
 
-	UPROPERTY(VisibleAnywhere, Category = "MainWorldGenerate [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(VisibleAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
 	float HorizonHeight;
 
 	friend class AXkHexagonActor;

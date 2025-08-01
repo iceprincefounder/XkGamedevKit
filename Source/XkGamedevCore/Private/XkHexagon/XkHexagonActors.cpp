@@ -245,7 +245,7 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 	EdgeOuterGap = 1.0;
 	BaseColor = FLinearColor(1.0, 1.0, 1.0, 0.0);
 	EdgeColor = FLinearColor(1.0, 1.0, 1.0, 0.0);
-	MaxManhattanDistance = 64;
+	MaxManhattanDistance = 32;
 	HorizonHeight = 100.0;
 
 	PathfindingMaxStep = 9999;

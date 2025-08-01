@@ -7,20 +7,10 @@
 #include "Components/PrimitiveComponent.h"
 #include "Components/ArrowComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/DynamicMeshComponent.h"
 #include "XkHexagonPathfinding.h"
 #include "XkHexagonComponents.generated.h"
 
-
-UINTERFACE(MinimalAPI, meta=(CannotImplementInterfaceInBlueprint))
-class UInterface_HexagonalWorld : public UInterface
-{
-	GENERATED_UINTERFACE_BODY()
-};
-
-class IInterface_HexagonalWorld
-{
-	GENERATED_IINTERFACE_BODY()
-};
 
 UCLASS(ClassGroup = Utility, hidecategories = (Object, LOD, Physics, Lighting, TextureStreaming, Activation, "Components|Activation", Collision), editinlinenew, meta = (BlueprintSpawnableComponent))
 class XKGAMEDEVCORE_API UXkHexagonArrowComponent : public UArrowComponent
@@ -130,11 +120,28 @@ private:
 };
 
 
-UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, ShowCategories = (VirtualTexture), meta = (BlueprintSpawnableComponent, DisplayName = "UXkInstancedHexagonComponent"))
+UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, ShowCategories = (VirtualTexture), meta = (BlueprintSpawnableComponent, DisplayName = "XkInstancedHexagonComponent"))
 class XKGAMEDEVCORE_API UXkInstancedHexagonComponent : public UInstancedStaticMeshComponent
 {
 	GENERATED_BODY()
 
 public:
 	UXkInstancedHexagonComponent(const FObjectInitializer& ObjectInitializer);
+};
+
+
+UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, meta = (BlueprintSpawnableComponent, DisplayName = "XkHexagonBasedFortressComponent"))
+class XKGAMEDEVCORE_API UXkHexagonBasedFortressComponent : public UDynamicMeshComponent
+{
+	GENERATED_BODY()
+
+public:
+	UXkHexagonBasedFortressComponent(const FObjectInitializer& ObjectInitializer);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	UMaterialInterface* TrapezoidWallMaterial;
+
+	//~ Begin UXkHexagonBasedFortressComponent interface
+	virtual void UpdateDynamicMeshComponent();
+	//~ End UXkHexagonBasedFortressComponent interface
 };

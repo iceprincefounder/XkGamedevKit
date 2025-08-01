@@ -25,34 +25,31 @@ public class XkGamedevCore : ModuleRules
 			{
 				"Core",
 				"CoreUObject",
-				"Engine",
+                "RHI",
+                "Engine",
 				"RenderCore",
-				"InputCore",
-				"SlateCore",
-				"HeadMountedDisplay",
+                "Renderer",
+                "InputCore",
+                "EnhancedInput",
+                "SlateCore",
+                "Slate",
+                "UMG",
+                "Niagara",
+                "Landscape",
+                "HeadMountedDisplay",
 				"NavigationSystem",
 				"AIModule",
-				"Niagara",
-				"EnhancedInput",
-				"Landscape",
+                "GeometryCore",
+                "GeometryFramework",
 				"ProceduralMeshComponent",
-				"Slate",
-				"UMG",
-				"RHI",
-				"Renderer",
 				"Water",
 			});
 
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Engine",
 				"Projects",
-				"Slate",
-				"SlateCore",
-				"Landscape",
 				"Json",
-				"RHI",
 				"DeveloperSettings",
 				// ... add private dependencies that you statically link with here ...	
 			}

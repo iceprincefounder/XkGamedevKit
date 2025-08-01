@@ -4,7 +4,7 @@
 # include "/Engine/Private/Common.ush"
 # include "/Engine/Private/VertexFactoryCommon.ush"
 
-#define UE_VERSION 503
+#define UE_VERSION 502
 
 struct FVertexFactoryInput
 {

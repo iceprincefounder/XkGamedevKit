@@ -2,19 +2,21 @@
 
 
 #include "XkHexagon/XkHexagonComponents.h"
-#include "Components/ArrowComponent.h"
+#include "XkHexagon/XkHexagonSceneProxy.h"
 #include "PrimitiveViewRelevance.h"
 #include "PrimitiveSceneProxy.h"
 #include "Engine/Engine.h"
+#include "Components/ArrowComponent.h"
+#include "Components/DynamicMeshComponent.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialRenderProxy.h"
 #include "Engine/CollisionProfile.h"
 #include "SceneInterface.h"
 #include "SceneManagement.h"
-#include "DynamicMeshBuilder.h"
 #include "UObject/UObjectIterator.h"
 #include "StaticMeshResources.h"
-#include "XkHexagon/XkHexagonSceneProxy.h"
+#include "DynamicMeshBuilder.h"
+#include "Generators/MinimalBoxMeshGenerator.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(XkHexagonComponents)
 
@@ -24,10 +26,6 @@
 #define ARROW_HEAD_FACTOR	(0.2f)
 #define ARROW_HEAD_ANGLE	(20.f)
 
-UInterface_HexagonalWorld::UInterface_HexagonalWorld(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer)
-{
-}
 
 void BuildXkHexagonConeVerts(float Angle1, float Angle2, float Scale, float Length, float ZOffset, uint32 NumSides, TArray<FDynamicMeshVertex>& OutVerts, TArray<uint32>& OutIndices)
 {
@@ -476,7 +474,7 @@ UXkHexagonalWorldComponent::UXkHexagonalWorldComponent(const FObjectInitializer&
 	BaseOuterGap = 0.0;
 	EdgeInnerGap = 9.0;
 	EdgeOuterGap = 1.0;
-	MaxManhattanDistance = 64;
+	MaxManhattanDistance = 32;
 
 	bShowBaseMesh = false;
 	bShowEdgeMesh = true;
@@ -569,4 +567,126 @@ UXkInstancedHexagonComponent::UXkInstancedHexagonComponent(const FObjectInitiali
 {
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_StandardHexagonWithUV"));
 	SetStaticMesh(ObjectFinder.Object);
+}
+
+
+UXkHexagonBasedFortressComponent::UXkHexagonBasedFortressComponent(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	TrapezoidWallMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
+
+	CastShadow = true;
+	bCastDynamicShadow = true;
+	bCastStaticShadow = true;
+}
+
+
+void MakeTrapezoidWallAlongLine(
+	FDynamicMesh3& Mesh,
+	const FVector& Start,
+	const FVector& End,
+	float BottomWidth,
+	float TopWidth,
+	float Height,
+	int32 GroupId)
+{
+	using namespace UE::Geometry;
+
+	Mesh.Clear();
+
+	FVector Forward = (End - Start).GetSafeNormal();
+	FVector Right = FVector::CrossProduct(FVector::UpVector, Forward).GetSafeNormal();
+	FVector Up = FVector::UpVector;
+
+	float HalfBottom = BottomWidth * 0.5f;
+	float HalfTop = TopWidth * 0.5f;
+
+	// Start section plane points
+	FVector v0 = Start - Right * HalfBottom;
+	FVector v1 = Start + Right * HalfBottom;
+	FVector v2 = Start + Right * HalfTop + Up * Height;
+	FVector v3 = Start - Right * HalfTop + Up * Height;
+
+	// End section plane points
+	FVector v4 = End - Right * HalfBottom;
+	FVector v5 = End + Right * HalfBottom;
+	FVector v6 = End + Right * HalfTop + Up * Height;
+	FVector v7 = End - Right * HalfTop + Up * Height;
+
+	int i0 = Mesh.AppendVertex((FVector3d)v0);
+	int i1 = Mesh.AppendVertex((FVector3d)v1);
+	int i2 = Mesh.AppendVertex((FVector3d)v2);
+	int i3 = Mesh.AppendVertex((FVector3d)v3);
+	int i4 = Mesh.AppendVertex((FVector3d)v4);
+	int i5 = Mesh.AppendVertex((FVector3d)v5);
+	int i6 = Mesh.AppendVertex((FVector3d)v6);
+	int i7 = Mesh.AppendVertex((FVector3d)v7);
+
+	// 下底面
+	Mesh.AppendTriangle(i0, i1, i3, GroupId);
+	Mesh.AppendTriangle(i1, i2, i3, GroupId);
+
+	// 上顶面
+	Mesh.AppendTriangle(i4, i7, i5, GroupId);
+	Mesh.AppendTriangle(i5, i7, i6, GroupId);
+
+	// 侧面
+	Mesh.AppendTriangle(i0, i4, i1, GroupId);
+	Mesh.AppendTriangle(i1, i4, i5, GroupId);
+
+	Mesh.AppendTriangle(i1, i5, i2, GroupId);
+	Mesh.AppendTriangle(i2, i5, i6, GroupId);
+
+	Mesh.AppendTriangle(i2, i6, i3, GroupId);
+	Mesh.AppendTriangle(i3, i6, i7, GroupId);
+
+	Mesh.AppendTriangle(i3, i7, i0, GroupId);
+	Mesh.AppendTriangle(i0, i7, i4, GroupId);
+
+	// Normals
+	Mesh.EnableVertexNormals(FVector3f::UpVector);
+	for (int32 vid : Mesh.VertexIndicesItr())
+	{
+		for (int32 tid : Mesh.TriangleIndicesItr())
+		{
+			if (Mesh.GetTriangle(tid).Contains(vid))
+			{
+				FIndex3i Tri = Mesh.GetTriangle(tid);
+				FVector3d A = Mesh.GetVertex(Tri.A);
+				FVector3d B = Mesh.GetVertex(Tri.B);
+				FVector3d C = Mesh.GetVertex(Tri.C);
+				FVector3d Normal = FVector3d::CrossProduct(v1 - v0, v2 - v0).GetSafeNormal();
+				Mesh.SetVertexNormal(vid, FVector3f(Normal));
+			}
+		}
+	}
+}
+
+
+void UXkHexagonBasedFortressComponent::UpdateDynamicMeshComponent()
+{
+	UDynamicMesh* DynamicMesh = GetDynamicMesh();
+	if (!DynamicMesh || IsValid(DynamicMesh))
+	{
+		DynamicMesh = NewObject<UDynamicMesh>(this);
+	}
+	using namespace UE::Geometry;
+	FDynamicMesh3 ShapeMesh = FDynamicMesh3();
+	MakeTrapezoidWallAlongLine(
+		ShapeMesh,
+		FVector(0, 0, 110),
+		FVector(200, 0, 110),
+		100.0f, 
+		75.0f, 
+		100.0f, 
+		0
+	);
+
+	DynamicMesh->EditMesh([&](FDynamicMesh3& EditMesh)
+		{
+			EditMesh = ShapeMesh;
+		});
+
+	SetDynamicMesh(DynamicMesh);
+	SetMaterial(0, TrapezoidWallMaterial);
 }
