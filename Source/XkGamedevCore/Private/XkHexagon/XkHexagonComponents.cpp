@@ -592,8 +592,6 @@ void MakeTrapezoidWallAlongLine(
 {
 	using namespace UE::Geometry;
 
-	Mesh.Clear();
-
 	FVector Forward = (End - Start).GetSafeNormal();
 	FVector Right = FVector::CrossProduct(FVector::UpVector, Forward).GetSafeNormal();
 	FVector Up = FVector::UpVector;
@@ -608,60 +606,275 @@ void MakeTrapezoidWallAlongLine(
 	FVector v3 = Start - Right * HalfTop + Up * Height;
 
 	// End section plane points
-	FVector v4 = End - Right * HalfBottom;
-	FVector v5 = End + Right * HalfBottom;
-	FVector v6 = End + Right * HalfTop + Up * Height;
-	FVector v7 = End - Right * HalfTop + Up * Height;
+	FVector EndHf = Start + Forward * (End - Start).Length() / 2.0;
+	FVector v4 = EndHf - Right * HalfBottom;
+	FVector v5 = EndHf + Right * HalfBottom;
+	FVector v6 = EndHf + Right * HalfTop + Up * Height;
+	FVector v7 = EndHf - Right * HalfTop + Up * Height;
 
-	int i0 = Mesh.AppendVertex((FVector3d)v0);
-	int i1 = Mesh.AppendVertex((FVector3d)v1);
-	int i2 = Mesh.AppendVertex((FVector3d)v2);
-	int i3 = Mesh.AppendVertex((FVector3d)v3);
-	int i4 = Mesh.AppendVertex((FVector3d)v4);
-	int i5 = Mesh.AppendVertex((FVector3d)v5);
-	int i6 = Mesh.AppendVertex((FVector3d)v6);
-	int i7 = Mesh.AppendVertex((FVector3d)v7);
+	// Start plane
+	{
+		int i0 = Mesh.AppendVertex((FVector3d)v0);
+		int i1 = Mesh.AppendVertex((FVector3d)v1);
+		int i2 = Mesh.AppendVertex((FVector3d)v2);
+		int i3 = Mesh.AppendVertex((FVector3d)v3);
+		Mesh.AppendTriangle(i0, i1, i3, GroupId);
+		Mesh.AppendTriangle(i1, i2, i3, GroupId);
+	}
 
-	// 下底面
-	Mesh.AppendTriangle(i0, i1, i3, GroupId);
-	Mesh.AppendTriangle(i1, i2, i3, GroupId);
+	// End plane
+	{
+		int i4 = Mesh.AppendVertex((FVector3d)v4);
+		int i5 = Mesh.AppendVertex((FVector3d)v5);
+		int i6 = Mesh.AppendVertex((FVector3d)v6);
+		int i7 = Mesh.AppendVertex((FVector3d)v7);
+		Mesh.AppendTriangle(i4, i7, i5, GroupId);
+		Mesh.AppendTriangle(i5, i7, i6, GroupId);
+	}
 
-	// 上顶面
-	Mesh.AppendTriangle(i4, i7, i5, GroupId);
-	Mesh.AppendTriangle(i5, i7, i6, GroupId);
+	// Right plane
+	{
+		int i1 = Mesh.AppendVertex((FVector3d)v1);
+		int i2 = Mesh.AppendVertex((FVector3d)v2);
+		int i5 = Mesh.AppendVertex((FVector3d)v5);
+		int i6 = Mesh.AppendVertex((FVector3d)v6);
+		Mesh.AppendTriangle(i1, i5, i2, GroupId);
+		Mesh.AppendTriangle(i2, i5, i6, GroupId);
+	}
 
-	// 侧面
-	Mesh.AppendTriangle(i0, i4, i1, GroupId);
-	Mesh.AppendTriangle(i1, i4, i5, GroupId);
+	// Left plane
+	{
+		int i0 = Mesh.AppendVertex((FVector3d)v0);
+		int i3 = Mesh.AppendVertex((FVector3d)v3);
+		int i4 = Mesh.AppendVertex((FVector3d)v4);
+		int i7 = Mesh.AppendVertex((FVector3d)v7);
+		Mesh.AppendTriangle(i3, i7, i0, GroupId);
+		Mesh.AppendTriangle(i0, i7, i4, GroupId);
+	}
 
-	Mesh.AppendTriangle(i1, i5, i2, GroupId);
-	Mesh.AppendTriangle(i2, i5, i6, GroupId);
+	// Bottom plane
+	{
+		int i0 = Mesh.AppendVertex((FVector3d)v0);
+		int i1 = Mesh.AppendVertex((FVector3d)v1);
+		int i4 = Mesh.AppendVertex((FVector3d)v4);
+		int i5 = Mesh.AppendVertex((FVector3d)v5);
+		Mesh.AppendTriangle(i0, i4, i1, GroupId);
+		Mesh.AppendTriangle(i1, i4, i5, GroupId);
+	}
 
-	Mesh.AppendTriangle(i2, i6, i3, GroupId);
-	Mesh.AppendTriangle(i3, i6, i7, GroupId);
-
-	Mesh.AppendTriangle(i3, i7, i0, GroupId);
-	Mesh.AppendTriangle(i0, i7, i4, GroupId);
+	// Top plane
+	{
+		int i2 = Mesh.AppendVertex((FVector3d)v2);
+		int i3 = Mesh.AppendVertex((FVector3d)v3);
+		int i6 = Mesh.AppendVertex((FVector3d)v6);
+		int i7 = Mesh.AppendVertex((FVector3d)v7);
+		Mesh.AppendTriangle(i2, i6, i3, GroupId);
+		Mesh.AppendTriangle(i3, i6, i7, GroupId);
+	}
 
 	// Normals
 	Mesh.EnableVertexNormals(FVector3f::UpVector);
-	for (int32 vid : Mesh.VertexIndicesItr())
+	
+	for (int32 tid : Mesh.TriangleIndicesItr())
 	{
-		for (int32 tid : Mesh.TriangleIndicesItr())
-		{
-			if (Mesh.GetTriangle(tid).Contains(vid))
-			{
-				FIndex3i Tri = Mesh.GetTriangle(tid);
-				FVector3d A = Mesh.GetVertex(Tri.A);
-				FVector3d B = Mesh.GetVertex(Tri.B);
-				FVector3d C = Mesh.GetVertex(Tri.C);
-				FVector3d Normal = FVector3d::CrossProduct(v1 - v0, v2 - v0).GetSafeNormal();
-				Mesh.SetVertexNormal(vid, FVector3f(Normal));
-			}
-		}
+		FIndex3i Tri = Mesh.GetTriangle(tid);
+		FVector3d A = Mesh.GetVertex(Tri.A);
+		FVector3d B = Mesh.GetVertex(Tri.B);
+		FVector3d C = Mesh.GetVertex(Tri.C);
+		FVector3d Normal = FVector3d::CrossProduct(A - C, A - B).GetSafeNormal();
+		Mesh.SetVertexNormal(Tri.A, FVector3f(Normal));
+		Mesh.SetVertexNormal(Tri.B, FVector3f(Normal));
+		Mesh.SetVertexNormal(Tri.C, FVector3f(Normal));
 	}
 }
 
+
+void MakeTrapezoidWallAlongLine(
+	FDynamicMesh3& Mesh,
+	const FVector& Last,
+	const FVector& Curr,
+	const FVector& Next,
+	float BottomWidth,
+	float TopWidth,
+	float Height,
+	int32 GroupId)
+{
+	using namespace UE::Geometry;
+
+	FVector Up = FVector::UpVector;
+
+	FVector ForwardA = (Curr - Last).GetSafeNormal();
+	FVector RightA = FVector::CrossProduct(Up, ForwardA).GetSafeNormal();
+
+	FVector ForwardB = (Next - Curr).GetSafeNormal();
+	FVector RightB = FVector::CrossProduct(Up, ForwardB).GetSafeNormal();
+
+	float HalfBottom = BottomWidth * 0.5f;
+	float HalfTop = TopWidth * 0.5f;
+
+	// First section
+	FVector v0a = Last - RightA * HalfBottom;
+	FVector v1a = Last + RightA * HalfBottom;
+	FVector v2a = Last + RightA * HalfTop + Up * Height;
+	FVector v3a = Last - RightA * HalfTop + Up * Height;
+	FVector v4a = Curr - RightA * HalfBottom;
+	FVector v5a = Curr + RightA * HalfBottom;
+	FVector v6a = Curr + RightA * HalfTop + Up * Height;
+	FVector v7a = Curr - RightA * HalfTop + Up * Height;
+
+	// Second section
+	FVector v0b = Curr - RightB * HalfBottom;
+	FVector v1b = Curr + RightB * HalfBottom;
+	FVector v2b = Curr + RightB * HalfTop + Up * Height;
+	FVector v3b = Curr - RightB * HalfTop + Up * Height;
+	FVector v4b = Next - RightB * HalfBottom;
+	FVector v5b = Next + RightB * HalfBottom;
+	FVector v6b = Next + RightB * HalfTop + Up * Height;
+	FVector v7b = Next - RightB * HalfTop + Up * Height;
+
+	FVector V0c = Curr;
+	FVector V1c = Curr + Up * Height;
+	// Corner
+	{
+		int i0 = Mesh.AppendVertex((FVector3d)V1c);
+		int i1 = Mesh.AppendVertex((FVector3d)v3b);
+		int i2 = Mesh.AppendVertex((FVector3d)v7a);
+		int i3 = Mesh.AppendVertex((FVector3d)V0c);
+		int i4 = Mesh.AppendVertex((FVector3d)v4a);
+		int i5 = Mesh.AppendVertex((FVector3d)v0b);
+		Mesh.AppendTriangle(i0, i1, i2, GroupId);
+		Mesh.AppendTriangle(i3, i4, i5, GroupId);
+		int i6 = Mesh.AppendVertex((FVector3d)v3b);
+		int i7 = Mesh.AppendVertex((FVector3d)v7a);
+		int i8 = Mesh.AppendVertex((FVector3d)v4a);
+		int i9 = Mesh.AppendVertex((FVector3d)v0b);
+		Mesh.AppendTriangle(i6, i8, i7, GroupId);
+		Mesh.AppendTriangle(i8, i6, i9, GroupId);
+	}
+
+	// Start plane
+	{
+		int i0 = Mesh.AppendVertex((FVector3d)v0a);
+		int i1 = Mesh.AppendVertex((FVector3d)v1a);
+		int i2 = Mesh.AppendVertex((FVector3d)v2a);
+		int i3 = Mesh.AppendVertex((FVector3d)v3a);
+		Mesh.AppendTriangle(i0, i1, i3, GroupId);
+		Mesh.AppendTriangle(i1, i2, i3, GroupId);
+	}
+	{
+		int i0 = Mesh.AppendVertex((FVector3d)v0b);
+		int i1 = Mesh.AppendVertex((FVector3d)v1b);
+		int i2 = Mesh.AppendVertex((FVector3d)v2b);
+		int i3 = Mesh.AppendVertex((FVector3d)v3b);
+		Mesh.AppendTriangle(i0, i1, i3, GroupId);
+		Mesh.AppendTriangle(i1, i2, i3, GroupId);
+	}
+
+	// End plane
+	{
+		int i4 = Mesh.AppendVertex((FVector3d)v4a);
+		int i5 = Mesh.AppendVertex((FVector3d)v5a);
+		int i6 = Mesh.AppendVertex((FVector3d)v6a);
+		int i7 = Mesh.AppendVertex((FVector3d)v7a);
+		Mesh.AppendTriangle(i4, i7, i5, GroupId);
+		Mesh.AppendTriangle(i5, i7, i6, GroupId);
+	}
+	{
+		int i4 = Mesh.AppendVertex((FVector3d)v4b);
+		int i5 = Mesh.AppendVertex((FVector3d)v5b);
+		int i6 = Mesh.AppendVertex((FVector3d)v6b);
+		int i7 = Mesh.AppendVertex((FVector3d)v7b);
+		Mesh.AppendTriangle(i4, i7, i5, GroupId);
+		Mesh.AppendTriangle(i5, i7, i6, GroupId);
+	}
+
+	// Right plane
+	{
+		int i1 = Mesh.AppendVertex((FVector3d)v1a);
+		int i2 = Mesh.AppendVertex((FVector3d)v2a);
+		int i5 = Mesh.AppendVertex((FVector3d)v5a);
+		int i6 = Mesh.AppendVertex((FVector3d)v6a);
+		Mesh.AppendTriangle(i1, i5, i2, GroupId);
+		Mesh.AppendTriangle(i2, i5, i6, GroupId);
+	}
+	{
+		int i1 = Mesh.AppendVertex((FVector3d)v1b);
+		int i2 = Mesh.AppendVertex((FVector3d)v2b);
+		int i5 = Mesh.AppendVertex((FVector3d)v5b);
+		int i6 = Mesh.AppendVertex((FVector3d)v6b);
+		Mesh.AppendTriangle(i1, i5, i2, GroupId);
+		Mesh.AppendTriangle(i2, i5, i6, GroupId);
+	}
+
+	// Left plane
+	{
+		int i0 = Mesh.AppendVertex((FVector3d)v0a);
+		int i3 = Mesh.AppendVertex((FVector3d)v3a);
+		int i4 = Mesh.AppendVertex((FVector3d)v4a);
+		int i7 = Mesh.AppendVertex((FVector3d)v7a);
+		Mesh.AppendTriangle(i3, i7, i0, GroupId);
+		Mesh.AppendTriangle(i0, i7, i4, GroupId);
+	}
+	{
+		int i0 = Mesh.AppendVertex((FVector3d)v0b);
+		int i3 = Mesh.AppendVertex((FVector3d)v3b);
+		int i4 = Mesh.AppendVertex((FVector3d)v4b);
+		int i7 = Mesh.AppendVertex((FVector3d)v7b);
+		Mesh.AppendTriangle(i3, i7, i0, GroupId);
+		Mesh.AppendTriangle(i0, i7, i4, GroupId);
+	}
+
+	// Bottom plane
+	{
+		int i0 = Mesh.AppendVertex((FVector3d)v0a);
+		int i1 = Mesh.AppendVertex((FVector3d)v1a);
+		int i4 = Mesh.AppendVertex((FVector3d)v4a);
+		int i5 = Mesh.AppendVertex((FVector3d)v5a);
+		Mesh.AppendTriangle(i0, i4, i1, GroupId);
+		Mesh.AppendTriangle(i1, i4, i5, GroupId);
+	}
+	{
+		int i0 = Mesh.AppendVertex((FVector3d)v0b);
+		int i1 = Mesh.AppendVertex((FVector3d)v1b);
+		int i4 = Mesh.AppendVertex((FVector3d)v4b);
+		int i5 = Mesh.AppendVertex((FVector3d)v5b);
+		Mesh.AppendTriangle(i0, i4, i1, GroupId);
+		Mesh.AppendTriangle(i1, i4, i5, GroupId);
+	}
+
+	// Top plane
+	{
+		int i2 = Mesh.AppendVertex((FVector3d)v2a);
+		int i3 = Mesh.AppendVertex((FVector3d)v3a);
+		int i6 = Mesh.AppendVertex((FVector3d)v6a);
+		int i7 = Mesh.AppendVertex((FVector3d)v7a);
+		Mesh.AppendTriangle(i2, i6, i3, GroupId);
+		Mesh.AppendTriangle(i3, i6, i7, GroupId);
+	}
+	{
+		int i2 = Mesh.AppendVertex((FVector3d)v2b);
+		int i3 = Mesh.AppendVertex((FVector3d)v3b);
+		int i6 = Mesh.AppendVertex((FVector3d)v6b);
+		int i7 = Mesh.AppendVertex((FVector3d)v7b);
+		Mesh.AppendTriangle(i2, i6, i3, GroupId);
+		Mesh.AppendTriangle(i3, i6, i7, GroupId);
+	}
+
+	// Normals
+	Mesh.EnableVertexNormals(FVector3f::UpVector);
+
+	for (int32 tid : Mesh.TriangleIndicesItr())
+	{
+		FIndex3i Tri = Mesh.GetTriangle(tid);
+		FVector3d A = Mesh.GetVertex(Tri.A);
+		FVector3d B = Mesh.GetVertex(Tri.B);
+		FVector3d C = Mesh.GetVertex(Tri.C);
+		FVector3d Normal = FVector3d::CrossProduct(A - C, A - B).GetSafeNormal();
+		Mesh.SetVertexNormal(Tri.A, FVector3f(Normal));
+		Mesh.SetVertexNormal(Tri.B, FVector3f(Normal));
+		Mesh.SetVertexNormal(Tri.C, FVector3f(Normal));
+	}
+}
 
 void UXkHexagonBasedFortressComponent::UpdateDynamicMeshComponent()
 {
@@ -672,16 +885,23 @@ void UXkHexagonBasedFortressComponent::UpdateDynamicMeshComponent()
 	}
 	using namespace UE::Geometry;
 	FDynamicMesh3 ShapeMesh = FDynamicMesh3();
-	MakeTrapezoidWallAlongLine(
-		ShapeMesh,
-		FVector(0, 0, 110),
-		FVector(200, 0, 110),
-		100.0f, 
-		75.0f, 
-		100.0f, 
-		0
-	);
 
+	for (int32 Index = 0; Index < TrapezoidWallAnchers.Num(); Index++)
+	{
+		FVector Curr = TrapezoidWallAnchers[Index];
+		FVector Next = TrapezoidWallAnchers[(Index + 1) % TrapezoidWallAnchers.Num()];
+		FVector Last = TrapezoidWallAnchers[(Index - 1 + TrapezoidWallAnchers.Num()) % TrapezoidWallAnchers.Num()];
+		MakeTrapezoidWallAlongLine(
+			ShapeMesh,
+			Last,
+			Curr,
+			Next,
+			100.0f,
+			75.0f,
+			200.0f,
+			0
+		);
+	}
 	DynamicMesh->EditMesh([&](FDynamicMesh3& EditMesh)
 		{
 			EditMesh = ShapeMesh;
