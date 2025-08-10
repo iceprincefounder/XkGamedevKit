@@ -23,9 +23,6 @@ public:
 	TObjectPtr<class UXkSphericalLandscapeWithWaterComponent> SphericalLandscapeComponent;
 
 	UPROPERTY(VisibleAnywhere, Category = "SphericalWorldWithOcean [KEVINTSUIXUGAMEDEV]")
-	TObjectPtr<class UXkHexagonBasedFortressComponent> HexagonBasedFortressComponent;
-
-	UPROPERTY(VisibleAnywhere, Category = "SphericalWorldWithOcean [KEVINTSUIXUGAMEDEV]")
 	TObjectPtr<class UXkCanvasRendererComponent> CanvasRendererComponent;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
@@ -61,16 +58,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	virtual void GenerateHexagons();
-
 	UFUNCTION(BlueprintCallable, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	virtual void GenerateHexagonalWorld();
-
-	UFUNCTION(BlueprintCallable, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
-	virtual void GenerateHexagonBasedFortress();
-
 	UFUNCTION(BlueprintCallable, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	virtual void GenerateCanvas();
-
 	UFUNCTION(CallInEditor, BlueprintCallable, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	void RegenerateWorld();
 

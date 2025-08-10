@@ -4,25 +4,9 @@
 #include "XkHexagon/XkHexagonPathfinding.h"
 #include "XkLandscape/XkLandscapeComponents.h"
 #include "XkRenderer/XkRendererComponents.h"
-#include "UObject/UObjectIterator.h"
-#include "Engine/Engine.h"
 #include "EngineUtils.h"
-#include "Engine/CollisionProfile.h"
-#include "ProceduralMeshComponent.h"
 #include "GenericPlatform/GenericPlatformMath.h"
-#include "LandscapeStreamingProxy.h"
-#include "Components/ArrowComponent.h"
-#include "PrimitiveViewRelevance.h"
-#include "PrimitiveSceneProxy.h"
-#include "Materials/Material.h"
-#include "Materials/MaterialRenderProxy.h"
-#include "Materials/MaterialInstanceDynamic.h"
-#include "Materials/MaterialParameterCollectionInstance.h"
 #include "Materials/MaterialParameterCollection.h"
-#include "SceneInterface.h"
-#include "SceneManagement.h"
-#include "DynamicMeshBuilder.h"
-#include "StaticMeshResources.h"
 
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(XkGameWorld)
@@ -35,9 +19,6 @@ AXkSphericalWorldWithOceanActor::AXkSphericalWorldWithOceanActor(const FObjectIn
 	SphericalLandscapeComponent->Material = ObjectFinder.Object;
 	SphericalLandscapeComponent->WaterMaterial = ObjectFinder.Object;
 	SphericalLandscapeComponent->SetupAttachment(RootComponent);
-
-	HexagonBasedFortressComponent = CreateDefaultSubobject<UXkHexagonBasedFortressComponent>(TEXT("HexagonBasedFortress"));
-	HexagonBasedFortressComponent->SetupAttachment(RootComponent);
 
 	CanvasRendererComponent = CreateDefaultSubobject<UXkCanvasRendererComponent>(TEXT("CanvasRenderer"));
 
@@ -169,12 +150,6 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 			Node->Weights = FVector4f(0.0f, 0.0f, 0.0f, 1.0f);
 		}
 	}
-}
-
-
-void AXkSphericalWorldWithOceanActor::GenerateHexagonBasedFortress()
-{
-	HexagonBasedFortressComponent->UpdateDynamicMeshComponent();
 }
 
 

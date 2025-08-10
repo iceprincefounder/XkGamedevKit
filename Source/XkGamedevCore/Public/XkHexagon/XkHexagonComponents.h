@@ -142,9 +142,10 @@ public:
 	UMaterialInterface* TrapezoidWallMaterial;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
-	TArray<FVector> TrapezoidWallAnchers;
+	TArray<FVector> TrapezoidWallAnchors;
 
 	//~ Begin UXkHexagonBasedFortressComponent interface
 	virtual void UpdateDynamicMeshComponent();
+	virtual void UpdateHexagonBasedFortress();
 	//~ End UXkHexagonBasedFortressComponent interface
 };

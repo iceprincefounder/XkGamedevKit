@@ -9,6 +9,9 @@
 #include "Components/ArrowComponent.h"
 #include "Components/DynamicMeshComponent.h"
 #include "Materials/Material.h"
+#include "MaterialDomain.h"
+#include "MaterialShared.h"
+#include "Materials/MaterialInterface.h"
 #include "Materials/MaterialRenderProxy.h"
 #include "Engine/CollisionProfile.h"
 #include "SceneInterface.h"
@@ -575,6 +578,10 @@ UXkHexagonBasedFortressComponent::UXkHexagonBasedFortressComponent(const FObject
 {
 	TrapezoidWallMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
 
+	bEnableComplexCollision = true;
+	bDeferCollisionUpdates = true;
+	CollisionType = ECollisionTraceFlag::CTF_UseComplexAsSimple;
+    TrapezoidWallMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
 	CastShadow = true;
 	bCastDynamicShadow = true;
 	bCastStaticShadow = true;
@@ -886,11 +893,11 @@ void UXkHexagonBasedFortressComponent::UpdateDynamicMeshComponent()
 	using namespace UE::Geometry;
 	FDynamicMesh3 ShapeMesh = FDynamicMesh3();
 
-	for (int32 Index = 0; Index < TrapezoidWallAnchers.Num(); Index++)
+	for (int32 Index = 0; Index < TrapezoidWallAnchors.Num(); Index++)
 	{
-		FVector Curr = TrapezoidWallAnchers[Index];
-		FVector Next = TrapezoidWallAnchers[(Index + 1) % TrapezoidWallAnchers.Num()];
-		FVector Last = TrapezoidWallAnchers[(Index - 1 + TrapezoidWallAnchers.Num()) % TrapezoidWallAnchers.Num()];
+		FVector Curr = TrapezoidWallAnchors[Index];
+		FVector Next = TrapezoidWallAnchors[(Index + 1) % TrapezoidWallAnchors.Num()];
+		FVector Last = TrapezoidWallAnchors[(Index - 1 + TrapezoidWallAnchors.Num()) % TrapezoidWallAnchors.Num()];
 		MakeTrapezoidWallAlongLine(
 			ShapeMesh,
 			Last,
@@ -909,4 +916,50 @@ void UXkHexagonBasedFortressComponent::UpdateDynamicMeshComponent()
 
 	SetDynamicMesh(DynamicMesh);
 	SetMaterial(0, TrapezoidWallMaterial);
+
+	UpdateCollision();
+}
+
+
+void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortress()
+{
+	UDynamicMesh* DynamicMesh = GetDynamicMesh();
+	if (!DynamicMesh || IsValid(DynamicMesh))
+	{
+		DynamicMesh = NewObject<UDynamicMesh>(this);
+	}
+	using namespace UE::Geometry;
+	FDynamicMesh3 ShapeMesh = FDynamicMesh3();
+
+	FVector Origin = FVector::ZeroVector;
+	for (int32 Index = 0; Index < TrapezoidWallAnchors.Num(); Index++)
+	{
+		FVector Curr = TrapezoidWallAnchors[Index];
+		MakeTrapezoidWallAlongLine(
+			ShapeMesh,
+			Origin,
+			Curr,
+			100.0f,
+			75.0f,
+			200.0f,
+			0
+		);
+	}
+
+	DynamicMesh->EditMesh([&](FDynamicMesh3& EditMesh)
+		{
+			EditMesh = ShapeMesh;
+		});
+
+	SetDynamicMesh(DynamicMesh);
+	SetMaterial(0, TrapezoidWallMaterial);
+
+	UBodySetup* BodySetup = GetBodySetup();
+	if (BodySetup)
+	{
+		BodySetup->CollisionTraceFlag = CTF_UseComplexAsSimple;
+		BodySetup->bMeshCollideAll = true;
+		// 可根据需要设置更多属性
+	}
+	UpdateCollision();
 }
