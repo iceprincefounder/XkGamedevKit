@@ -206,7 +206,8 @@ public:
 public:
 	static FXkPathCostValue CalcPathCostValue(const FIntVector& StartingPoint, const FIntVector& ConsideredPoint, const FIntVector& TargetPoint, int32 Offset = 0);
 	static int32 CalcManhattanDistance(const FIntVector& PointA, const FIntVector& PointB);
-	static FIntVector CalcHexagonCoord(const float PositionX, const float PositionY, const float XkHexagonRadius);
+	static FIntVector CalcHexagonCoord(const float PositionX, const float PositionY, const float HexagonRadius);
+	static FVector2D CalcHexagonPosition(const FIntVector& InputCoord, const float HexagonRadius);
 	/** 
 	* @brief Calculate hexagon actor position by Cartesian coordinate XY index number
 	* @param IndexX Cartesian coordinate X index

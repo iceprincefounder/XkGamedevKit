@@ -229,9 +229,9 @@ FIntVector FXkHexagonAStarPathfinding::CalcHexagonCoord(const float PositionX, c
 {
 	FVector Position = FVector(PositionX, PositionY, 0.0);
 
-	double HexagonUnitLength = HexagonRadius + HexagonRadius * XkCos60;
+	const double HexagonUnitLength = HexagonRadius + HexagonRadius * XkCos60;
 
-	// Caclulate projected unit length.
+	// Calculate projected unit length.
 	float X = FVector::DotProduct(Position, HexagonNodeXAxis()) / HexagonUnitLength;
 	float Y = FVector::DotProduct(Position, HexagonNodeYAxis()) / HexagonUnitLength;
 	float Z = FVector::DotProduct(Position, HexagonNodeZAxis()) / HexagonUnitLength;
@@ -281,6 +281,16 @@ FIntVector FXkHexagonAStarPathfinding::CalcHexagonCoord(const float PositionX, c
 
 	// Return hexagon coordinates
 	return FIntVector(RoundedX, RoundedY, RoundedZ);
+}
+
+
+FVector2D FXkHexagonAStarPathfinding::CalcHexagonPosition(const FIntVector& InputCoord, const float HexagonRadius)
+{
+	FVector WorldPosition =
+		InputCoord.X * HexagonNodeXAxis() +
+		InputCoord.Y * HexagonNodeYAxis() +
+		InputCoord.Z * HexagonNodeZAxis();
+	return FVector2D(WorldPosition.X, WorldPosition.Y) * HexagonRadius;
 }
 
 
@@ -359,8 +369,8 @@ template<typename T0, typename T1>
 void BuildHexagon(TArray<T0>& OutBaseVertices, TArray<T1>& OutBaseIndices, TArray<T0>& OutEdgeVertices, TArray<T1>& OutEdgeIndices,
 	float Radius, float Height, float BaseInnerGap, float BaseOuterGap, float EdgeInnerGap, float EdgeOuterGap)
 {
-	TArray<T0> TopBoundaryVertices;
-	TArray<T0> BtmBoundaryVertices;
+	TArray<T0> TopBoundary;
+	TArray<T0> BtmBoundary;
 	{
 		//	x
 		//	|   1
@@ -371,36 +381,36 @@ void BuildHexagon(TArray<T0>& OutBaseVertices, TArray<T1>& OutBaseIndices, TArra
 		//	---------y
 
 		OutBaseVertices.Add(T0(0.0, 0.0, Height));
-		TopBoundaryVertices.Empty();
-		TopBoundaryVertices.Add(T0((Radius - BaseInnerGap), 0.0, Height));
-		TopBoundaryVertices.Add(T0((Radius - BaseInnerGap) * XkSin30, -XkCos30 * (Radius - BaseInnerGap), Height));
-		TopBoundaryVertices.Add(T0(-(Radius - BaseInnerGap) * XkSin30, -XkCos30 * (Radius - BaseInnerGap), Height));
-		TopBoundaryVertices.Add(T0(-(Radius - BaseInnerGap), 0.0, Height));
-		TopBoundaryVertices.Add(T0(-(Radius - BaseInnerGap) * XkSin30, XkCos30 * (Radius - BaseInnerGap), Height));
-		TopBoundaryVertices.Add(T0((Radius - BaseInnerGap) * XkSin30, XkCos30 * (Radius - BaseInnerGap), Height));
-		for (const T0& Vert : TopBoundaryVertices)
+		TopBoundary.Empty();
+		TopBoundary.Add(T0((Radius - BaseInnerGap), 0.0, Height));
+		TopBoundary.Add(T0((Radius - BaseInnerGap) * XkSin30, -XkCos30 * (Radius - BaseInnerGap), Height));
+		TopBoundary.Add(T0(-(Radius - BaseInnerGap) * XkSin30, -XkCos30 * (Radius - BaseInnerGap), Height));
+		TopBoundary.Add(T0(-(Radius - BaseInnerGap), 0.0, Height));
+		TopBoundary.Add(T0(-(Radius - BaseInnerGap) * XkSin30, XkCos30 * (Radius - BaseInnerGap), Height));
+		TopBoundary.Add(T0((Radius - BaseInnerGap) * XkSin30, XkCos30 * (Radius - BaseInnerGap), Height));
+		for (const T0& Vert : TopBoundary)
 		{
 			OutBaseVertices.Add(Vert);
 		}
 		OutBaseIndices = { 0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0 , 5, 6, 0, 6, 1 };
-		BtmBoundaryVertices.Empty();
-		BtmBoundaryVertices.Add(T0((Radius - BaseOuterGap), 0.0, 0.0));
-		BtmBoundaryVertices.Add(T0((Radius - BaseOuterGap) * XkSin30, -XkCos30 * Radius, 0.0));
-		BtmBoundaryVertices.Add(T0(-(Radius - BaseOuterGap) * XkSin30, -XkCos30 * Radius, 0.0));
-		BtmBoundaryVertices.Add(T0(-(Radius - BaseOuterGap), 0.0, 0.0));
-		BtmBoundaryVertices.Add(T0(-(Radius - BaseOuterGap) * XkSin30, XkCos30 * Radius, 0.0));
-		BtmBoundaryVertices.Add(T0((Radius - BaseOuterGap) * XkSin30, XkCos30 * Radius, 0.0));
-		for (int32 i = 0; i < TopBoundaryVertices.Num(); i++)
+		BtmBoundary.Empty();
+		BtmBoundary.Add(T0((Radius - BaseOuterGap), 0.0, 0.0));
+		BtmBoundary.Add(T0((Radius - BaseOuterGap) * XkSin30, -XkCos30 * Radius, 0.0));
+		BtmBoundary.Add(T0(-(Radius - BaseOuterGap) * XkSin30, -XkCos30 * Radius, 0.0));
+		BtmBoundary.Add(T0(-(Radius - BaseOuterGap), 0.0, 0.0));
+		BtmBoundary.Add(T0(-(Radius - BaseOuterGap) * XkSin30, XkCos30 * Radius, 0.0));
+		BtmBoundary.Add(T0((Radius - BaseOuterGap) * XkSin30, XkCos30 * Radius, 0.0));
+		for (int32 i = 0; i < TopBoundary.Num(); i++)
 		{
-			int32 IndexTopA = (i + 1) % TopBoundaryVertices.Num();
-			int32 IndexTopB = (i + 1 + 1) % TopBoundaryVertices.Num();
-			int32 IndexBtmA = (i + 1) % TopBoundaryVertices.Num();
-			int32 IndexBtmB = (i + 1 + 1) % TopBoundaryVertices.Num();
+			int32 IndexTopA = (i + 1) % TopBoundary.Num();
+			int32 IndexTopB = (i + 1 + 1) % TopBoundary.Num();
+			int32 IndexBtmA = (i + 1) % TopBoundary.Num();
+			int32 IndexBtmB = (i + 1 + 1) % TopBoundary.Num();
 
-			T0 VertTopA = TopBoundaryVertices[IndexTopA];
-			T0 VertTopB = TopBoundaryVertices[IndexTopB];
-			T0 VertBtmA = BtmBoundaryVertices[IndexBtmA];
-			T0 VertBtmB = BtmBoundaryVertices[IndexBtmB];
+			T0 VertTopA = TopBoundary[IndexTopA];
+			T0 VertTopB = TopBoundary[IndexTopB];
+			T0 VertBtmA = BtmBoundary[IndexBtmA];
+			T0 VertBtmB = BtmBoundary[IndexBtmB];
 
 			int32 CurrIndex = OutBaseVertices.Num();
 			OutBaseVertices.Add(VertTopA);
@@ -423,33 +433,33 @@ void BuildHexagon(TArray<T0>& OutBaseVertices, TArray<T1>& OutBaseIndices, TArra
 		// XkHexagon Edge ->|-----------|------------|-------------|----------> XkHexagon Center
 		//		    BaseOuterGap EdgeOuterGap EdgeInnerGap BaseInnerGap
 		float EdgeHeight = Height + 1; // Fix Z-fighting
-		TopBoundaryVertices.Empty();
-		TopBoundaryVertices.Add(T0((Radius - EdgeInnerGap), 0.0, EdgeHeight));
-		TopBoundaryVertices.Add(T0((Radius - EdgeInnerGap) * XkSin30, -XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
-		TopBoundaryVertices.Add(T0(-(Radius - EdgeInnerGap) * XkSin30, -XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
-		TopBoundaryVertices.Add(T0(-(Radius - EdgeInnerGap), 0.0, EdgeHeight));
-		TopBoundaryVertices.Add(T0(-(Radius - EdgeInnerGap) * XkSin30, XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
-		TopBoundaryVertices.Add(T0((Radius - EdgeInnerGap) * XkSin30, XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
-		BtmBoundaryVertices.Empty();
-		BtmBoundaryVertices.Add(T0(Radius - EdgeOuterGap, 0.0, EdgeHeight));
-		BtmBoundaryVertices.Add(T0((Radius - EdgeOuterGap) * XkSin30, -XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
-		BtmBoundaryVertices.Add(T0(-(Radius - EdgeOuterGap) * XkSin30, -XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
-		BtmBoundaryVertices.Add(T0(-(Radius - EdgeOuterGap), 0.0, EdgeHeight));
-		BtmBoundaryVertices.Add(T0(-(Radius - EdgeOuterGap) * XkSin30, XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
-		BtmBoundaryVertices.Add(T0((Radius - EdgeOuterGap) * XkSin30, XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
+		TopBoundary.Empty();
+		TopBoundary.Add(T0((Radius - EdgeInnerGap), 0.0, EdgeHeight));
+		TopBoundary.Add(T0((Radius - EdgeInnerGap) * XkSin30, -XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
+		TopBoundary.Add(T0(-(Radius - EdgeInnerGap) * XkSin30, -XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
+		TopBoundary.Add(T0(-(Radius - EdgeInnerGap), 0.0, EdgeHeight));
+		TopBoundary.Add(T0(-(Radius - EdgeInnerGap) * XkSin30, XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
+		TopBoundary.Add(T0((Radius - EdgeInnerGap) * XkSin30, XkCos30 * (Radius - EdgeInnerGap), EdgeHeight));
+		BtmBoundary.Empty();
+		BtmBoundary.Add(T0(Radius - EdgeOuterGap, 0.0, EdgeHeight));
+		BtmBoundary.Add(T0((Radius - EdgeOuterGap) * XkSin30, -XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
+		BtmBoundary.Add(T0(-(Radius - EdgeOuterGap) * XkSin30, -XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
+		BtmBoundary.Add(T0(-(Radius - EdgeOuterGap), 0.0, EdgeHeight));
+		BtmBoundary.Add(T0(-(Radius - EdgeOuterGap) * XkSin30, XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
+		BtmBoundary.Add(T0((Radius - EdgeOuterGap) * XkSin30, XkCos30 * (Radius - EdgeOuterGap), EdgeHeight));
 
-		for (int32 i = 0; i < TopBoundaryVertices.Num(); i++)
+		for (int32 i = 0; i < TopBoundary.Num(); i++)
 		{
-			int32 IndexTopA = (i + 1) % TopBoundaryVertices.Num();
-			int32 IndexTopB = (i + 1 + 1) % TopBoundaryVertices.Num();
-			int32 IndexBtmA = (i + 1) % TopBoundaryVertices.Num();
-			int32 IndexBtmB = (i + 1 + 1) % TopBoundaryVertices.Num();
+			int32 IndexTopA = (i + 1) % TopBoundary.Num();
+			int32 IndexTopB = (i + 1 + 1) % TopBoundary.Num();
+			int32 IndexBtmA = (i + 1) % TopBoundary.Num();
+			int32 IndexBtmB = (i + 1 + 1) % TopBoundary.Num();
 
-			T0 VertTopA = TopBoundaryVertices[IndexTopA];
-			T0 VertTopB = TopBoundaryVertices[IndexTopB];
-			T0 VertBtmA = BtmBoundaryVertices[IndexBtmA];
+			T0 VertTopA = TopBoundary[IndexTopA];
+			T0 VertTopB = TopBoundary[IndexTopB];
+			T0 VertBtmA = BtmBoundary[IndexBtmA];
 			VertBtmA.Z = VertTopA.Z;
-			T0 VertBtmB = BtmBoundaryVertices[IndexBtmB];
+			T0 VertBtmB = BtmBoundary[IndexBtmB];
 			VertBtmB.Z = VertTopB.Z;
 
 			int32 CurrIndex = OutEdgeVertices.Num();
