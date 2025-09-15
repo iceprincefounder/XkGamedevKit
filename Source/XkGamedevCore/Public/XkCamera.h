@@ -90,13 +90,6 @@ class XKGAMEDEVCORE_API AXkTopDownCamera : public AXkCamera
 	class UMaterialInstanceDynamic* PostProcessMaterialDyn;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	bool bUseCameraInvisibleWall;
-
-	/** Camera boom positioning the camera above the character */
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	FBox2D CameraInvisibleWall;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	bool bUseCameraRotationLock;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
@@ -113,6 +106,18 @@ class XKGAMEDEVCORE_API AXkTopDownCamera : public AXkCamera
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
 	float MaxAcceleration;
+
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	bool bTravelingMode;
+
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	FRotator TravelingView;
+
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	float TravelingZoom;
+
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
+	float TravelingSpeed;
 public:
 	/** Default UObject constructor. */
 	AXkTopDownCamera(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
@@ -145,7 +150,8 @@ public:
 	FORCEINLINE virtual void ResetCameraZoom();
 	FORCEINLINE virtual void AddMoveTarget(const FVector& InTarget);
 	FORCEINLINE virtual FRotator GetForwardRotator() const;
-
+	FORCEINLINE virtual bool IsTravelingMode() const { return bTravelingMode; }
+	FORCEINLINE virtual void SetTravelingMode(const bool bInTravelingMode);
 private:
 	UPROPERTY()
 	bool bMoveToTarget;

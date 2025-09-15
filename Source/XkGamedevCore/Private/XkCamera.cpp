@@ -138,14 +138,16 @@ AXkTopDownCamera::AXkTopDownCamera(const FObjectInitializer& ObjectInitializer)
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder(TEXT("/XkGamedevKit/Materials/M_CameraPostProcess"));
 	PostProcessMaterial = ObjectFinder.Object;
-	bUseCameraInvisibleWall = false;
-	CameraInvisibleWall = FBox2D(FVector2D(-1000.0, -1000.0), FVector2D(1000.0, 1000.0));
 	bUseCameraRotationLock = false;
 	CameraRotationLock = FVector2D(-75.0, -55.0);
 	CameraZoomArmLength = 1200.0;
 	CameraZoomArmRange = FVector2D(800.0, 2000.0);
 	MaxVelocity = 10.0;
 	MaxAcceleration = 100.0;
+	bTravelingMode = false;
+	TravelingView = FRotator(-25.f, 0.f, 0.f);
+	TravelingZoom = 2500.0f;
+	TravelingSpeed = 500.0;
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
@@ -165,7 +167,7 @@ void AXkTopDownCamera::OnConstruction(const FTransform& Transform)
 
 void AXkTopDownCamera::Tick(float DeltaSeconds)
 {
-    Super::Tick(DeltaSeconds);
+	Super::Tick(DeltaSeconds);
 
 	if (bMoveToTarget)
 	{
@@ -190,6 +192,10 @@ void AXkTopDownCamera::Tick(float DeltaSeconds)
 			Acceleration = FVector::ZeroVector;
 			bMoveToTarget = false;
 		}
+	}
+	else if (bTravelingMode)
+	{
+		AddMovement(GetForwardRotator().Vector(), TravelingSpeed);
 	}
 }
 
@@ -225,14 +231,6 @@ void AXkTopDownCamera::AddMovement(const FVector& InputValue, const float Speed)
 	FRotator Rotator = GetForwardRotator();
 	FVector MovementVectorRotated = Rotator.RotateVector(InputValue);
 	AddActorWorldOffset(MovementVectorRotated * Speed * DeltaSeconds);
-
-	if (bUseCameraInvisibleWall && CameraInvisibleWall.bIsValid)
-	{
-		FVector Location = GetActorLocation();
-		Location.X = FMath::Clamp(Location.X, CameraInvisibleWall.Min.X, CameraInvisibleWall.Max.X);
-		Location.Y = FMath::Clamp(Location.Y, CameraInvisibleWall.Min.Y, CameraInvisibleWall.Max.Y);
-		SetActorLocation(Location);
-	}
 
 	bMoveToTarget = false;
 }
@@ -353,4 +351,23 @@ FRotator AXkTopDownCamera::GetForwardRotator() const
 	FRotator Rotator = ComponentToWorld.Rotator();
 	Rotator.Pitch = 0.0; Rotator.Roll = 0.0;
 	return Rotator;
+}
+
+
+void AXkTopDownCamera::SetTravelingMode(const bool bInTravelingMode)
+{
+	if (bInTravelingMode)
+	{
+		CameraBoom->SetRelativeRotation(TravelingView);
+		CameraBoom->TargetArmLength = TravelingZoom;
+		Velocity = FVector::ZeroVector;
+		Acceleration = FVector::ZeroVector;
+	}
+	else
+	{
+		ResetRotation();
+		Velocity = FVector::ZeroVector;
+		Acceleration = FVector::ZeroVector;
+	}
+	bTravelingMode = bInTravelingMode;
 }
