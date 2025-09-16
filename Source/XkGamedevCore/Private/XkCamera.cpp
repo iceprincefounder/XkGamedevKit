@@ -209,6 +209,15 @@ void AXkTopDownCamera::SetOutlineColor(const FLinearColor& InColor)
 }
 
 
+void AXkTopDownCamera::ResetCamera()
+{
+	SetTravelingMode(false);
+	SetActorLocation(FVector::ZeroVector);
+	ResetRotation();
+	ResetCameraZoom();
+}
+
+
 void AXkTopDownCamera::AddMovement(const FVector2D& InputValue, const float Speed)
 {
 	FVector MovementVector = FVector(InputValue.Y, InputValue.X, 0.0);

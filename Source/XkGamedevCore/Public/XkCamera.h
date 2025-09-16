@@ -142,6 +142,7 @@ public:
 
 	FORCEINLINE virtual void SetOutlineColor(const FLinearColor& InColor);
 
+	FORCEINLINE virtual void ResetCamera();
 	FORCEINLINE virtual void AddMovement(const FVector2D& InputValue, const float Speed);
 	FORCEINLINE virtual void AddMovement(const FVector& InputValue, const float Speed);
 	FORCEINLINE virtual void AddRotation(const FVector2D& InputValue, const float Speed);

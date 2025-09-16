@@ -110,6 +110,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
 	float Radius;
 
+	// Height of base(top) hexagon from edge(bottom) hexagon
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
 	float Height;
 
