@@ -54,11 +54,11 @@ public:
 
 	/** Gamepad pressed to switch to next button index.*/
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnSwitchToNextButton() const;
+	virtual void OnNavigationToTheNext() const;
 
 	/** Gamepad pressed to switch to last button index.*/
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnSwitchToLastButton() const;
+	virtual void OnNavigationToTheLast() const;
 
 	/** Gamepad pressed to switch to up button index.*/
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")

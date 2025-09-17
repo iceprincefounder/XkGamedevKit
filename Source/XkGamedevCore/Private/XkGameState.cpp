@@ -78,7 +78,7 @@ TArray<int32> AXkGameState::GetButtonWidgetsValidIndex() const
 }
 
 
-void AXkGameState::OnSwitchToNextButton() const
+void AXkGameState::OnNavigationToTheNext() const
 {
 	TArray<int32> ButtonWidgetsValidIndex = GetButtonWidgetsValidIndex();
 	if (!ButtonWidgetsValidIndex.IsEmpty())
@@ -88,7 +88,7 @@ void AXkGameState::OnSwitchToNextButton() const
 }
 
 
-void AXkGameState::OnSwitchToLastButton() const
+void AXkGameState::OnNavigationToTheLast() const
 {
 	TArray<int32> ButtonWidgetsValidIndex = GetButtonWidgetsValidIndex();
 	if (!ButtonWidgetsValidIndex.IsEmpty())
@@ -120,7 +120,7 @@ void AXkGameState::OnNavigationToTheTop() const
 	}
 	else
 	{
-		OnSwitchToLastButton();
+		OnNavigationToTheLast();
 	}
 }
 
@@ -146,7 +146,7 @@ void AXkGameState::OnNavigationToTheBottom() const
 	}
 	else
 	{
-		OnSwitchToNextButton();
+		OnNavigationToTheNext();
 	}
 }
 
@@ -165,7 +165,7 @@ void AXkGameState::OnNavigationToTheLeft() const
 	}
 	else
 	{
-		OnSwitchToNextButton();
+		OnNavigationToTheNext();
 	}
 }
 
@@ -184,7 +184,7 @@ void AXkGameState::OnNavigationToTheRight() const
 	}
 	else
 	{
-		OnSwitchToNextButton();
+		OnNavigationToTheNext();
 	}
 }
 

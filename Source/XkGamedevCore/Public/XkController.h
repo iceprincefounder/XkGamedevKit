@@ -220,12 +220,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetDeselectionTouchAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	class UInputAction* SetNavigationAction;
+
 	/** Camera Scrolling Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* SetGamepadCursorMovementAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	class UInputAction* SetGamepadNavigationAction;
 
 	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	virtual EXkControlsMode GetControlsMode() const { return ControlsMode; };
@@ -282,12 +282,12 @@ protected:
 	virtual void OnSetDeselectionTriggered() {};
 	virtual void OnSetDeselectionPressing() { OnInputPressing(); };
 	virtual void OnSetDeselectionReleased() {};
+	virtual void OnSetNavigationTriggered(const FInputActionValue& Value);
+	virtual void OnSetNavigationPressing(const FInputActionValue& Value);
+	virtual void OnSetNavigationReleased();
 	virtual void OnSetGamepadCursorMovementTriggered(const FInputActionValue& Value);
 	virtual void OnSetGamepadCursorMovementPressing(const FInputActionValue& Value);
 	virtual void OnSetGamepadCursorMovementReleased();
-	virtual void OnSetGamepadNavigationTriggered(const FInputActionValue& Value);
-	virtual void OnSetGamepadNavigationPressing(const FInputActionValue& Value);
-	virtual void OnSetGamepadNavigationReleased();
 	virtual void OnTouchTriggered();
 	virtual void OnTouchReleased();
 

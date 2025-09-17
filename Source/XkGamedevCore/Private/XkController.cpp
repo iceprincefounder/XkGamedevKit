@@ -301,10 +301,10 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	SetDeselectionClickAction = SetDeselectionClick.Object;
 	static ConstructorHelpers::FObjectFinder<UInputAction> SetDeselectionTouch(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetDeselectionTouch"));
 	SetDeselectionTouchAction = SetDeselectionTouch.Object;
+	static ConstructorHelpers::FObjectFinder<UInputAction> SetNavigation(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetNavigation"));
+	SetNavigationAction = SetNavigation.Object;
 	static ConstructorHelpers::FObjectFinder<UInputAction> SetGamepadCursorMovement(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadCursorMovement"));
 	SetGamepadCursorMovementAction = SetGamepadCursorMovement.Object;
-	static ConstructorHelpers::FObjectFinder<UInputAction> SetGamepadNavigation(TEXT("/XkGamedevKit/Inputs/Actions/IA_SetGamepadNavigation"));
-	SetGamepadNavigationAction = SetGamepadNavigation.Object;
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
@@ -450,11 +450,11 @@ void AXkController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(SetGamepadCursorMovementAction, ETriggerEvent::Completed, this, &AXkController::OnSetGamepadCursorMovementReleased);
 		EnhancedInputComponent->BindAction(SetGamepadCursorMovementAction, ETriggerEvent::Canceled, this, &AXkController::OnSetGamepadCursorMovementReleased);
 
-		EnhancedInputComponent->BindAction(SetGamepadNavigationAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
-		EnhancedInputComponent->BindAction(SetGamepadNavigationAction, ETriggerEvent::Triggered, this, &AXkController::OnSetGamepadNavigationTriggered);
-		EnhancedInputComponent->BindAction(SetGamepadNavigationAction, ETriggerEvent::Triggered, this, &AXkController::OnSetGamepadNavigationPressing);
-		EnhancedInputComponent->BindAction(SetGamepadNavigationAction, ETriggerEvent::Completed, this, &AXkController::OnSetGamepadNavigationReleased);
-		EnhancedInputComponent->BindAction(SetGamepadNavigationAction, ETriggerEvent::Canceled, this, &AXkController::OnSetGamepadNavigationReleased);
+		EnhancedInputComponent->BindAction(SetNavigationAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
+		EnhancedInputComponent->BindAction(SetNavigationAction, ETriggerEvent::Triggered, this, &AXkController::OnSetNavigationTriggered);
+		EnhancedInputComponent->BindAction(SetNavigationAction, ETriggerEvent::Triggered, this, &AXkController::OnSetNavigationPressing);
+		EnhancedInputComponent->BindAction(SetNavigationAction, ETriggerEvent::Completed, this, &AXkController::OnSetNavigationReleased);
+		EnhancedInputComponent->BindAction(SetNavigationAction, ETriggerEvent::Canceled, this, &AXkController::OnSetNavigationReleased);
 
 		// Setup touch input events
 		EnhancedInputComponent->BindAction(SetSelectionTouchAction, ETriggerEvent::Started, this, &AXkController::OnInputStarted);
@@ -836,6 +836,29 @@ void AXkController::OnSetCameraZoomingTriggered(const FInputActionValue& Value)
 }
 
 
+void AXkController::OnSetNavigationTriggered(const FInputActionValue& Value)
+{
+	FVector2D MovementVector = Value.Get<FVector2D>();
+	// @DEBUG: OnSetNavigationTriggered
+	//if (FollowTime == 0.0f)
+	//{
+	//	FString Message = FString::Printf(TEXT("OnSetNavigationTriggered (%0.2f,%0.2f)"), MovementVector.X, MovementVector.Y);
+	//	GEngine->AddOnScreenDebugMessage(-1, 1.0, FColor::Green, *Message);
+	//}
+}
+
+
+void AXkController::OnSetNavigationPressing(const FInputActionValue& Value)
+{
+	OnInputPressing();
+}
+
+
+void AXkController::OnSetNavigationReleased()
+{
+}
+
+
 void AXkController::OnSetGamepadCursorMovementTriggered(const FInputActionValue& Value)
 {
 	if (IsOnUI())
@@ -874,29 +897,6 @@ void AXkController::OnSetGamepadCursorMovementReleased()
 		// Don't do anything if we are on UI mode.
 		return;
 	}
-}
-
-
-void AXkController::OnSetGamepadNavigationTriggered(const FInputActionValue& Value)
-{
-	FVector2D MovementVector = Value.Get<FVector2D>();
-	// @DEBUG: OnSetGamepadNavigationTriggered
-	//if (FollowTime == 0.0f)
-	//{
-	//	FString Message = FString::Printf(TEXT("OnSetGamepadNavigationTriggered (%0.2f,%0.2f)"), MovementVector.X, MovementVector.Y);
-	//	GEngine->AddOnScreenDebugMessage(-1, 1.0, FColor::Green, *Message);
-	//}
-}
-
-
-void AXkController::OnSetGamepadNavigationPressing(const FInputActionValue& Value)
-{
-	OnInputPressing();
-}
-
-
-void AXkController::OnSetGamepadNavigationReleased()
-{
 }
 
 
