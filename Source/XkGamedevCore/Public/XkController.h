@@ -152,6 +152,9 @@ public:
 	float ShortPressThreshold;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
+	float ScreenBorderThreshold; // Between 0 and 1, so 0.1 means 10% of the screen
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float MaxHoveringThreshold;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
@@ -282,9 +285,9 @@ protected:
 	virtual void OnSetDeselectionTriggered() {};
 	virtual void OnSetDeselectionPressing() { OnInputPressing(); };
 	virtual void OnSetDeselectionReleased() {};
-	virtual void OnSetNavigationTriggered(const FInputActionValue& Value);
-	virtual void OnSetNavigationPressing(const FInputActionValue& Value);
-	virtual void OnSetNavigationReleased();
+	virtual void OnSetNavigationTriggered(const FInputActionValue& Value) {};
+	virtual void OnSetNavigationPressing(const FInputActionValue& Value) { OnInputPressing(); };
+	virtual void OnSetNavigationReleased() {};
 	virtual void OnSetGamepadCursorMovementTriggered(const FInputActionValue& Value);
 	virtual void OnSetGamepadCursorMovementPressing(const FInputActionValue& Value);
 	virtual void OnSetGamepadCursorMovementReleased();

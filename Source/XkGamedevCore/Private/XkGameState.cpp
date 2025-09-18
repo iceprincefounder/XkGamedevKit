@@ -12,64 +12,64 @@
 AXkGameState::AXkGameState(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	CurrentSwitchIndex = -1;
+	ButtonIndex = -1;
 }
 
 
-void AXkGameState::AddButtonWidgetIntoMap(class UUserWidget* InWidget, const int32 ButtonIndex) const
+void AXkGameState::SetButtonWidgets(const TArray<class UUserWidget*>& InWidgets)
 {
-	if (InWidget && IsValid(InWidget))
+	ResetButtonWidgets();
+	for (class UUserWidget* InWidget : InWidgets)
 	{
-		ButtonWidgetMap.Add(ButtonIndex, MakeWeakObjectPtr(InWidget));
+		ButtonWidgets.Add(MakeWeakObjectPtr(InWidget));
 	}
 }
 
 
-void AXkGameState::ResetButtonWidgetIntoMap() const
+void AXkGameState::ResetButtonWidgets()
 {
 	APlayerController* PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 	if (AXkController* Controller = Cast<AXkController>(PlayerController))
 	{
 		if (Controller->GetControlsFlavor() == EXkControlsFlavor::Gamepad)
 		{
-			CurrentSwitchIndex = 0;
+			ButtonIndex = 0;
 		}
 		else
 		{
-			CurrentSwitchIndex = -1;
+			ButtonIndex = -1;
 		}
 	}	
-	ButtonWidgetMap.Reset();
+	ButtonWidgets.Empty();
 }
 
 
-void AXkGameState::SetTileViewWidget(class UTileView* InWidget) const
+void AXkGameState::SetTileViewWidget(class UTileView* InWidget)
 {
 	TileViewWidget = MakeWeakObjectPtr(InWidget);
 }
 
 
-void AXkGameState::ResetTileViewWidget() const
+void AXkGameState::ResetTileViewWidget()
 {
 	TileViewWidget.Reset();
-	CurrentSwitchIndex = -1;
+	ButtonIndex = -1;
 }
 
 
-TArray<int32> AXkGameState::GetButtonWidgetsValidIndex() const
+TArray<int32> AXkGameState::GetValidButtonWidgetsNum() const
 {
 	TArray<int32> Results;
-	for (TPair<int32, TWeakObjectPtr<class UUserWidget>> ButtonWidgetPair : ButtonWidgetMap)
+	for (TWeakObjectPtr<class UUserWidget> ButtonWidget : ButtonWidgets)
 	{
-		int32 ButtonIndex = ButtonWidgetPair.Key;
-		TWeakObjectPtr<class UUserWidget> ButtonWidget = ButtonWidgetPair.Value;
 		if (ButtonWidget.IsValid())
 		{
 			bool bIsEnabled = ButtonWidget->GetIsEnabled();
 			bool bIsVisible = ButtonWidget->GetVisibility() == ESlateVisibility::Visible;
 			if (bIsEnabled && bIsVisible)
 			{
-				Results.Add(ButtonIndex);
+				int32 Index = ButtonWidgets.IndexOfByKey(ButtonWidget);
+				Results.Add(Index);
 			}
 		}
 	}
@@ -78,27 +78,31 @@ TArray<int32> AXkGameState::GetButtonWidgetsValidIndex() const
 }
 
 
-void AXkGameState::OnNavigationToTheNext() const
+void AXkGameState::OnNavigationToTheNext()
 {
-	TArray<int32> ButtonWidgetsValidIndex = GetButtonWidgetsValidIndex();
+	TArray<int32> ButtonWidgetsValidIndex = GetValidButtonWidgetsNum();
 	if (!ButtonWidgetsValidIndex.IsEmpty())
 	{
-		CurrentSwitchIndex = (CurrentSwitchIndex + 1) % ButtonWidgetsValidIndex.Num();
+		ButtonIndex = (ButtonIndex + 1) % ButtonWidgetsValidIndex.Num();
+		TWeakObjectPtr<class UUserWidget> CurrentWidget = ButtonWidgets[ButtonIndex];
+		CurrentWidget->SetKeyboardFocus();
 	}
 }
 
 
-void AXkGameState::OnNavigationToTheLast() const
+void AXkGameState::OnNavigationToTheLast()
 {
-	TArray<int32> ButtonWidgetsValidIndex = GetButtonWidgetsValidIndex();
+	TArray<int32> ButtonWidgetsValidIndex = GetValidButtonWidgetsNum();
 	if (!ButtonWidgetsValidIndex.IsEmpty())
 	{
-		CurrentSwitchIndex = (CurrentSwitchIndex - 1 + ButtonWidgetsValidIndex.Num()) % ButtonWidgetsValidIndex.Num();
+		ButtonIndex = (ButtonIndex - 1 + ButtonWidgetsValidIndex.Num()) % ButtonWidgetsValidIndex.Num();
+		TWeakObjectPtr<class UUserWidget> CurrentWidget = ButtonWidgets[ButtonIndex];
+		CurrentWidget->SetKeyboardFocus();
 	}
 }
 
 
-void AXkGameState::OnNavigationToTheTop() const
+void AXkGameState::OnNavigationToTheTop()
 {
 	if (TileViewWidget.IsValid())
 	{
@@ -125,7 +129,7 @@ void AXkGameState::OnNavigationToTheTop() const
 }
 
 
-void AXkGameState::OnNavigationToTheBottom() const
+void AXkGameState::OnNavigationToTheBottom()
 {
 	if (TileViewWidget.IsValid())
 	{
@@ -151,7 +155,7 @@ void AXkGameState::OnNavigationToTheBottom() const
 }
 
 
-void AXkGameState::OnNavigationToTheLeft() const
+void AXkGameState::OnNavigationToTheLeft()
 {
 	if (TileViewWidget.IsValid())
 	{
@@ -165,12 +169,12 @@ void AXkGameState::OnNavigationToTheLeft() const
 	}
 	else
 	{
-		OnNavigationToTheNext();
+		OnNavigationToTheLast();
 	}
 }
 
 
-void AXkGameState::OnNavigationToTheRight() const
+void AXkGameState::OnNavigationToTheRight()
 {
 	if (TileViewWidget.IsValid())
 	{
@@ -189,18 +193,44 @@ void AXkGameState::OnNavigationToTheRight() const
 }
 
 
-void AXkGameState::OnCallCurrentButton() const
+void AXkGameState::OnButtonPressed()
 {
-	OnGameButtonPressedEvent.Broadcast(GetCurrentButtonIndex());
+	OnButtonPressedEvent.Broadcast(GetCurrentButtonIndex());
+}
+
+
+void AXkGameState::OnInputModeGameAndUI(UUserWidget* InWidgetToFocus)
+{
+	APlayerController* PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (PlayerController)
+	{
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetWidgetToFocus(InWidgetToFocus->TakeWidget());
+		PlayerController->SetInputMode(InputMode);
+	}
+}
+
+
+void AXkGameState::OnInitFocusWidget(class UWidget* InWidgetToFocus, const bool bForceToFocus)
+{
+	APlayerController* PlayerController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	if (AXkController* Controller = Cast<AXkController>(PlayerController))
+	{
+		if (bForceToFocus || Controller->GetControlsFlavor() == EXkControlsFlavor::Gamepad)
+		{
+			InWidgetToFocus->SetKeyboardFocus();
+		}
+	}
 }
 
 
 int32 AXkGameState::GetCurrentButtonIndex() const
 {
-	TArray<int32> ButtonWidgetsValidIndex = GetButtonWidgetsValidIndex();
-	if (CurrentSwitchIndex >= 0 && CurrentSwitchIndex < ButtonWidgetsValidIndex.Num())
+	TArray<int32> ButtonWidgetsValidIndex = GetValidButtonWidgetsNum();
+	if (ButtonIndex >= 0 && ButtonIndex < ButtonWidgetsValidIndex.Num())
 	{
-		return ButtonWidgetsValidIndex[CurrentSwitchIndex];
+		return ButtonWidgetsValidIndex[ButtonIndex];
 	}
-	return CurrentSwitchIndex;
+	return ButtonIndex;
 }

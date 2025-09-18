@@ -146,5 +146,6 @@ public:
 
 	//~ Begin UXkHexagonBasedFortressComponent interface
 	virtual void UpdateHexagonBasedFortress();
+	virtual void UpdateHexagonBasedFortressPhysics();
 	//~ End UXkHexagonBasedFortressComponent interface
 };

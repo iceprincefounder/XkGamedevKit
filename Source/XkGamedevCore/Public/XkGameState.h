@@ -7,7 +7,7 @@
 #include "XkGameState.generated.h"
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGameButtonPressedEvent, const int32, Input);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FButtonPressedEvent, const int32, Input);
 
 /**
  * AXkGameState
@@ -22,74 +22,80 @@ public:
 	AXkGameState(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	/** We add all buttons into a list for Gamepad controls, switch and press in GameState. */
-	UPROPERTY(BlueprintAssignable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	FGameButtonPressedEvent OnGameButtonPressedEvent;
+	UPROPERTY(BlueprintAssignable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	FButtonPressedEvent OnButtonPressedEvent;
 
-	/** Add button to the map and count the total number.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void AddButtonWidgetIntoMap(class UUserWidget* InWidget, const int32 ButtonIndex) const;
+	/** Add buttons.*/
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	virtual void SetButtonWidgets(const TArray<class UUserWidget*>& InWidgets);
 
 	/** Clear the map.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void ResetButtonWidgetIntoMap() const;
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	virtual void ResetButtonWidgets();
 
 	/** Get current button index.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
 	virtual class UTileView* GetTileViewWidget() const { return TileViewWidget.Get(); };
 
 	/** Set current focus tile view widget.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void SetTileViewWidget(class UTileView* InWidget) const;
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	virtual void SetTileViewWidget(class UTileView* InWidget);
 
 	/** Reset current focus tile view widget.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void ResetTileViewWidget() const;
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	virtual void ResetTileViewWidget();
 
 	/** Get buttons by sort button index.*/
-	virtual TArray<int32> GetButtonWidgetsValidIndex() const;
+	virtual TArray<int32> GetValidButtonWidgetsNum() const;
 
 	/** Get current button index.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
 	virtual int32 GetCurrentButtonIndex() const;
 
 	/** Gamepad pressed to switch to next button index.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnNavigationToTheNext() const;
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	virtual void OnNavigationToTheNext();
 
 	/** Gamepad pressed to switch to last button index.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnNavigationToTheLast() const;
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	virtual void OnNavigationToTheLast();
 
 	/** Gamepad pressed to switch to up button index.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnNavigationToTheTop() const;
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	virtual void OnNavigationToTheTop();
 
 	/** Gamepad pressed to switch to down button index.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnNavigationToTheBottom() const;
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	virtual void OnNavigationToTheBottom();
 
 	/** Gamepad pressed to switch to left button index.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnNavigationToTheLeft() const;
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	virtual void OnNavigationToTheLeft();
 
 	/** Gamepad pressed to switch to right button index.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnNavigationToTheRight() const;
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	virtual void OnNavigationToTheRight();
 
-	/** Call current index button OnGameButtonPressedEvent event binded function which might bind at Blueprint.*/
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Button Press [KEVINTSUIXUGAMEDEV]")
-	virtual void OnCallCurrentButton() const;
+	/** Call current index button OnButtonPressedEvent event binded function which might bind at Blueprint.*/
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	virtual void OnButtonPressed();
+
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	virtual void OnInputModeGameAndUI(class UUserWidget* InWidgetToFocus);
+
+	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
+	void OnInitFocusWidget(class UWidget* InWidgetToFocus, const bool bForceToFocus = false);
 
 protected:
 	/* This not true button index but a controller input index*/
 	UPROPERTY(Transient)
-	mutable int32 CurrentSwitchIndex;
+	int32 ButtonIndex;
 
 	/* Saved button maps.*/
 	UPROPERTY(Transient)
-	mutable TMap<int32, TWeakObjectPtr<class UUserWidget>> ButtonWidgetMap;
+	TArray<TWeakObjectPtr<class UUserWidget>> ButtonWidgets;
 
 	/* Saved tile view widget.*/
 	UPROPERTY(Transient)
-	mutable TWeakObjectPtr<class UTileView> TileViewWidget;
+	TWeakObjectPtr<class UTileView> TileViewWidget;
 };

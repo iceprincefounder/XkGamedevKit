@@ -897,14 +897,6 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortress()
 		});
 	SetDynamicMesh(DynamicMesh);
 	SetMaterial(0, TrapezoidWallMaterial);
-
-	UBodySetup* BodySetup = GetBodySetup();
-	if (BodySetup)
-	{
-		BodySetup->CollisionTraceFlag = CTF_UseComplexAsSimple;
-		BodySetup->bMeshCollideAll = true;
-	}
-	UpdateCollision();
 	
 	if (bExplicitShowWireframe)
 	{
@@ -916,4 +908,16 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortress()
 			::DrawDebugLine(GetWorld(), (Edge.Key + Edge.Value) * 0.5f, (Edge.Key + Edge.Value) * 0.5f + Right * 10.0, FColor::Green, false, -1.0f, SDPG_World, 1.0f);
 		}
 	}
+}
+
+
+void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressPhysics()
+{
+	UBodySetup* BodySetup = GetBodySetup();
+	if (BodySetup)
+	{
+		BodySetup->CollisionTraceFlag = CTF_UseComplexAsSimple;
+		BodySetup->bMeshCollideAll = true;
+	}
+	UpdateCollision();
 }

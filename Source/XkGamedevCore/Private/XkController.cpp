@@ -259,6 +259,7 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	bShowMouseCursor = true;
 	DefaultMouseCursor = EMouseCursor::Default;
 	ShortPressThreshold = 0.1;
+	ScreenBorderThreshold = 0.01;
 	MaxHoveringThreshold = 0.25;
 	CameraScrollingSpeed = 1000.0;
 	CameraDraggingSpeed = 1500;
@@ -319,7 +320,17 @@ void AXkController::SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor)
 		ControlsFlavor = NewControlsFlavor;
 		if (NewControlsFlavor == EXkControlsFlavor::Gamepad)
 		{
-			CurrentMouseCursor = EMouseCursor::None;
+			//// Move cursor to left top corner
+			int32 ViewportSizeX, ViewportSizeY;
+			GetViewportSize(ViewportSizeX, ViewportSizeY); // Get resolution of the game viewport
+			float fMouseLocationX = (float)ViewportSizeX * ScreenBorderThreshold;
+			float fMouseLocationY = (float)ViewportSizeY * ScreenBorderThreshold;
+			int32 MouseLocationX = FMath::CeilToInt32(fMouseLocationX) + 1;
+			int32 MouseLocationY = FMath::CeilToInt32(fMouseLocationY) + 1;
+			// Move cursor to left top corner
+			SetMouseLocation(MouseLocationX, MouseLocationY);
+			SetMouseCursorType(EMouseCursor::None);
+
 			FHitResult HitResult;
 			// we spawn game pad cursor at zero, when game pad cursor move, it would automatically
 			// jump to the center of screen if it's not on screen
@@ -337,7 +348,6 @@ void AXkController::SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor)
 		}
 		else if (NewControlsFlavor == EXkControlsFlavor::Keyboard)
 		{
-			CurrentMouseCursor = EMouseCursor::Default;
 			FollowTime = 0.f;
 			bIsCameraDraggingButtonPressing = false;
 			bIsCameraRotatingButtonPressing = false;
@@ -346,6 +356,8 @@ void AXkController::SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor)
 				GamepadCursor->Destroy();
 				GamepadCursor.Reset();
 			}
+			SetMouseCursorType(EMouseCursor::Default);
+			SetMouseLocation(CachedMouseCursorLocation.X, CachedMouseCursorLocation.Y);
 		}
 		// Fix Mouse Cursor not changing until moved
 		// @see https://forums.unrealengine.com/t/mouse-cursor-not-changing-until-moved/290523/13
@@ -518,25 +530,26 @@ void AXkController::TickActor(float DeltaTime, enum ELevelTick TickType, FActorT
 
 			float PercentX = MouseLocation.X / (float)ViewportSizeX;
 			float PercentY = MouseLocation.Y / (float)ViewportSizeY;
-			if (!IsOnUI() && (PercentX < 0.01 || PercentX > 0.99 || PercentY < 0.01 || PercentY > 0.99))
+			if (!IsOnUI() && 
+				(PercentX < ScreenBorderThreshold || PercentX > (1.0 - ScreenBorderThreshold) || PercentY < ScreenBorderThreshold || PercentY >(1.0 - ScreenBorderThreshold)))
 			{
 				FVector2D MovementVector = FVector2D::ZeroVector;
-				if (PercentX < 0.01)
+				if (PercentX < ScreenBorderThreshold)
 				{
 					ControlsCursorArea = EXkControlsCursorArea::LeftArea;
 					MovementVector += FVector2D(0, -1);
 				}
-				if (PercentX > 0.99)
+				if (PercentX > (1.0 - ScreenBorderThreshold))
 				{
 					ControlsCursorArea = EXkControlsCursorArea::RightArea;
 					MovementVector += FVector2D(0, 1);
 				}
-				if (PercentY < 0.01)
+				if (PercentY < ScreenBorderThreshold)
 				{
 					ControlsCursorArea = EXkControlsCursorArea::TopArea;
 					MovementVector += FVector2D(1, 0);
 				}
-				if (PercentY > 0.99)
+				if (PercentY > (1.0 - ScreenBorderThreshold))
 				{
 					ControlsCursorArea = EXkControlsCursorArea::DownArea;
 					MovementVector += FVector2D(-1, 0);
@@ -833,29 +846,6 @@ void AXkController::OnSetCameraZoomingTriggered(const FInputActionValue& Value)
 	{
 		TopDownCamera->AddCameraZoom(ZoomingValue, CameraZoomingSpeed);
 	}
-}
-
-
-void AXkController::OnSetNavigationTriggered(const FInputActionValue& Value)
-{
-	FVector2D MovementVector = Value.Get<FVector2D>();
-	// @DEBUG: OnSetNavigationTriggered
-	//if (FollowTime == 0.0f)
-	//{
-	//	FString Message = FString::Printf(TEXT("OnSetNavigationTriggered (%0.2f,%0.2f)"), MovementVector.X, MovementVector.Y);
-	//	GEngine->AddOnScreenDebugMessage(-1, 1.0, FColor::Green, *Message);
-	//}
-}
-
-
-void AXkController::OnSetNavigationPressing(const FInputActionValue& Value)
-{
-	OnInputPressing();
-}
-
-
-void AXkController::OnSetNavigationReleased()
-{
 }
 
 
