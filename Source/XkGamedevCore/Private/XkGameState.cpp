@@ -205,7 +205,7 @@ void AXkGameState::OnInputModeGameAndUI(UUserWidget* InWidgetToFocus)
 	if (PlayerController)
 	{
 		FInputModeGameAndUI InputMode;
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
 		InputMode.SetWidgetToFocus(InWidgetToFocus->TakeWidget());
 		PlayerController->SetInputMode(InputMode);
 	}
