@@ -57,6 +57,8 @@ AXkParabolaCurve::AXkParabolaCurve(const FObjectInitializer& ObjectInitializer)
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder2(TEXT("/XkGamedevKit/Materials/M_GuidelineParabolaMesh.M_GuidelineParabolaMesh"));
 	ParabolaMeshMaterial = ObjectFinder2.Object;
 
+	ParabolaStartMeshScale = FVector(0.05);
+	ParabolaEndMeshScale = FVector(0.05);
 	ParabolaStartScale = 0.05;
 	ParabolaEndScale = 0.05;
 	ParabolaPointsNum = 10;
@@ -124,7 +126,7 @@ void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& 
 
 	ParabolaStartMeshComponent->SetStaticMesh(ParabolaStartMesh);
 	ParabolaStartMeshComponent->SetWorldLocation(Start);
-	ParabolaStartMeshComponent->SetWorldScale3D(FVector(ParabolaStartScale));
+	ParabolaStartMeshComponent->SetWorldScale3D(ParabolaStartMeshScale);
 
 	ParabolaEndMeshComponent->SetStaticMesh(ParabolaEndMesh);
 	ParabolaEndMeshComponent->SetWorldLocation(End);
@@ -141,7 +143,14 @@ void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& 
 		// Apply the rotation to ParabolaEndMeshComponent
 		ParabolaEndMeshComponent->SetWorldRotation(Rotation);
 	}
-	ParabolaEndMeshComponent->SetWorldScale3D(FVector(ParabolaEndScale));
+	ParabolaEndMeshComponent->SetWorldScale3D(ParabolaEndMeshScale);
+}
+
+
+void AXkParabolaCurve::SetParabolaStartEndVisibility(const bool StartVisible, const bool EndVisible)
+{
+	ParabolaStartMeshComponent->SetVisibility(StartVisible);
+	ParabolaEndMeshComponent->SetVisibility(EndVisible);
 }
 
 

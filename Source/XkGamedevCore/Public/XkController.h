@@ -58,20 +58,26 @@ class XKGAMEDEVCORE_API AXkParabolaCurve : public AActor
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TArray<class USplineMeshComponent*> ParabolaSplineMeshComponents;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UStaticMesh* ParabolaMesh;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UStaticMesh* ParabolaStartMesh;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UStaticMesh* ParabolaEndMesh;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UMaterialInterface* ParabolaMeshMaterial;
 
 	UPROPERTY(Transient)
 	class UMaterialInstanceDynamic* ParabolaMeshMaterialDyn;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	FVector ParabolaStartMeshScale;
+
+	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	FVector ParabolaEndMeshScale;
 
 	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	float ParabolaStartScale;
@@ -94,6 +100,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
 	virtual void UpdateParabolaCurve(const FVector& Start, const FVector& End, const float ParaCurveArc);
 
+	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	void SetParabolaStartEndVisibility(const bool StartVisible, const bool EndVisible);
 
 	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
 	void SetParabolaCurveColor(const FLinearColor& Color);
