@@ -218,7 +218,7 @@ void AXkGamepadCursor::AddMovement(const FVector& InputValue, const FRotator& Fo
 			
 		}
 	}
-		
+
 
 	FVector MovementVectorRotated = ForwardRotator.RotateVector(InputValue);
 	FVector NewWorldLocation = MovementVectorRotated * Speed * DeltaSeconds + GetActorLocation();
