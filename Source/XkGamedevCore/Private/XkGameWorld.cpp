@@ -18,6 +18,9 @@ AXkSphericalWorldWithOceanActor::AXkSphericalWorldWithOceanActor(const FObjectIn
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder(TEXT("/XkGamedevKit/Materials/M_SphericalWorld"));
 	SphericalLandscapeComponent->Material = ObjectFinder.Object;
 	SphericalLandscapeComponent->WaterMaterial = ObjectFinder.Object;
+	SphericalLandscapeComponent->bNeverDistanceCull = true;
+	SphericalLandscapeComponent->LDMaxDrawDistance = 0.0f;
+	SphericalLandscapeComponent->bUseAsOccluder = true;
 	SphericalLandscapeComponent->SetupAttachment(RootComponent);
 
 	CanvasRendererComponent = CreateDefaultSubobject<UXkCanvasRendererComponent>(TEXT("CanvasRenderer"));
