@@ -98,6 +98,9 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 
 	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	virtual bool IsParabolaCurveIntersecting(const ECollisionChannel TraceChannel, const TArray<AActor*>& IgnoreActors) const;
+
+	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
 	virtual void UpdateParabolaCurve(const FVector& Start, const FVector& End, const float ParaCurveArc);
 
 	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")

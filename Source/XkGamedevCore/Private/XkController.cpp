@@ -79,6 +79,27 @@ void AXkParabolaCurve::OnConstruction(const FTransform& Transform)
 }
 
 
+bool AXkParabolaCurve::IsParabolaCurveIntersecting(const ECollisionChannel TraceChannel, const TArray<AActor*>& IgnoreActors) const
+{
+	for (int32 Index = 0; Index < (ParabolaSpline->GetNumberOfSplinePoints() - 1); ++Index)
+	{
+		FVector A = ParabolaSpline->GetLocationAtSplinePoint(Index, ESplineCoordinateSpace::World);
+		FVector B = ParabolaSpline->GetLocationAtSplinePoint(Index + 1, ESplineCoordinateSpace::World);
+		FHitResult HitResult;
+#if ENABLE_DRAW_DEBUG
+		//DrawDebugLine(GetWorld(), A, B, FColor::Red, false, -1.0f, 0, 10.0);
+#endif
+		FCollisionQueryParams CollisionQueryParams;
+		CollisionQueryParams.AddIgnoredActors(IgnoreActors);
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, A, B, TraceChannel, CollisionQueryParams))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+
 void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& End, const float ParaCurveArc)
 {
 	ParabolaSpline->ClearSplinePoints();

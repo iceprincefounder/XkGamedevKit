@@ -474,33 +474,6 @@ TArray<FVector> UXkTargetMovementComponent::CalcParaCurvePoints(const FVector& S
 }
 
 
-bool UXkTargetMovementComponent::CalcParaIntersection(const UObject* WorldContextObject, const FVector& Start, const FVector& End, const float CurveArc, const int32 SegmentNum, TArray<AActor*> IgnoreActors, const ECollisionChannel TraceChannel)
-{
-	TArray<FVector> Points = CalcParaCurvePoints(Start, End, CurveArc, SegmentNum);
-
-	FHitResult HitResult;
-	for (int32 i = 0; i < (Points.Num() - 1); ++i)
-	{
-		FVector A = Points[i];
-		FVector B = Points[i + 1];
-
-#if ENABLE_DRAW_DEBUG
-		//DrawDebugLine(GetWorld(), A, B, FColor::Red, false, -1.0f, 0, 10.0);
-#endif
-		FCollisionQueryParams CollisionQueryParams;
-		CollisionQueryParams.AddIgnoredActors(IgnoreActors);
-		if (UWorld* World = GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull))
-		{
-			if (World->LineTraceSingleByChannel(HitResult, A, B, TraceChannel, CollisionQueryParams))
-			{
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
-
 UXkSplineMovementComponent::UXkSplineMovementComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {

@@ -454,11 +454,6 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodesPathfinding(const
 	TArray<FIntVector> FindingPaths;
 	TArray<FIntVector> Blockers = BlockList;
 	HexagonAStarPathfinding.Reinit();
-	// Blocker should not contain the end coord, character might just step on the end coord
-	if (Blockers.Contains(EndCoord))
-	{
-		Blockers.Remove(EndCoord);
-	}
 	HexagonAStarPathfinding.Blocking(Blockers);
 	if (HexagonAStarPathfinding.Pathfinding(StartCoord, EndCoord))
 	{
