@@ -150,6 +150,7 @@ public:
 	FORCEINLINE virtual void AddCameraZoom(const float InputValue, const float Speed);
 	FORCEINLINE virtual void ResetCameraZoom();
 	FORCEINLINE virtual void AddMoveTarget(const FVector& InTarget);
+	FORCEINLINE virtual void MoveToTarget(const FVector& InTarget, const bool bImmediately = false);
 	FORCEINLINE virtual FRotator GetForwardRotator() const;
 	FORCEINLINE virtual bool IsTravelingMode() const { return bTravelingMode; }
 	FORCEINLINE virtual void SetTravelingMode(const bool bInTravelingMode);
