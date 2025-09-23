@@ -344,7 +344,7 @@ public:
 	virtual bool ControllerSelect(FVector& HitLocation, FVector& WorldPosition, FVector& WorldDirection, const ECollisionChannel Channel) const;
 	virtual bool IsMouseCursorMoving() const;
 	virtual EMouseCursor::Type GetMouseCursorType() const;
-	virtual void SetMouseCursorType(const EMouseCursor::Type MouseCursor);
+	virtual void SetMouseCursorType(const EMouseCursor::Type MouseCursor, const bool bRestorePos = false);
 	virtual bool IsGamepadCursorMoving() const;
 	virtual void SetGamepadCursorVisibility(const bool Input);
 	virtual class AXkGameState* GetGameState() const;

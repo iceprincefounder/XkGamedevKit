@@ -34,6 +34,7 @@ AXkParabolaCurve::AXkParabolaCurve(const FObjectInitializer& ObjectInitializer)
 
 	ParabolaSpline = CreateDefaultSubobject<USplineComponent>(TEXT("ParabolaSpline"));
 	ParabolaSpline->SetupAttachment(RootComponent);
+	ParabolaSpline->ClearSplinePoints();
 	ParabolaSpline->SetClosedLoop(false);
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SplineMeshTube(TEXT("/XkGamedevKit/Meshes/SM_SplineMeshTube.SM_SplineMeshTube"));
@@ -81,6 +82,11 @@ void AXkParabolaCurve::OnConstruction(const FTransform& Transform)
 
 bool AXkParabolaCurve::IsParabolaCurveIntersecting(const ECollisionChannel TraceChannel, const TArray<AActor*>& IgnoreActors) const
 {
+	if (ParabolaSpline->GetNumberOfSplinePoints() < 2)
+	{
+		return false;
+	}
+
 	for (int32 Index = 0; Index < (ParabolaSpline->GetNumberOfSplinePoints() - 1); ++Index)
 	{
 		FVector A = ParabolaSpline->GetLocationAtSplinePoint(Index, ESplineCoordinateSpace::World);
@@ -350,15 +356,7 @@ void AXkController::SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor)
 		ControlsFlavor = NewControlsFlavor;
 		if (NewControlsFlavor == EXkControlsFlavor::Gamepad)
 		{
-			//// Move cursor to left top corner
-			int32 ViewportSizeX, ViewportSizeY;
-			GetViewportSize(ViewportSizeX, ViewportSizeY); // Get resolution of the game viewport
-			float fMouseLocationX = (float)ViewportSizeX * ScreenBorderThreshold;
-			float fMouseLocationY = (float)ViewportSizeY * ScreenBorderThreshold;
-			int32 MouseLocationX = FMath::CeilToInt32(fMouseLocationX) + 1;
-			int32 MouseLocationY = FMath::CeilToInt32(fMouseLocationY) + 1;
-			// Move cursor to left top corner
-			SetMouseLocation(MouseLocationX, MouseLocationY);
+			//Move cursor to left top corner
 			SetMouseCursorType(EMouseCursor::None);
 
 			FHitResult HitResult;
@@ -386,8 +384,7 @@ void AXkController::SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor)
 				GamepadCursor->Destroy();
 				GamepadCursor.Reset();
 			}
-			SetMouseCursorType(EMouseCursor::Default);
-			SetMouseLocation(CachedMouseCursorLocation.X, CachedMouseCursorLocation.Y);
+			SetMouseCursorType(EMouseCursor::Default, true);
 		}
 		// Fix Mouse Cursor not changing until moved
 		// @see https://forums.unrealengine.com/t/mouse-cursor-not-changing-until-moved/290523/13
@@ -408,13 +405,29 @@ EMouseCursor::Type AXkController::GetMouseCursorType() const
 }
 
 
-void AXkController::SetMouseCursorType(const EMouseCursor::Type MouseCursor)
+void AXkController::SetMouseCursorType(const EMouseCursor::Type MouseCursor, const bool bRestorePos)
 {
-	if (ControlsFlavor == EXkControlsFlavor::Keyboard)
+	if (MouseCursor == EMouseCursor::Type::None && ControlsFlavor == EXkControlsFlavor::Gamepad)
 	{
-		CurrentMouseCursor = MouseCursor;
+		int32 ViewportSizeX, ViewportSizeY;
+		GetViewportSize(ViewportSizeX, ViewportSizeY); // Get resolution of the game viewport
+		float fMouseLocationX = (float)ViewportSizeX * ScreenBorderThreshold;
+		float fMouseLocationY = (float)ViewportSizeY * ScreenBorderThreshold;
+		int32 MouseLocationX = FMath::CeilToInt32(fMouseLocationX) + 1;
+		int32 MouseLocationY = FMath::CeilToInt32(fMouseLocationY) + 1;
+		// Move cursor to left top corner
+		SetMouseLocation(MouseLocationX, MouseLocationY);
+		SetShowMouseCursor(false);
 	}
-	SetShowMouseCursor(MouseCursor == EMouseCursor::Type::None ? false : true);
+	else if (MouseCursor == EMouseCursor::Type::Default && ControlsFlavor == EXkControlsFlavor::Keyboard)
+	{
+		if (bRestorePos)
+		{
+			// Restore cursor position
+			SetMouseLocation(CachedMouseCursorLocation.X, CachedMouseCursorLocation.Y);
+		}
+		SetShowMouseCursor(true);
+	}
 }
 
 
@@ -600,6 +613,7 @@ void AXkController::TickActor(float DeltaTime, enum ELevelTick TickType, FActorT
 	}
 	else if (ControlsFlavor == EXkControlsFlavor::Gamepad)
 	{
+		SetMouseCursorType(EMouseCursor::None);
 		if (GamepadCursor.IsValid())
 		{
 			CachedGamepadCursorLocation = GamepadCursor->GetActorLocation();
@@ -761,7 +775,7 @@ void AXkController::OnSetCameraDraggingPressing(const FInputActionValue& Value)
 		APawn* ControlledPawn = GetPawn();
 		if (ControlledPawn != nullptr)
 		{
-			SetMouseCursorType(EMouseCursor::GrabHand);
+			SetMouseCursorType(EMouseCursor::Default);
 		}
 	}
 }
