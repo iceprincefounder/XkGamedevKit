@@ -177,7 +177,7 @@ FXkQuadtreeSceneProxy::FXkQuadtreeSceneProxy(const UXkQuadtreeComponent* InCompo
 {
 	OwnerComponent = const_cast<UXkQuadtreeComponent*>(InComponent);
 	VertexFactory = new FXkQuadtreeVertexFactory(GetScene().GetFeatureLevel());
-	Quadtree.Initialize(1024, 16);
+	Quadtree.Initialize(512, 16);
 }
 
 
