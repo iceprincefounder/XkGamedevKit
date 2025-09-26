@@ -8,6 +8,8 @@
 #include "Components/ActorComponent.h"
 #include "XkCharacter.generated.h"
 
+#define THRESH_TARGET_ARE_NEAR 1.9f
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMovementBeginEvent);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMovementFinishEvent);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMovementReachTargetEvent, int32, ActionPoint);
@@ -49,25 +51,29 @@ public:
 	FORCEINLINE virtual bool IsSliding() const { return bIsSliding; };
 	FORCEINLINE virtual AActor* GetMovementActor() const;
 
-	static bool CheckRotationSafely(const FRotator& A, const FRotator& B, const float Tolerance = 0.9999f)
+	static bool CheckRotationSafely(const FRotator& A, const FRotator& B, const float Tolerance = THRESH_TARGET_ARE_NEAR)
 	{
 		float YawA = FMath::Frac((A.Yaw + 360.0f) / 360.0f) * 360.0f;
 		float YawB = FMath::Frac((B.Yaw + 360.0f) / 360.0f) * 360.0f;
 		return (FMath::Abs(YawA - YawB) < Tolerance);
 	};
-	static bool CheckDistanceSafely(const FVector& A, const FVector& B, const float Tolerance = 0.9999f)
+	static bool CheckDistance2DSafely(const FVector& A, const FVector& B, const float Tolerance = THRESH_TARGET_ARE_NEAR)
 	{
 		return (FVector::Dist2D(A, B) < Tolerance);
 	};
-	static bool CheckHeightSafely(const FVector& A, const FVector& B, const float Tolerance = 0.9999f)
+	static bool CheckDistanceSafely(const FVector& A, const FVector& B, const float Tolerance = THRESH_TARGET_ARE_NEAR)
+	{
+		return (FVector::Dist(A, B) < Tolerance);
+	};
+	static bool CheckHeightSafely(const FVector& A, const FVector& B, const float Tolerance = THRESH_TARGET_ARE_NEAR)
 	{
 		return (FMath::Abs(A.Z - B.Z) < Tolerance);
 	};
-	static bool CheckDirectionSafely(const FVector& A, const FVector& B, const FVector& O)
+	static bool CheckDirectionSafely(const FVector& A, const FVector& B, const FVector& O, const float Tolerance = KINDA_SMALL_NUMBER)
 	{
 		FVector A2O = O - A;
 		FVector B2O = O - B;
-		return (FVector::DotProduct(A2O, B2O) < 0);
+		return (FVector::DotProduct(A2O, B2O) < KINDA_SMALL_NUMBER);
 	};
 protected:
 	/** Should move but might not be moving currently*/

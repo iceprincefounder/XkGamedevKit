@@ -15,6 +15,7 @@
 #include "Materials/Material.h"
 #include "Engine/World.h"
 
+UE_DISABLE_OPTIMIZATION
 
 UXkMovement::UXkMovement(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -147,7 +148,7 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 		// If into new Hexagon, change to new target
 		// else if, stop moving
 		// @TODO: check distance is not safe, pool FPS would case many problem
-		if ((PendingMoveTargets.Num() == 0 || ActionPoint < MoveCostPoint) && CheckDistanceSafely(Location, CurrentMoveTarget))
+		if ((PendingMoveTargets.Num() == 0 || ActionPoint < MoveCostPoint) && CheckDistance2DSafely(Location, CurrentMoveTarget))
 		{
 			// Closed enough, stop moving
 			bIsMoving = false;
@@ -157,7 +158,7 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 			Acceleration = FVector::ZeroVector;
 			OnMovementReachTargetEvent.Broadcast(ActionPoint);
 		}
-		else if (PendingMoveTargets.Num() > 0 && ActionPoint >= MoveCostPoint && CheckDistanceSafely(Location, CurrentMoveTarget))
+		else if (PendingMoveTargets.Num() > 0 && ActionPoint >= MoveCostPoint && CheckDistance2DSafely(Location, CurrentMoveTarget))
 		{
 			// decrease PendingMoveTargets count
 			LastTarget = CurrentMoveTarget;
@@ -233,14 +234,16 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 	// 3. Jumping
 	if (bIsJumping)
 	{
-		if ((PendingJumpTargets.Num() == 0 || ActionPoint < JumpCostPoint) && CheckDistanceSafely(Location, CurrentJumpTarget))
+		if ((PendingJumpTargets.Num() == 0 || ActionPoint < JumpCostPoint) 
+			&& CheckDistance2DSafely(Location, CurrentJumpTarget))
 		{
 			bIsJumping = false;
 			bIsFlying = true;
 			CurrentFlyTarget = GetMovementActor()->GetActorLocation();
 			OnMovementReachTargetEvent.Broadcast(ActionPoint);
 		}
-		else if (PendingJumpTargets.Num() > 0 && ActionPoint >= JumpCostPoint && CheckDistanceSafely(Location, CurrentJumpTarget))
+		else if (PendingJumpTargets.Num() > 0 && ActionPoint >= JumpCostPoint
+			&& CheckDistance2DSafely(Location, CurrentJumpTarget))
 		{
 			// decrease PendingMoveTargets count
 			LastTarget = CurrentJumpTarget;
@@ -282,17 +285,17 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 		}
 	}
 
-	// 4. Shotting
+	// 4. Flying
 	if (bIsFlying)
 	{
-		if ((PendingFlyTargets.Num() == 0 || ActionPoint < FlyCostPoint) && CheckDistanceSafely(Location, CurrentFlyTarget))
+		if ((PendingFlyTargets.Num() == 0 || ActionPoint < FlyCostPoint) && CheckDistance2DSafely(Location, CurrentFlyTarget))
 		{
 			bIsFlying = false;
 			bIsSliding = true;
 			CurrentSlideTarget = GetMovementActor()->GetActorLocation();
 			OnMovementReachTargetEvent.Broadcast(ActionPoint);
 		}
-		else if (PendingFlyTargets.Num() > 0 && ActionPoint >= FlyCostPoint && CheckDistanceSafely(Location, CurrentFlyTarget))
+		else if (PendingFlyTargets.Num() > 0 && ActionPoint >= FlyCostPoint && CheckDistance2DSafely(Location, CurrentFlyTarget))
 		{
 			LastTarget = CurrentFlyTarget;
 			CurrentFlyTarget = PendingFlyTargets.Pop(true);
@@ -355,19 +358,44 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 		// If not closed to target, move
 		else
 		{
-			FVector TargetVector = FVector(CurrentSlideTarget.X, CurrentSlideTarget.Y, Location.Z);
+			FVector TargetVector = CurrentSlideTarget;
 			FVector StartVector = Location;
 			FVector MovingDir = (TargetVector - StartVector);
 			MovingDir.Normalize();
-			float CurrentVelocity = Velocity.Size();
-			float CurrentAcceleration = MaxAcceleration;
-			CurrentVelocity += CurrentAcceleration * DeltaTime;
-			CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity * SlideAcceler);
-			FVector NewLocation = bBlinkMode ? FMath::VInterpTo(StartVector, TargetVector, DeltaTime, CurrentVelocity) :
-				FMath::VInterpConstantTo(StartVector, TargetVector, DeltaTime, CurrentVelocity);
-			Velocity = (NewLocation - Location) / DeltaTime;
-			Acceleration = CurrentAcceleration * MovingDir;
-			GetMovementActor()->SetActorLocation(NewLocation);
+
+			// Vertical slide to target
+			if (CheckDistance2DSafely(Location, TargetVector))
+			{
+				float Dist = FVector::Dist(Location, TargetVector);
+				float TotalDist = FMath::Max(Dist, 1.0f);
+				if (LastTarget.IsSet())
+				{
+					TotalDist = FVector::Dist(LastTarget.GetValue(), TargetVector);
+				}
+				Acceleration = (2 * TotalDist) / (FMath::Square(TotalDist / MaxVelocity)) * MovingDir;
+				// Fake velocity fade when close to target
+				float VelocityFade = FMath::Abs(Dist / TotalDist);
+				VelocityFade = FMath::Square(VelocityFade);
+				Velocity = MaxVelocity * VelocityFade * MovingDir;
+				// Location : s = v0 * t + 0.5 * a * t^2
+				// Velocity : v = v0 + a * t
+				FVector NewLocation = 0.5f * Acceleration * DeltaTime * DeltaTime + Velocity * DeltaTime;
+				NewLocation += Location;
+				GetMovementActor()->SetActorLocation(NewLocation);
+			}
+			// Horizontal slide to target
+			else
+			{
+				float CurrentVelocity = Velocity.Size();
+				float CurrentAcceleration = MaxAcceleration;
+				CurrentVelocity += CurrentAcceleration * DeltaTime;
+				CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity * SlideAcceler);
+				FVector NewLocation = bBlinkMode ? FMath::VInterpTo(StartVector, TargetVector, DeltaTime, CurrentVelocity) :
+					FMath::VInterpConstantTo(StartVector, TargetVector, DeltaTime, CurrentVelocity);
+				Velocity = (NewLocation - Location) / DeltaTime;
+				Acceleration = CurrentAcceleration * MovingDir;
+				GetMovementActor()->SetActorLocation(NewLocation);
+			}
 		}
 	}
 }
@@ -666,3 +694,5 @@ void AXkCharacter::DisableCharacterMovement()
 	GetXkTargetMovement()->SetActive(true);
 	GetXkTargetMovement()->SetAutoActivate(true);
 }
+
+UE_ENABLE_OPTIMIZATION
