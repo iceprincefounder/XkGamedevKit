@@ -8,7 +8,7 @@
 #include "Components/ActorComponent.h"
 #include "XkCharacter.generated.h"
 
-#define THRESH_TARGET_ARE_NEAR 1.9f
+#define THRESH_TARGET_ARE_NEAR 0.91f
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMovementBeginEvent);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMovementFinishEvent);
