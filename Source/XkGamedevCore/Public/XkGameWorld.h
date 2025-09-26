@@ -32,6 +32,9 @@ public:
 	int32 ShorelineManhattanDistance;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
+	float ShorelineEachStepHeight;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	FVector2D PositionRandomRange;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")

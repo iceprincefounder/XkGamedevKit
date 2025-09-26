@@ -138,6 +138,9 @@ AXkTopDownCamera::AXkTopDownCamera(const FObjectInitializer& ObjectInitializer)
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder(TEXT("/XkGamedevKit/Materials/M_CameraPostProcess"));
 	PostProcessMaterial = ObjectFinder.Object;
+	CVarSetEnableStylizedRendering->SetOnChangedCallback(
+		FConsoleVariableDelegate::CreateUObject(this, &AXkTopDownCamera::SetEnableStylizedPostProcess));
+	bEnableStylizePostProcess = false;
 	bUseCameraRotationLock = false;
 	CameraRotationLock = FVector2D(-75.0, -55.0);
 	CameraZoomArmLength = 1200.0;
@@ -161,6 +164,7 @@ void AXkTopDownCamera::OnConstruction(const FTransform& Transform)
 		PostProcessMaterialDyn = UMaterialInstanceDynamic::Create(PostProcessMaterial, this);
 		TopDownCameraComponent->PostProcessSettings.AddBlendable(PostProcessMaterialDyn, 1.0f);
 	}
+	SetEnableStylizedPostProcess(CVarSetEnableStylizedRendering->AsVariable());
 	Super::OnConstruction(Transform);
 }
 
@@ -200,11 +204,35 @@ void AXkTopDownCamera::Tick(float DeltaSeconds)
 }
 
 
-void AXkTopDownCamera::SetOutlineColor(const FLinearColor& InColor)
+void AXkTopDownCamera::SetEnableStylizedPostProcess(IConsoleVariable* Var)
 {
-	if (PostProcessMaterialDyn && IsValid(PostProcessMaterialDyn))
+	bool bInEnable = Var->GetBool();
+	if (bEnableStylizePostProcess != bInEnable)
 	{
-		PostProcessMaterialDyn->SetVectorParameterValue(FName("OutlineColor"), InColor);
+		bEnableStylizePostProcess = bInEnable;
+		if (bEnableStylizePostProcess)
+		{
+			for (UMaterialInterface* MaterialInterface : StylizedPostProcessMaterials)
+			{
+				if (MaterialInterface && IsValid(MaterialInterface))
+				{
+					UMaterialInstanceDynamic* MaterialDyn = UMaterialInstanceDynamic::Create(MaterialInterface, this);
+					StylizedPostProcessMaterialDyns.Add(MaterialDyn);
+					TopDownCameraComponent->PostProcessSettings.AddBlendable(MaterialDyn, 1.0f);
+				}
+			}
+		}
+		else
+		{
+			for (UMaterialInstanceDynamic* MaterialDyn : StylizedPostProcessMaterialDyns)
+			{
+				if (MaterialDyn && IsValid(MaterialDyn))
+				{
+					TopDownCameraComponent->PostProcessSettings.RemoveBlendable(MaterialDyn);
+				}
+			}
+			StylizedPostProcessMaterialDyns.Empty();
+		}
 	}
 }
 

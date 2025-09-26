@@ -9,6 +9,15 @@
 class UCapsuleComponent;
 class UArrowComponent;
 
+static bool GEnableStylizedRendering = 1;
+static FAutoConsoleVariableRef CVarSetEnableStylizedRendering
+(
+	TEXT("r.EnableStylizedRendering"),
+	GEnableStylizedRendering,
+	TEXT("Enable stylized rendering in game."),
+	ECVF_Scalability | ECVF_RenderThreadSafe
+);
+
 UCLASS(Blueprintable)
 class XKGAMEDEVCORE_API AXkCamera : public APawn
 {
@@ -90,6 +99,15 @@ class XKGAMEDEVCORE_API AXkTopDownCamera : public AXkCamera
 	class UMaterialInstanceDynamic* PostProcessMaterialDyn;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	bool bEnableStylizePostProcess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
+	TArray<class UMaterialInterface*> StylizedPostProcessMaterials;
+
+	UPROPERTY(Transient)
+	TArray<class UMaterialInstanceDynamic*> StylizedPostProcessMaterialDyns;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	bool bUseCameraRotationLock;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
@@ -140,7 +158,7 @@ public:
 	FORCEINLINE class UArrowComponent* GetArrowComponent() const { return ArrowComponent; }
 #endif
 
-	FORCEINLINE virtual void SetOutlineColor(const FLinearColor& InColor);
+	FORCEINLINE virtual void SetEnableStylizedPostProcess(IConsoleVariable* Var);
 
 	FORCEINLINE virtual void ResetCamera();
 	FORCEINLINE virtual void AddMovement(const FVector2D& InputValue, const float Speed);

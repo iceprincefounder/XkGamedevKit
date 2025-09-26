@@ -30,7 +30,7 @@ AXkSphericalWorldWithOceanActor::AXkSphericalWorldWithOceanActor(const FObjectIn
 
 	GroundManhattanDistance = 28;
 	ShorelineManhattanDistance = 4;
-
+	ShorelineEachStepHeight = 25.0f;
 	bSpawnActors = false;
 	SpawnActorsMaxMhtDist = 10;
 	bShowSpawnedActorBaseMesh = true;
@@ -149,7 +149,8 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 		else if (Node && ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
 		{
 			Node->Type = EXkHexagonType::Beach;
-			Node->Position.Z = HorizonHeight;
+			int32 ShorelineStep = ManhattanDistanceToCenter - GroundManhattanDistance;
+			Node->Position.Z = HorizonHeight - ShorelineStep * ShorelineEachStepHeight;
 			Node->Weights = FVector4f(0.0f, 0.0f, 0.0f, 1.0f);
 		}
 	}
