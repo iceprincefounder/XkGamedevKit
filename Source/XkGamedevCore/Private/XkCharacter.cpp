@@ -83,7 +83,7 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 
 	check(GetMovementActor());
 
-	if (!bShouldDoAction && bFailToGround)
+	if (bIsFalling && bFailToGround)
 	{
 		// Snap to ground
 		FVector ActorLocation = GetMovementActor()->GetActorLocation();
@@ -109,7 +109,6 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 			Velocity += Acceleration * DeltaTime;
 			
 			NewLocation = ActorLocation + Velocity * DeltaTime + 0.5f * Acceleration * DeltaTime * DeltaTime;
-			bIsFalling = true;
 		}
 		GetMovementActor()->SetActorLocation(NewLocation);
 		return Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -124,7 +123,7 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 		&& (PendingJumpTargets.Num() == 0 || ActionPoint == 0)
 		&& PendingFlyTargets.Num() == 0
 		&& PendingSlideTargets.Num() == 0
-		&& !bIsMoving && !bIsRotating && !bIsJumping && !bIsFlying && !bIsSliding && bShouldDoAction)
+		&& !IsOnAction() && bShouldDoAction)
 	{
 		bShouldDoAction = false;
 		MoveAcceler = JumpAcceler = FlyAcceler = SlideAcceler = 1.0f;
@@ -343,6 +342,8 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 		{
 			// Closed enough, stop moving
 			bIsSliding = false;
+			// Start to fall to ground if bFailToGround is true
+			bIsFalling = bFailToGround;
 			Velocity = FVector::ZeroVector;
 			Acceleration = FVector::ZeroVector;
 			OnMovementReachTargetEvent.Broadcast(ActionPoint);
@@ -408,7 +409,7 @@ void UXkTargetMovementComponent::OnAction()
 		bShouldDoAction = true;
 		bIsMoving = true;
 		CurrentMoveTarget = MovingActor->GetActorLocation();
-		bIsRotating = bIsJumping = bIsSliding = false;
+		bIsRotating = bIsJumping = bIsSliding = bIsFalling = bIsFlying = false;
 		OnMovementBeginEvent.Broadcast();
 	}
 }

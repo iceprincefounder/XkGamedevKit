@@ -42,13 +42,14 @@ class XKGAMEDEVCORE_API UXkMovement : public UActorComponent
 
 public:
 	FORCEINLINE virtual bool ShouldDoAction() const { return bShouldDoAction; }
-	FORCEINLINE virtual bool IsOnAction() const { return bIsMoving || bIsRotating || bIsJumping || bIsFlying || bIsSliding; }
+	FORCEINLINE virtual bool IsOnAction() const { return bIsMoving || bIsRotating || bIsJumping || bIsFlying || bIsSliding || bIsFalling; }
 	FORCEINLINE virtual void OnAction() { bShouldDoAction = true; bIsMoving = bIsRotating = bIsJumping = bIsFlying = bIsSliding = false; };
 	FORCEINLINE virtual bool IsMoving() const { return bIsMoving; };
 	FORCEINLINE virtual bool IsRotating() const { return bIsRotating; };
 	FORCEINLINE virtual bool IsJumping() const { return bIsJumping; };
 	FORCEINLINE virtual bool IsFlying() const { return bIsFlying; };
 	FORCEINLINE virtual bool IsSliding() const { return bIsSliding; };
+	FORCEINLINE virtual bool IsFalling() const { return bIsFalling; };
 	FORCEINLINE virtual AActor* GetMovementActor() const;
 
 	static bool CheckRotationSafely(const FRotator& A, const FRotator& B, const float Tolerance = THRESH_TARGET_ARE_NEAR)
