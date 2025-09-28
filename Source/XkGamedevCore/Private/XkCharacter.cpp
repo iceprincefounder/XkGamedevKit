@@ -361,12 +361,12 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 		{
 			FVector TargetVector = CurrentSlideTarget;
 			FVector StartVector = Location;
-			FVector MovingDir = (TargetVector - StartVector);
-			MovingDir.Normalize();
 
 			// Vertical slide to target
 			if (CheckDistance2DSafely(Location, TargetVector))
 			{
+				FVector MovingDir = (TargetVector - StartVector);
+				MovingDir.Normalize();
 				float Dist = FVector::Dist(Location, TargetVector);
 				float TotalDist = FMath::Max(Dist, 1.0f);
 				if (LastTarget.IsSet())
@@ -382,11 +382,18 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 				// Velocity : v = v0 + a * t
 				FVector NewLocation = 0.5f * Acceleration * DeltaTime * DeltaTime + Velocity * DeltaTime;
 				NewLocation += Location;
+				if (NewLocation.Z > TargetVector.Z)
+				{
+					NewLocation = TargetVector;
+				}
 				GetMovementActor()->SetActorLocation(NewLocation);
 			}
 			// Horizontal slide to target
 			else
 			{
+				TargetVector.Z = Location.Z;
+				FVector MovingDir = (TargetVector - StartVector);
+				MovingDir.Normalize();
 				float CurrentVelocity = Velocity.Size();
 				float CurrentAcceleration = MaxAcceleration;
 				CurrentVelocity += CurrentAcceleration * DeltaTime;

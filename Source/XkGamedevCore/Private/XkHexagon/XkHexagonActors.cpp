@@ -188,10 +188,6 @@ void AXkHexagonActor::InitHexagon(const FIntVector& InCoord)
 		if (HexagonNode)
 		{
 			FVector4f Position = HexagonNode->Position;
-			if (HexagonNode->Type == EXkHexagonType::Ocean)
-			{
-				Position.Z = ParentHexagonalWorld->HorizonHeight;
-			}
 			FVector NewLocation = FVector(Position.X, Position.Y, Position.Z + 2.0 /* Fix Z-Fighting, Leave 1.0 for other surface.*/);
 			SetActorLocation(NewLocation, true);
 		}
