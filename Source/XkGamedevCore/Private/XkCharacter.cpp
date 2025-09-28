@@ -631,7 +631,7 @@ void AXkCharacter::TickActor(float DeltaTime, enum ELevelTick TickType, FActorTi
 }
 
 
-bool AXkCharacter::IsCharacterFailing() const
+bool AXkCharacter::IsCharacterFalling() const
 {
 	if (GetCharacterMovement()->IsActive())
 	{
@@ -639,7 +639,7 @@ bool AXkCharacter::IsCharacterFailing() const
 	}
 	if (GetXkTargetMovement()->IsActive())
 	{
-		return GetXkTargetMovement()->IsFailing();
+		return GetXkTargetMovement()->IsFalling();
 	}
 	return false;
 }

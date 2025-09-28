@@ -99,7 +99,8 @@ bool UXkCanvasRendererComponent::IsBuffersValid() const
 
 bool UXkCanvasRendererComponent::IsRenderDataValid() const
 {
-	return (CanvasRT0 && CanvasRT1 && InstancePositionBuffer.GetInstanceNum() > 0 
+	return (CanvasRT0 && CanvasRT1
+		&& InstancePositionBuffer.GetInstanceNum() > 0 
 		&& InstanceWeightBuffer.GetInstanceNum() > 0);
 }
 
@@ -172,27 +173,6 @@ void UXkCanvasRendererComponent::UpdateBuffers(const TArray<FVector4f> Positions
 }
 
 
-void UXkCanvasRendererComponent::DrawHeightSplatCanvas_MultiFrame()
-{
-	if (!IsRenderDataValid())
-	{
-		return;
-	}
-
-	PendingMultiFrameTasks.Empty();
-	PendingMultiFrameTasks.Add([this]()
-	{
-		DrawPrimaryCanvas_Internal();
-		DrawFilteringCanvas_Internal<FXkCanvasRenderHeightCS>(CanvasRT0);
-		DrawFilteringCanvas_Internal<FXkCanvasRenderNormalCS>(CanvasRT0);
-	});
-	PendingMultiFrameTasks.Add([this]()
-	{
-		DrawFilteringCanvas_Internal<FXkCanvasRenderSdfCS>(CanvasRT0);
-	});
-}
-
-
 void UXkCanvasRendererComponent::DrawHeightWeightCanvas_MultiFrame()
 {
 	if (!IsRenderDataValid())
@@ -201,36 +181,109 @@ void UXkCanvasRendererComponent::DrawHeightWeightCanvas_MultiFrame()
 	}
 
 	PendingMultiFrameTasks.Empty();
+	InitCanvasRTCached_Internal();
 	PendingMultiFrameTasks.Add([this]()
 		{
-			DrawPrimaryCanvas_Internal();
-			DrawFilteringCanvas_Internal<FXkCanvasRenderNormalCS>(CanvasRT0);
+			DrawPrimaryCanvas_Internal(CanvasRT0_Cached, CanvasRT1_Cached);
 		});
 	PendingMultiFrameTasks.Add([this]()
 		{
-			DrawFilteringCanvas_Internal<FXkCanvasRenderHeightCS>(CanvasRT0);
-			DrawFilteringCanvas_Internal<FXkCanvasRenderNormalCS>(CanvasRT0);
+			DrawFilteringCanvas_Internal<FXkCanvasRenderNormalCS>(CanvasRT0_Cached, CanvasRT1_Cached, CanvasRT0_Cached);
 		});
 	PendingMultiFrameTasks.Add([this]()
 		{
-			DrawFilteringCanvas_Internal<FXkCanvasRenderSdfCS>(CanvasRT0);
+			DrawFilteringCanvas_Internal<FXkCanvasRenderHeightCS>(CanvasRT0_Cached, CanvasRT1_Cached, CanvasRT0_Cached);
 		});
 	PendingMultiFrameTasks.Add([this]()
 		{
-			DrawFilteringCanvas_Internal<FXkCanvasRenderWeightCS>(CanvasRT1);
+			DrawFilteringCanvas_Internal<FXkCanvasRenderNormalCS>(CanvasRT0_Cached, CanvasRT1_Cached, CanvasRT0_Cached);
+		});
+	PendingMultiFrameTasks.Add([this]()
+		{
+			DrawFilteringCanvas_Internal<FXkCanvasRenderSdfCS>(CanvasRT0_Cached, CanvasRT1_Cached, CanvasRT0_Cached);
+		});
+	PendingMultiFrameTasks.Add([this]()
+		{
+			DrawFilteringCanvas_Internal<FXkCanvasRenderWeightCS>(CanvasRT0_Cached, CanvasRT1_Cached, CanvasRT1_Cached);
+		});
+	PendingMultiFrameTasks.Add([this]()
+		{
+			CopyCanvasRT_Internal(CanvasRT0_Cached, CanvasRT0);
+			CopyCanvasRT_Internal(CanvasRT1_Cached, CanvasRT1);
 		});
 }
 
 
-void UXkCanvasRendererComponent::DrawPrimaryCanvas_Internal()
+void UXkCanvasRendererComponent::InitCanvasRTCached_Internal()
+{
+	if (CanvasRT0 && CanvasRT0->GetResource()
+		&& CanvasRT1 && CanvasRT1->GetResource())
+	{
+		if (CanvasRT0_Cached && CanvasRT0_Cached->GetResource()
+			&& CanvasRT1_Cached && CanvasRT1_Cached->GetResource())
+		{
+			return;
+		}
+
+		// Clone CanvasRT0 to CanvasRT_Cached
+		CanvasRT0_Cached = NewObject<UTextureRenderTarget2D>(this);
+		CanvasRT0_Cached->RenderTargetFormat = CanvasRT0->RenderTargetFormat;
+		CanvasRT0_Cached->ClearColor = CanvasRT0->ClearColor;
+		CanvasRT0_Cached->InitAutoFormat(CanvasRT0->SizeX, CanvasRT0->SizeY);
+		CanvasRT0_Cached->UpdateResourceImmediate(false);
+		CanvasRT0_Cached->SetFlags(RF_Transient);
+
+		CanvasRT1_Cached = NewObject<UTextureRenderTarget2D>(this);
+		CanvasRT1_Cached->RenderTargetFormat = CanvasRT1->RenderTargetFormat;
+		CanvasRT1_Cached->ClearColor = CanvasRT1->ClearColor;
+		CanvasRT1_Cached->InitAutoFormat(CanvasRT1->SizeX, CanvasRT1->SizeY);
+		CanvasRT1_Cached->UpdateResourceImmediate(false);
+		CanvasRT1_Cached->SetFlags(RF_Transient);
+	}
+}
+
+
+void UXkCanvasRendererComponent::CopyCanvasRT_Internal(UTextureRenderTarget2D* Input, UTextureRenderTarget2D* Output)
+{
+	if (Input && Input->GetResource()
+		&& Output && Output->GetResource())
+	{
+		ENQUEUE_RENDER_COMMAND(UXkCanvasRendererComponent_CopyCanvasRTCached)([Input, Output]
+		(FRHICommandListImmediate& RHICmdList)
+			{
+				TRACE_CPUPROFILER_EVENT_SCOPE(UXkCanvasRendererComponent_CopyCanvasRTCached);
+
+				FRDGBuilder GraphBuilder(RHICmdList, RDG_EVENT_NAME("CaptureDrawCanvas"));
+
+				TRefCountPtr<IPooledRenderTarget> Input_RT = CreateRenderTarget(
+					Input->GetResource()->GetTexture2DRHI(), TEXT("Input"));
+				FRDGTextureRef Input_RDG = GraphBuilder.RegisterExternalTexture(Input_RT);
+
+				TRefCountPtr<IPooledRenderTarget> Output_RT = CreateRenderTarget(
+					Output->GetResource()->GetTexture2DRHI(), TEXT("Output"));
+				FRDGTextureRef Output_RDG = GraphBuilder.RegisterExternalTexture(Output_RT);
+
+				FIntVector TextureSize = Input_RDG->Desc.GetSize();
+				FRHICopyTextureInfo CopyTextureInfo;
+				CopyTextureInfo.NumMips = 1;
+				CopyTextureInfo.Size = TextureSize;
+
+				AddCopyTexturePass(GraphBuilder, Input_RDG, Output_RDG, CopyTextureInfo);
+				GraphBuilder.Execute();
+			});
+	}
+}
+
+
+void UXkCanvasRendererComponent::DrawPrimaryCanvas_Internal(UTextureRenderTarget2D* Output0, UTextureRenderTarget2D* Output1)
 {
 	if (!IsRenderDataValid())
 	{
 		return;
 	}
 
-	UTextureRenderTarget2D* Canvas0 = CanvasRT0;
-	UTextureRenderTarget2D* Canvas1 = CanvasRT1;
+	UTextureRenderTarget2D* Canvas0 = Output0;
+	UTextureRenderTarget2D* Canvas1 = Output1;
 	FVector4f Center = CanvasCenter;
 	FVector4f Extent = CanvasExtent;
 	FXkCanvasVertexBuffer* VertexBuf = &VertexBuffer;
@@ -299,15 +352,15 @@ void UXkCanvasRendererComponent::DrawPrimaryCanvas_Internal()
 
 
 template<typename T>
-inline void UXkCanvasRendererComponent::DrawFilteringCanvas_Internal(UTextureRenderTarget2D* Output)
+inline void UXkCanvasRendererComponent::DrawFilteringCanvas_Internal(UTextureRenderTarget2D* Input0, UTextureRenderTarget2D* Input1, UTextureRenderTarget2D* Output)
 {
 	if (!IsRenderDataValid())
 	{
 		return;
 	}
 
-	UTextureRenderTarget2D* Canvas0 = CanvasRT0;
-	UTextureRenderTarget2D* Canvas1 = CanvasRT1;
+	UTextureRenderTarget2D* Canvas0 = Input0;
+	UTextureRenderTarget2D* Canvas1 = Input1;
 	FIntVector4 TextureFilter = FIntVector4(ConvolutionRangeX, ConvolutionRangeY, ConvolutionRangeZ, ConvolutionRangeW);
 	FVector4f Center = CanvasCenter;
 	FVector4f Extent = CanvasExtent;

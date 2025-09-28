@@ -22,6 +22,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	class UTextureRenderTarget2D* CanvasRT1;
 
+	UPROPERTY(VisibleAnywhere, Transient, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
+	class UTextureRenderTarget2D* CanvasRT0_Cached;
+
+	UPROPERTY(VisibleAnywhere, Transient, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
+	class UTextureRenderTarget2D* CanvasRT1_Cached;
+
 	/* Height convolution range (aka Filter).*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "CanvasRenderer [KEVINTSUIXUGAMEDEV]")
 	uint8 ConvolutionRangeX;
@@ -75,13 +81,14 @@ public:
 		const TArray<FVector4f> Positions,
 		const TArray<FVector4f> Weights);
 
-	virtual void DrawHeightSplatCanvas_MultiFrame();
 	virtual void DrawHeightWeightCanvas_MultiFrame();
 
 private:
-	void DrawPrimaryCanvas_Internal();
+	void InitCanvasRTCached_Internal();
+	void DrawPrimaryCanvas_Internal(UTextureRenderTarget2D* Output0, UTextureRenderTarget2D* Output1);
 	template<typename T>
-	void DrawFilteringCanvas_Internal(UTextureRenderTarget2D* Output);
+	void DrawFilteringCanvas_Internal(UTextureRenderTarget2D* Input0, UTextureRenderTarget2D* Input1, UTextureRenderTarget2D* Output);
+	void CopyCanvasRT_Internal(UTextureRenderTarget2D* Input, UTextureRenderTarget2D* Output);
 
 	/* Vertex buffer for hexagonal world nodes*/
 	FXkCanvasVertexBuffer VertexBuffer;

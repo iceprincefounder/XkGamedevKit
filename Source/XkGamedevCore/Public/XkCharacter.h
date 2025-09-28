@@ -49,7 +49,7 @@ public:
 	FORCEINLINE virtual bool IsJumping() const { return bIsJumping; };
 	FORCEINLINE virtual bool IsFlying() const { return bIsFlying; };
 	FORCEINLINE virtual bool IsSliding() const { return bIsSliding; };
-	FORCEINLINE virtual bool IsFalling() const { return bIsFalling; };
+	FORCEINLINE virtual bool IsFalling() const { return bIsJumping || bIsFalling; };
 	FORCEINLINE virtual AActor* GetMovementActor() const;
 
 	static bool CheckRotationSafely(const FRotator& A, const FRotator& B, const float Tolerance = THRESH_TARGET_ARE_NEAR)
@@ -182,9 +182,6 @@ public:
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
 	FOnMovementReachTargetEvent OnMovementReachTargetEvent;
 
-	UFUNCTION(BlueprintCallable, Category = "Movement [KEVINTSUIXUGAMEDEV]")
-	bool IsFailing() const { return bIsJumping || bIsFalling; };
-
 	/** Default UObject constructor. */
 	UXkTargetMovementComponent(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
@@ -288,7 +285,7 @@ public:
 	virtual void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 
 	UFUNCTION(Category = "Character [KEVINTSUIXUGAMEDEV]", BlueprintCallable, meta = (BlueprintThreadSafe))
-	FORCEINLINE bool IsCharacterFailing() const;
+	FORCEINLINE bool IsCharacterFalling() const;
 
 	UFUNCTION(Category = "Character [KEVINTSUIXUGAMEDEV]", BlueprintCallable, meta = (BlueprintThreadSafe))
 	virtual bool IsCharacterMoving() const;
