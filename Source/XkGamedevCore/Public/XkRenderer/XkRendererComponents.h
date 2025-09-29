@@ -85,11 +85,12 @@ public:
 
 private:
 	void InitCanvasRTCached_Internal();
+	void ReleaseCanvasRTCached_Internal();
 	void DrawPrimaryCanvas_Internal(UTextureRenderTarget2D* Output0, UTextureRenderTarget2D* Output1);
 	template<typename T>
 	void DrawFilteringCanvas_Internal(UTextureRenderTarget2D* Input0, UTextureRenderTarget2D* Input1, UTextureRenderTarget2D* Output);
 	void CopyCanvasRT_Internal(UTextureRenderTarget2D* Input, UTextureRenderTarget2D* Output);
-
+	
 	/* Vertex buffer for hexagonal world nodes*/
 	FXkCanvasVertexBuffer VertexBuffer;
 	/* Index buffer for hexagonal world nodes*/

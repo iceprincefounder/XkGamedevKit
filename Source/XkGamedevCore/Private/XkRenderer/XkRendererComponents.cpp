@@ -181,7 +181,10 @@ void UXkCanvasRendererComponent::DrawHeightWeightCanvas_MultiFrame()
 	}
 
 	PendingMultiFrameTasks.Empty();
-	InitCanvasRTCached_Internal();
+	PendingMultiFrameTasks.Add([this]()
+		{
+			InitCanvasRTCached_Internal();
+		});
 	PendingMultiFrameTasks.Add([this]()
 		{
 			DrawPrimaryCanvas_Internal(CanvasRT0_Cached, CanvasRT1_Cached);
@@ -211,6 +214,14 @@ void UXkCanvasRendererComponent::DrawHeightWeightCanvas_MultiFrame()
 			CopyCanvasRT_Internal(CanvasRT0_Cached, CanvasRT0);
 			CopyCanvasRT_Internal(CanvasRT1_Cached, CanvasRT1);
 		});
+	PendingMultiFrameTasks.Add([this]()
+		{
+			// Do nothing, wait for a frame to ensure RT copy finished
+		});
+	PendingMultiFrameTasks.Add([this]()
+		{
+			ReleaseCanvasRTCached_Internal();
+		});
 }
 
 
@@ -219,9 +230,10 @@ void UXkCanvasRendererComponent::InitCanvasRTCached_Internal()
 	if (CanvasRT0 && CanvasRT0->GetResource()
 		&& CanvasRT1 && CanvasRT1->GetResource())
 	{
-		if (CanvasRT0_Cached && CanvasRT0_Cached->GetResource()
-			&& CanvasRT1_Cached && CanvasRT1_Cached->GetResource())
+		if (CanvasRT0_Cached && IsValid(CanvasRT0_Cached) && CanvasRT0_Cached->GetResource()
+			&& CanvasRT1_Cached && IsValid(CanvasRT1_Cached) && CanvasRT1_Cached->GetResource())
 		{
+			// Already initialized
 			return;
 		}
 
@@ -239,6 +251,23 @@ void UXkCanvasRendererComponent::InitCanvasRTCached_Internal()
 		CanvasRT1_Cached->InitAutoFormat(CanvasRT1->SizeX, CanvasRT1->SizeY);
 		CanvasRT1_Cached->UpdateResourceImmediate(false);
 		CanvasRT1_Cached->SetFlags(RF_Transient);
+	}
+}
+
+
+void UXkCanvasRendererComponent::ReleaseCanvasRTCached_Internal()
+{
+	if (CanvasRT0_Cached)
+	{
+		CanvasRT0_Cached->ReleaseResource();
+		CanvasRT0_Cached->MarkPendingKill();
+		CanvasRT0_Cached = nullptr;
+	}
+	if (CanvasRT1_Cached)
+	{
+		CanvasRT1_Cached->ReleaseResource();
+		CanvasRT1_Cached->MarkPendingKill();
+		CanvasRT1_Cached = nullptr;
 	}
 }
 

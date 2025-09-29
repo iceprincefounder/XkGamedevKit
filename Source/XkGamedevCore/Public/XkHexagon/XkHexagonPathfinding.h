@@ -263,6 +263,25 @@ FORCEINLINE static bool RandRangeBoolMT(int seed)
 	return dis(gen) == 1; // Generate random number
 };
 
+FORCEINLINE static float RandRangeFloatSin(int32 seed)
+{
+	// use sin function to generate a pseudo-random float value between 0 and 1
+	// magic numbers: 12.9898 and 43758.5453
+	float value = FMath::Sin(seed * 12.9898f) * 43758.5453f;
+	value = value - FMath::FloorToFloat(value); // 取小数部分
+	return value; // 结果在 0~1 之间	
+};
+
+FORCEINLINE static bool RandRangeBoolSin(int32 seed)
+{
+	return RandRangeFloatSin(seed) > 0.5f;
+};
+
+FORCEINLINE static int32 RandRangeIntSin(int32 seed)
+{
+	return static_cast<int32>(RandRangeFloatSin(seed) * INT32_MAX);
+}
+
 FORCEINLINE static FVector HexagonNodeXAxis()
 {
 	FVector XAxis = FVector(1.0, 0.0, 0.0);
@@ -306,10 +325,8 @@ FORCEINLINE static bool HexagonNodeHasType(const FXkHexagonNode* Node, const EXk
 FORCEINLINE static int32 HexagonNodeRandomSeed(FXkHexagonNode* Node)
 {
 	check(Node);
-	FVector Vector = FVector(Node->Position.X, Node->Position.Y, Node->Position.Z);
-	FString Seed = Vector.ToString();
-	//uint32 Hash = PackFloatsToUint32(Vector.X, Vector.Y, Vector.Z);
-	uint32 Hash = GetTypeHash(Seed);
+	FIntVector SeedInt = Node->Coord;
+	uint32 Hash = GetTypeHash(SeedInt);
 	return static_cast<int32>(Hash);
 }
 
