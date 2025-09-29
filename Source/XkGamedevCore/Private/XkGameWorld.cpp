@@ -142,7 +142,7 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 		FXkHexagonNode* Node = GetHexagonNode(NodeCoord);
 		if (Node && ManhattanDistanceToCenter < GroundManhattanDistance)
 		{
-			Node->Type = EXkHexagonType::Land;
+			Node->Type = EXkHexagonType::Ground;
 			Node->Position.Z = HorizonHeight;
 			Node->Weights = FVector4f(1.0f, 0.0f, 0.0f, 0.0f);
 		}

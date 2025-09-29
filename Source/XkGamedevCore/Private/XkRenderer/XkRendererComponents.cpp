@@ -260,13 +260,13 @@ void UXkCanvasRendererComponent::ReleaseCanvasRTCached_Internal()
 	if (CanvasRT0_Cached)
 	{
 		CanvasRT0_Cached->ReleaseResource();
-		CanvasRT0_Cached->MarkPendingKill();
+		CanvasRT0_Cached->MarkAsGarbage();
 		CanvasRT0_Cached = nullptr;
 	}
 	if (CanvasRT1_Cached)
 	{
 		CanvasRT1_Cached->ReleaseResource();
-		CanvasRT1_Cached->MarkPendingKill();
+		CanvasRT1_Cached->MarkAsGarbage();
 		CanvasRT1_Cached = nullptr;
 	}
 }

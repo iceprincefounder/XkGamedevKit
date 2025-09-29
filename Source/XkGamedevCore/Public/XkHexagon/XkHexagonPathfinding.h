@@ -82,7 +82,7 @@ enum class EXkHexagonType : uint8
 {
 	None		= 0x00,
 	Unavailable = 1 << 0,
-	Land		= 1 << 1,
+	Ground		= 1 << 1,
 	Beach		= 1 << 2,
 	Ocean		= 1 << 3,
 };

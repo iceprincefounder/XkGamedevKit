@@ -285,16 +285,16 @@ public:
 	virtual void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 
 	UFUNCTION(Category = "Character [KEVINTSUIXUGAMEDEV]", BlueprintCallable, meta = (BlueprintThreadSafe))
-	FORCEINLINE bool IsCharacterFalling() const;
+	virtual bool IsCharacterFalling() const;
 
 	UFUNCTION(Category = "Character [KEVINTSUIXUGAMEDEV]", BlueprintCallable, meta = (BlueprintThreadSafe))
 	virtual bool IsCharacterMoving() const;
 
 	UFUNCTION(Category = "Character [KEVINTSUIXUGAMEDEV]", BlueprintCallable, meta = (BlueprintThreadSafe))
-	FORCEINLINE FVector GetCharacterVelocity() const;
+	virtual FVector GetCharacterVelocity() const;
 
 	UFUNCTION(Category = "Character [KEVINTSUIXUGAMEDEV]", BlueprintCallable, meta = (BlueprintThreadSafe))
-	FORCEINLINE FVector GetCharacterAcceleration() const;
+	virtual FVector GetCharacterAcceleration() const;
 
 	UFUNCTION()
 	virtual void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit) {};
