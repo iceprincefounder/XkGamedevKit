@@ -44,6 +44,8 @@ void FXkHexagonAStarPathfinding::Blocking(const TArray<FIntVector>& Input)
 
 bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, const FIntVector& TargetPoint, int32 MaxStep)
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkHexagonAStarPathfinding::Pathfinding);
+
 	TheStartPoint = StartingPoint;
 	TheTargetPoint = TargetPoint;
 	TMap<FIntVector, FXkHexagonNode>& NodeMap = HexagonalWorldTable->Nodes;
@@ -140,6 +142,8 @@ bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, co
 
 TArray<FIntVector> FXkHexagonAStarPathfinding::Backtracking(const int32 MaxStep) const
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkHexagonAStarPathfinding::Backtracking);
+
 	TMap<FIntVector, FXkHexagonNode>& NodeMap = HexagonalWorldTable->Nodes;
 
 	TArray<FIntVector> BackTrackingList;

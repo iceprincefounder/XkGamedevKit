@@ -425,7 +425,7 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodesPath(const FIntVe
 	TArray<FXkHexagonNode*> FindingNodes;
 	TArray<FIntVector> FindingPaths;
 	HexagonAStarPathfinding.Reinit();
-	if (HexagonAStarPathfinding.Pathfinding(StartCoord, EndCoord))
+	if (HexagonAStarPathfinding.Pathfinding(StartCoord, EndCoord, PathfindingMaxStep))
 	{
 		TArray<FIntVector> BacktrackingList = HexagonAStarPathfinding.Backtracking(BacktrackingMaxStep);
 		FindingPaths = BacktrackingList;
@@ -451,7 +451,7 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodesPathfinding(const
 	TArray<FIntVector> Blockers = BlockList;
 	HexagonAStarPathfinding.Reinit();
 	HexagonAStarPathfinding.Blocking(Blockers);
-	if (HexagonAStarPathfinding.Pathfinding(StartCoord, EndCoord))
+	if (HexagonAStarPathfinding.Pathfinding(StartCoord, EndCoord, PathfindingMaxStep))
 	{
 		TArray<FIntVector> BacktrackingList = HexagonAStarPathfinding.Backtracking(BacktrackingMaxStep);
 		FindingPaths = BacktrackingList;
