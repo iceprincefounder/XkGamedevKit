@@ -197,7 +197,7 @@ FXkLandscapeSceneProxy::FXkLandscapeSceneProxy(const UXkLandscapeComponent* InCo
 	MaterialRelevance(InComponent->GetMaterialRelevance(GetScene().GetFeatureLevel())),
 	bDisableLandscapeBody(InComponent->bDisableLandscapeBody)
 {
-	PatchSize = 65;
+	PatchSize = 33;
 	BuildPatch(PatchData.Vertices, PatchData.Indices, PatchSize);
 
 	// Enqueue initialization of render resource
