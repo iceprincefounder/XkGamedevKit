@@ -191,10 +191,6 @@ void UXkCanvasRendererComponent::DrawHeightWeightCanvas_MultiFrame()
 		});
 	PendingMultiFrameTasks.Add([this]()
 		{
-			DrawFilteringCanvas_Internal<FXkCanvasRenderNormalCS>(CanvasRT0_Cached, CanvasRT1_Cached, CanvasRT0_Cached);
-		});
-	PendingMultiFrameTasks.Add([this]()
-		{
 			DrawFilteringCanvas_Internal<FXkCanvasRenderHeightCS>(CanvasRT0_Cached, CanvasRT1_Cached, CanvasRT0_Cached);
 		});
 	PendingMultiFrameTasks.Add([this]()

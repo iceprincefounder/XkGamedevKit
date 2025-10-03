@@ -236,8 +236,7 @@ void AXkGamepadCursor::AddMovement(const FVector& InputValue, const FRotator& Fo
 
 	FVector MovementVectorRotated = ForwardRotator.RotateVector(InputValue);
 	FVector NewWorldLocation = MovementVectorRotated * Speed * DeltaSeconds + GetActorLocation();
-	FHitResult HitResult;
-	if (GetHitResultUnderGamepadCursor(ECollisionChannel::ECC_Visibility, false, HitResult))
+	if (FHitResult HitResult; GetHitResultUnderGamepadCursor(ECollisionChannel::ECC_Visibility, false, HitResult))
 	{
 		FVector ImpactPoint = HitResult.ImpactPoint;
 		NewWorldLocation.Z = ImpactPoint.Z;
@@ -257,7 +256,7 @@ void AXkGamepadCursor::AddMovement(const FVector& InputValue, const FRotator& Fo
 }
 
 
-bool AXkGamepadCursor::GetHitResultUnderGamepadCursor(ECollisionChannel TraceChannel, bool bTraceComplex, FHitResult& HitResult) const
+bool AXkGamepadCursor::GetHitResultUnderGamepadCursor(const ECollisionChannel TraceChannel, const bool bTraceComplex, FHitResult& HitResult) const
 {
 	if (!ensure(GetWorld()))
 	{
@@ -917,6 +916,11 @@ void AXkController::OnSetGamepadCursorMovementReleased()
 	{
 		// Don't do anything if we are on UI mode.
 		return;
+	}
+
+	if (GamepadCursor.IsValid())
+	{
+		GamepadCursor->MovementFinished();
 	}
 }
 

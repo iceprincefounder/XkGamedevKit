@@ -133,11 +133,12 @@ public:
 	/** Default UObject constructor. */
 	AXkGamepadCursor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
-	FORCEINLINE virtual void AddMovement(const FVector2D& InputValue, const FRotator& ForwardRotator, const float Speed);
-	FORCEINLINE virtual void AddMovement(const FVector& InputValue, const FRotator& ForwardRotator, const float Speed);
+	virtual void AddMovement(const FVector2D& InputValue, const FRotator& ForwardRotator, const float Speed);
+	virtual void AddMovement(const FVector& InputValue, const FRotator& ForwardRotator, const float Speed);
+	virtual void MovementFinished() {};
 
 	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (bTraceComplex = true))
-	bool GetHitResultUnderGamepadCursor(ECollisionChannel TraceChannel, bool bTraceComplex, FHitResult& HitResult) const;
+	bool GetHitResultUnderGamepadCursor(const ECollisionChannel TraceChannel, const bool bTraceComplex, FHitResult& HitResult) const;
 	UFUNCTION(BlueprintCallable, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	void SetVisibility(const bool Input);
 
