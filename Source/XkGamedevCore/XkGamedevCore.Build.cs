@@ -41,6 +41,8 @@ public class XkGamedevCore : ModuleRules
 				"AIModule",
                 "GeometryCore",
                 "GeometryFramework",
+				"GeometryAlgorithms",
+				"DynamicMesh",
 				"ProceduralMeshComponent",
 				"Water",
 			});
