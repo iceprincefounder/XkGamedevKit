@@ -51,6 +51,7 @@ UXkTargetMovementComponent::UXkTargetMovementComponent(const FObjectInitializer&
 	SlideAcceler = 1.0f;
 	JumpArc = -0.5;
 	FlyArc = -0.1;
+	CapsuleHalfHeight = 55.0f;
 	CapsuleHalfHeight = 0.0;
 
 	// Set default values
@@ -247,7 +248,7 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 			// decrease PendingMoveTargets count
 			LastTarget = CurrentJumpTarget;
 			CurrentJumpTarget = PendingJumpTargets.Pop(true);
-			CurrentJumpTarget = GetLineTraceLocation(CurrentJumpTarget);
+			CurrentJumpTarget = GetSphereTraceLocation(CurrentJumpTarget);
 			OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			// decrease MovementPoint count
 			ActionPoint -= JumpCostPoint;
@@ -365,23 +366,7 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 			// Vertical slide to target
 			if (CheckDistance2DSafely(Location, TargetVector))
 			{
-				FVector MovingDir = (TargetVector - StartVector);
-				MovingDir.Normalize();
-				float Dist = FVector::Dist(Location, TargetVector);
-				float TotalDist = FMath::Max(Dist, 1.0f);
-				if (LastTarget.IsSet())
-				{
-					TotalDist = FVector::Dist(LastTarget.GetValue(), TargetVector);
-				}
-				Acceleration = (2 * TotalDist) / (FMath::Square(TotalDist / MaxVelocity)) * MovingDir;
-				// Fake velocity fade when close to target
-				float VelocityFade = FMath::Abs(Dist / TotalDist);
-				VelocityFade = FMath::Square(VelocityFade);
-				Velocity = MaxVelocity * VelocityFade * MovingDir;
-				// Location : s = v0 * t + 0.5 * a * t^2
-				// Velocity : v = v0 + a * t
-				FVector NewLocation = 0.5f * Acceleration * DeltaTime * DeltaTime + Velocity * DeltaTime;
-				NewLocation += Location;
+				FVector NewLocation = FMath::VInterpTo(StartVector, TargetVector, DeltaTime, 9.80f);
 				if (NewLocation.Z > TargetVector.Z)
 				{
 					NewLocation = TargetVector;
@@ -467,7 +452,22 @@ FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, c
 	CollisionParams.AddIgnoredActor(GetMovementActor());
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, Channel, CollisionParams))
 	{
-		return HitResult.Location + FVector(0.0, 0.0, CapsuleHalfHeight);
+		return HitResult.ImpactPoint + FVector(0.0, 0.0, CapsuleHalfHeight);
+	}
+	return Input;
+}
+
+
+FVector UXkTargetMovementComponent::GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel)
+{
+	FHitResult HitResult;
+	FVector Start = Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
+	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(GetMovementActor());
+	if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(CapsuleRadius)))
+	{
+		return HitResult.ImpactPoint + FVector(0.0, 0.0, CapsuleHalfHeight);
 	}
 	return Input;
 }
@@ -617,6 +617,7 @@ AXkCharacter::AXkCharacter(const FObjectInitializer& ObjectInitializer)
 	// Configure character movement
 	TargetMovement = CreateDefaultSubobject<UXkTargetMovementComponent>(TEXT("Target Movement"));
 	TargetMovement->bFailToGround = true;
+	TargetMovement->CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
 	TargetMovement->CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 
 	// Activate ticking in order to update the cursor every frame.

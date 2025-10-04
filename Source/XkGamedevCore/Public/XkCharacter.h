@@ -177,6 +177,9 @@ public:
 	float FlyArc;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	float CapsuleRadius;
+
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float CapsuleHalfHeight;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
@@ -231,6 +234,7 @@ public:
 	/** Final movement target base on current movement point.*/
 	FORCEINLINE virtual FVector GetFinalMovementTarget() const;
 	FORCEINLINE virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn);
+	FORCEINLINE virtual FVector GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn);
 	//~ End UXkTargetMovementComponent Interface
 
 	static FVector CalcParaCurve(const FVector& Start, const FVector& End, const float CurveArc, const float CurveDist);
