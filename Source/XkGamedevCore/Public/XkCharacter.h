@@ -39,11 +39,12 @@ class XKGAMEDEVCORE_API UXkMovement : public UActorComponent
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
 	FOnMovementFinishEvent OnMovementFinishEvent;
-
 public:
 	FORCEINLINE virtual bool ShouldDoAction() const { return bShouldDoAction; }
-	FORCEINLINE virtual bool IsOnAction() const { return bIsMoving || bIsRotating || bIsJumping || bIsFlying || bIsSliding || bIsFalling; }
+	FORCEINLINE virtual bool IsOnAction() const { return bIsMoving || bIsRotating || bIsJumping || bIsFlying || bIsSliding || bIsFalling || PendingTargets.Num() > 0; }
+	FORCEINLINE virtual bool IsActionFinished() const { return PendingTargets.IsEmpty() && !IsOnAction() && bShouldDoAction; }
 	FORCEINLINE virtual void OnAction() { bShouldDoAction = true; bIsMoving = bIsRotating = bIsJumping = bIsFlying = bIsSliding = false; };
+	FORCEINLINE virtual void DoActionTick(const float DeltaTime) { bShouldDoAction = false; };
 	FORCEINLINE virtual bool IsMoving() const { return bIsMoving; };
 	FORCEINLINE virtual bool IsRotating() const { return bIsRotating; };
 	FORCEINLINE virtual bool IsJumping() const { return bIsJumping; };
@@ -91,6 +92,19 @@ protected:
 	bool bIsSliding;
 	/** Is on falling, work during tick.*/
 	bool bIsFalling;
+
+	enum EActionType
+	{
+		None = 0,
+		Move,
+		Rotate,
+		Jump,
+		Fly,
+		Slide,
+		Fall
+	};
+
+	TArray<TPair<EActionType, FVector>> PendingTargets;
 };
 
 
@@ -110,46 +124,17 @@ class XKGAMEDEVCORE_API UXkTargetMovementComponent : public UXkMovement
 	int32 MoveCostPoint;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	FVector CurrentMoveTarget;
-
-	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TArray<FVector> PendingMoveTargets;
-
-	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	int32 RotateCostPoint;
-
-	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	FRotator CurrentRotateTarget;
-
-	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TArray<FVector> PendingRotateTargets;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	int32 JumpCostPoint;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	FVector CurrentJumpTarget;
-
-	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TArray<FVector> PendingJumpTargets;
-
-	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	int32 FlyCostPoint;
-
-	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	FVector CurrentFlyTarget;
-
-	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TArray<FVector> PendingFlyTargets;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	int32 SlideCostPoint;
 
-	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	FVector CurrentSlideTarget;
-
-	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TArray<FVector> PendingSlideTargets;
 public:
 	/** Move to target very fast mode.*/
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
@@ -193,7 +178,8 @@ public:
 	//~ End ActorComponent Interface
 
 	//~ Begin UXkMovement Interface
-	FORCEINLINE virtual void OnAction() override;
+	virtual void OnAction() override;
+	virtual void DoActionTick(const float DeltaTime) override;
 	//~ End UXkMovement Interface
 	
 	//~ Begin UXkTargetMovementComponent Interface
@@ -201,40 +187,32 @@ public:
 	FORCEINLINE virtual void ClearActionPoint() { ActionPoint = 0; };
 	FORCEINLINE virtual uint8 GetActionPoint() const { return ActionPoint; };
 	FORCEINLINE virtual void SetActionPoint(const uint8 Input) { ActionPoint = Input; };
+	FORCEINLINE virtual void ClearActionTargets() { PendingTargets.Empty(); };
 
 	//~ Moving
-	FORCEINLINE virtual void AddMoveTarget(const FVector& Target) { PendingMoveTargets.Insert(Target, 0); };
-	FORCEINLINE virtual void ClearMoveTargets() { PendingMoveTargets.Empty(); };
+	FORCEINLINE virtual void AddMoveTarget(const FVector& Target) { PendingTargets.Insert(TPair<EActionType, FVector>(EActionType::Move, Target), 0); };
 	FORCEINLINE virtual void SetMoveCost(const int32 Cost) { MoveCostPoint = Cost; };
 	FORCEINLINE virtual void SetMoveAcceler(const float Acceler) { MoveAcceler = Acceler; };
 	//~ Rotating
-	FORCEINLINE virtual void AddRotateTarget(const FVector& Target) { PendingRotateTargets.Insert(Target, 0); };
-	FORCEINLINE virtual void ClearRotateTargets() { PendingRotateTargets.Empty(); };
+	FORCEINLINE virtual void AddRotateTarget(const FVector& Target) { PendingTargets.Insert(TPair<EActionType, FVector>(EActionType::Rotate, Target), 0); };
 	FORCEINLINE virtual void SetRotateCost(const int32 Cost) { RotateCostPoint = Cost; };
 	//~ Jumping
-	FORCEINLINE virtual void AddJumpTarget(const FVector& Target) { PendingJumpTargets.Insert(Target, 0); };
-	FORCEINLINE virtual void ClearJumpTargets() { PendingJumpTargets.Empty(); };
+	FORCEINLINE virtual void AddJumpTarget(const FVector& Target) { PendingTargets.Insert(TPair<EActionType, FVector>(EActionType::Jump, Target), 0); };
 	FORCEINLINE virtual void SetJumpCost(const int32 Cost) { JumpCostPoint = Cost; };
 	FORCEINLINE virtual void SetJumpArc(const float Arc) { JumpArc = Arc; };
 	FORCEINLINE virtual void SetJumpAcceler(const float Acceler) { JumpAcceler = Acceler; };
-	//~ Shotting
-	FORCEINLINE virtual void AddFlyTarget(const FVector& Target) { PendingFlyTargets.Insert(Target, 0); };
-	FORCEINLINE virtual void ClearFlyTargets() { PendingFlyTargets.Empty(); };
+	//~ Flying
+	FORCEINLINE virtual void AddFlyTarget(const FVector& Target) { PendingTargets.Insert(TPair<EActionType, FVector>(EActionType::Fly, Target), 0); };
 	FORCEINLINE virtual void SetFlyCost(const int32 Cost) { FlyCostPoint = Cost; };
 	FORCEINLINE virtual void SetFlyArc(const float Arc) { FlyArc = Arc; };
 	FORCEINLINE virtual void SetFlyAcceler(const float Acceler) { FlyAcceler = Acceler; };
 	//~ Sliding
-	FORCEINLINE virtual void AddSlideTarget(const FVector& Target) { PendingSlideTargets.Insert(Target, 0); };
-	FORCEINLINE virtual void ClearSlideTargets() { PendingSlideTargets.Empty(); };
+	FORCEINLINE virtual void AddSlideTarget(const FVector& Target) { PendingTargets.Insert(TPair<EActionType, FVector>(EActionType::Slide, Target), 0); };
 	FORCEINLINE virtual void SetSlideCost(const int32 Cost) { SlideCostPoint = Cost; };
 	FORCEINLINE virtual void SetSlideAcceler(const float Acceler) { SlideAcceler = Acceler; };
 
-	/** Valid movement targets base on current movement point.*/
-	FORCEINLINE virtual TArray<FVector> GetValidMovementTargets() const;
-	/** Final movement target base on current movement point.*/
-	FORCEINLINE virtual FVector GetFinalMovementTarget() const;
-	FORCEINLINE virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn);
-	FORCEINLINE virtual FVector GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn);
+	virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn);
+	virtual FVector GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn);
 	//~ End UXkTargetMovementComponent Interface
 
 	static FVector CalcParaCurve(const FVector& Start, const FVector& End, const float CurveArc, const float CurveDist);
