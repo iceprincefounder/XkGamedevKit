@@ -122,10 +122,10 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 		FRotator TargetRotation = FRotationMatrix::MakeFromX(TargetLocation - Location).Rotator();
 		if (CurrentTarget.Key == EActionType::Move)
 		{
-			/////////////////////////////////////////////////////////////
-			// If into new Hexagon, change to new target
-			// else if, stop moving
-			// @TODO: check distance is not safe, pool FPS would case many problem
+			/*- DEBUG CODE -*/
+			//FString Message = FString::Printf(TEXT("Velocity (%0.01f)"), Velocity.Size());
+			//GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Red, *Message);
+
 			if (CheckDistance2DSafely(Location, TargetLocation))
 			{
 				// Closed enough, stop moving
@@ -156,6 +156,12 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity * MoveAcceler);
 				FVector NewLocation = bBlinkMode ? FMath::VInterpTo(StartVector, TargetVector, DeltaTime, CurrentVelocity) :
 					FMath::VInterpConstantTo(StartVector, TargetVector, DeltaTime, CurrentVelocity);
+
+				/*- DEBUG CODE -*/
+				//float Dist = FVector::Dist2D(NewLocation, Location);
+				//FString Message = FString::Printf(TEXT("Current Velocity (%0.01f)  Dist (%0.01f)"), CurrentVelocity, Dist);
+				//GEngine->AddOnScreenDebugMessage(-1, 1.0, FColor::Red, *Message);
+
 				// Snap to ground
 				NewLocation = GetLineTraceLocation(NewLocation);
 				Velocity = CurrentVelocity * MovingDir;
@@ -237,6 +243,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				}
 				Velocity = (NewLocation - Location) / DeltaTime;
 				Acceleration = CurrentAcceleration * MovingDir;
+				LastLocation = GetMovementActor()->GetActorLocation();
 				GetMovementActor()->SetActorLocation(NewLocation);
 
 				const FVector X = TargetVector - StartVector;
@@ -279,6 +286,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 					{
 						NewLocation = TargetVector;
 					}
+					LastLocation = GetMovementActor()->GetActorLocation();
 					GetMovementActor()->SetActorLocation(NewLocation);
 				}
 				// Horizontal slide to target
@@ -295,6 +303,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 						FMath::VInterpConstantTo(StartVector, TargetVector, DeltaTime, CurrentVelocity);
 					Velocity = (NewLocation - Location) / DeltaTime;
 					Acceleration = CurrentAcceleration * MovingDir;
+					LastLocation = GetMovementActor()->GetActorLocation();
 					GetMovementActor()->SetActorLocation(NewLocation);
 				}
 			}
@@ -336,6 +345,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				}
 				Velocity = (NewLocation - Location) / DeltaTime;
 				Acceleration = CurrentAcceleration * MovingDir;
+				LastLocation = GetMovementActor()->GetActorLocation();
 				GetMovementActor()->SetActorLocation(NewLocation);
 
 				if (LastLocation.IsSet())
@@ -377,6 +387,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 			NewLocation = ActorLocation + Velocity * DeltaTime + 0.5f * Acceleration * DeltaTime * DeltaTime;
 			bIsFalling = true;
 		}
+		LastLocation = GetMovementActor()->GetActorLocation();
 		GetMovementActor()->SetActorLocation(NewLocation);
 	}
 }
