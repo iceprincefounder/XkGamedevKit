@@ -15,13 +15,33 @@ static FAutoConsoleVariableRef CVarSetEnableStylizedRendering
 	TEXT("r.EnableStylizedRendering"),
 	GEnableStylizedRendering,
 	TEXT("Enable stylized rendering in game."),
-	ECVF_Scalability | ECVF_RenderThreadSafe
+	ECVF_Default
 );
 
 UCLASS(Blueprintable)
 class XKGAMEDEVCORE_API AXkCamera : public APawn
 {
 	GENERATED_BODY()
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]")
+	bool bEnableStylizePostProcess;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]")
+	TArray<class UMaterialInterface*> StylizedPostProcessMaterials;
+
+	UPROPERTY(Transient)
+	TArray<class UMaterialInstanceDynamic*> StylizedPostProcessMaterialDyns;
+public:
+	/** Default UObject constructor. */
+	AXkCamera(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+	//~ Begin Actor Interface
+	virtual void OnConstruction(const FTransform& Transform) override;
+	virtual void Tick(float DeltaSeconds) override;
+	//~ End Actor Interface
+
+	virtual void SetEnableStylizedPostProcess(IConsoleVariable* Var) {};
 };
 
 
@@ -52,21 +72,23 @@ public:
 	/** Default UObject constructor. */
 	AXkCharacterCamera(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
+	//~ Begin AXkCamera Interface
+	virtual void SetEnableStylizedPostProcess(IConsoleVariable* Var) override;
+	//~ End AXkCamera Interface
+
+	//~ Begin AXkCharacterCamera Interface
 	/** Returns TopDownCameraComponent subobject **/
 	FORCEINLINE class USceneCaptureComponent2D* GetSceneCaptureComponent() const { return SceneCaptureComponent; }
-
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
-
 	/** Returns CapsuleComponent subobject **/
 	FORCEINLINE class UCapsuleComponent* GetCapsuleComponent() const { return CapsuleComponent; }
-
 #if WITH_EDITORONLY_DATA
 	/** Returns ArrowComponent subobject **/
 	FORCEINLINE class UArrowComponent* GetArrowComponent() const { return ArrowComponent; }
 #endif
-
 	FORCEINLINE virtual void AddRotation(const FVector2D& InputValue, const float Speed);
+	//~ End AXkCharacterCamera Interface
 };
 
 
@@ -97,15 +119,6 @@ class XKGAMEDEVCORE_API AXkTopDownCamera : public AXkCamera
 
 	UPROPERTY(Transient)
 	class UMaterialInstanceDynamic* PostProcessMaterialDyn;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	bool bEnableStylizePostProcess;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
-	TArray<class UMaterialInterface*> StylizedPostProcessMaterials;
-
-	UPROPERTY(Transient)
-	TArray<class UMaterialInstanceDynamic*> StylizedPostProcessMaterialDyns;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	bool bUseCameraRotationLock;
@@ -140,26 +153,25 @@ public:
 	/** Default UObject constructor. */
 	AXkTopDownCamera(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
-	// Called every frame.
+	//~ Begin Actor Interface
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void Tick(float DeltaSeconds) override;
+	//~ End Actor Interface
 
+	//~ Begin AXkCamera Interface
+	virtual void SetEnableStylizedPostProcess(IConsoleVariable* Var) override;
+	//~ End AXkCamera Interface
+
+	//~ Begin AXkTopDownCamera Interface
 	/** Returns TopDownCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetTopDownCameraComponent() const { return TopDownCameraComponent; }
-
 	/** Returns CameraBoom subobject **/
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
-
 	/** Returns CapsuleComponent subobject **/
 	FORCEINLINE class UCapsuleComponent* GetCapsuleComponent() const { return CapsuleComponent; }
-
 #if WITH_EDITORONLY_DATA
 	/** Returns ArrowComponent subobject **/
 	FORCEINLINE class UArrowComponent* GetArrowComponent() const { return ArrowComponent; }
-#endif
-
-	FORCEINLINE virtual void SetEnableStylizedPostProcess(IConsoleVariable* Var);
-
 	FORCEINLINE virtual void ResetCamera();
 	FORCEINLINE virtual void AddMovement(const FVector2D& InputValue, const float Speed);
 	FORCEINLINE virtual void AddMovement(const FVector& InputValue, const float Speed);
@@ -172,6 +184,8 @@ public:
 	FORCEINLINE virtual FRotator GetForwardRotator() const;
 	FORCEINLINE virtual bool IsTravelingMode() const { return bTravelingMode; }
 	FORCEINLINE virtual void SetTravelingMode(const bool bInTravelingMode);
+#endif
+	//~ End AXkTopDownCamera Interface
 private:
 	UPROPERTY()
 	bool bMoveToTarget;

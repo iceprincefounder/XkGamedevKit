@@ -3,15 +3,33 @@
 #include "XkCamera.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
-#include "Components/DecalComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/ArrowComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "Materials/Material.h"
 #include "Engine/World.h"
+
+AXkCamera::AXkCamera(const FObjectInitializer& ObjectInitializer)
+{
+	CVarSetEnableStylizedRendering->SetOnChangedCallback(
+		FConsoleVariableDelegate::CreateUObject(this, &AXkCamera::SetEnableStylizedPostProcess));
+	bEnableStylizePostProcess = false;
+
+}
+
+
+void AXkCamera::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	SetEnableStylizedPostProcess(CVarSetEnableStylizedRendering->AsVariable());
+}
+
+
+void AXkCamera::Tick(float DeltaSeconds)
+{
+}
+
 
 AXkCharacterCamera::AXkCharacterCamera(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -55,6 +73,39 @@ AXkCharacterCamera::AXkCharacterCamera(const FObjectInitializer& ObjectInitializ
 	// Create a camera...
 	SceneCaptureComponent = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("CharacterCamera"));
 	SceneCaptureComponent->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+}
+
+
+void AXkCharacterCamera::SetEnableStylizedPostProcess(IConsoleVariable* Var)
+{
+	bool bInEnable = Var->GetBool();
+	if (bEnableStylizePostProcess != bInEnable)
+	{
+		bEnableStylizePostProcess = bInEnable;
+		if (bEnableStylizePostProcess)
+		{
+			for (UMaterialInterface* MaterialInterface : StylizedPostProcessMaterials)
+			{
+				if (MaterialInterface && IsValid(MaterialInterface))
+				{
+					UMaterialInstanceDynamic* MaterialDyn = UMaterialInstanceDynamic::Create(MaterialInterface, this);
+					StylizedPostProcessMaterialDyns.Add(MaterialDyn);
+					SceneCaptureComponent->PostProcessSettings.AddBlendable(MaterialDyn, 1.0f);
+				}
+			}
+		}
+		else
+		{
+			for (UMaterialInstanceDynamic* MaterialDyn : StylizedPostProcessMaterialDyns)
+			{
+				if (MaterialDyn && IsValid(MaterialDyn))
+				{
+					SceneCaptureComponent->PostProcessSettings.RemoveBlendable(MaterialDyn);
+				}
+			}
+			StylizedPostProcessMaterialDyns.Empty();
+		}
+	}
 }
 
 
@@ -164,7 +215,6 @@ void AXkTopDownCamera::OnConstruction(const FTransform& Transform)
 		PostProcessMaterialDyn = UMaterialInstanceDynamic::Create(PostProcessMaterial, this);
 		TopDownCameraComponent->PostProcessSettings.AddBlendable(PostProcessMaterialDyn, 1.0f);
 	}
-	SetEnableStylizedPostProcess(CVarSetEnableStylizedRendering->AsVariable());
 	Super::OnConstruction(Transform);
 }
 
