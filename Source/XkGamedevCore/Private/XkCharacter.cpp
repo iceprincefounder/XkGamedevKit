@@ -207,10 +207,11 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 		}
 		else if (CurrentTarget.Key == EActionType::Jump)
 		{
+			TargetLocation = GetSphereTraceLocation(TargetLocation);
 			if (CheckDistance2DSafely(Location, TargetLocation))
 			{
 				bIsJumping = false;
-				LastTarget = GetSphereTraceLocation(TargetLocation);
+				LastTarget = TargetLocation;
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
@@ -223,7 +224,6 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 			}
 			else
 			{
-				TargetLocation = GetSphereTraceLocation(TargetLocation);
 				FVector TargetVector = FVector(TargetLocation.X, TargetLocation.Y, Location.Z);
 				FVector StartVector = Location;
 				FVector MovingDir = (TargetVector - StartVector);
@@ -363,7 +363,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 	{
 		// Snap to ground
 		FVector ActorLocation = GetMovementActor()->GetActorLocation();
-		FVector TargetLocation = GetLineTraceLocation(ActorLocation);
+		FVector TargetLocation = GetLineTraceLocation(ActorLocation, ECollisionChannel::ECC_Pawn, true);
 		FVector NewLocation = ActorLocation;
 		if (CheckHeightSafely(ActorLocation, TargetLocation))
 		{
@@ -393,13 +393,14 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 }
 
 
-FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel)
+FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex)
 {
 	FHitResult HitResult;
 	FVector Start = Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
 	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
+	CollisionParams.bTraceComplex = bTraceComplex;
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, Channel, CollisionParams))
 	{
 		return HitResult.ImpactPoint + FVector(0.0, 0.0, CapsuleHalfHeight);
@@ -408,13 +409,14 @@ FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, c
 }
 
 
-FVector UXkTargetMovementComponent::GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel)
+FVector UXkTargetMovementComponent::GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex)
 {
 	FHitResult HitResult;
 	FVector Start = Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
 	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
+	CollisionParams.bTraceComplex = bTraceComplex;
 	if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(CapsuleRadius)))
 	{
 		return HitResult.ImpactPoint + FVector(0.0, 0.0, CapsuleHalfHeight);

@@ -15,7 +15,7 @@ static FAutoConsoleVariableRef CVarSetEnableStylizedRendering
 	TEXT("r.EnableStylizedRendering"),
 	GEnableStylizedRendering,
 	TEXT("Enable stylized rendering in game."),
-	ECVF_Default
+	ECVF_Scalability | ECVF_RenderThreadSafe
 );
 
 UCLASS(Blueprintable)
@@ -38,10 +38,9 @@ public:
 
 	//~ Begin Actor Interface
 	virtual void OnConstruction(const FTransform& Transform) override;
-	virtual void Tick(float DeltaSeconds) override;
 	//~ End Actor Interface
 
-	virtual void SetEnableStylizedPostProcess(IConsoleVariable* Var) {};
+	virtual void SetEnableStylizedPostProcess(IConsoleVariable* Var);
 };
 
 
@@ -172,19 +171,19 @@ public:
 #if WITH_EDITORONLY_DATA
 	/** Returns ArrowComponent subobject **/
 	FORCEINLINE class UArrowComponent* GetArrowComponent() const { return ArrowComponent; }
-	FORCEINLINE virtual void ResetCamera();
-	FORCEINLINE virtual void AddMovement(const FVector2D& InputValue, const float Speed);
-	FORCEINLINE virtual void AddMovement(const FVector& InputValue, const float Speed);
-	FORCEINLINE virtual void AddRotation(const FVector2D& InputValue, const float Speed);
-	FORCEINLINE virtual void ResetRotation();
-	FORCEINLINE virtual void AddCameraZoom(const float InputValue, const float Speed);
-	FORCEINLINE virtual void ResetCameraZoom();
-	FORCEINLINE virtual void AddMoveTarget(const FVector& InTarget);
-	FORCEINLINE virtual void MoveToTarget(const FVector& InTarget, const bool bImmediately = false);
-	FORCEINLINE virtual FRotator GetForwardRotator() const;
-	FORCEINLINE virtual bool IsTravelingMode() const { return bTravelingMode; }
-	FORCEINLINE virtual void SetTravelingMode(const bool bInTravelingMode);
 #endif
+	virtual void ResetCamera();
+	virtual void AddMovement(const FVector2D& InputValue, const float Speed);
+	virtual void AddMovement(const FVector& InputValue, const float Speed);
+	virtual void AddRotation(const FVector2D& InputValue, const float Speed);
+	virtual void ResetRotation();
+	virtual void AddCameraZoom(const float InputValue, const float Speed);
+	virtual void ResetCameraZoom();
+	virtual void AddMoveTarget(const FVector& InTarget);
+	virtual void MoveToTarget(const FVector& InTarget, const bool bImmediately = false);
+	virtual FRotator GetForwardRotator() const;
+	virtual bool IsTravelingMode() const { return bTravelingMode; }
+	virtual void SetTravelingMode(const bool bInTravelingMode);
 	//~ End AXkTopDownCamera Interface
 private:
 	UPROPERTY()

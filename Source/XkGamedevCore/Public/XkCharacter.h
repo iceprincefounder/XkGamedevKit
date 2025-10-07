@@ -211,8 +211,8 @@ public:
 	FORCEINLINE virtual void SetSlideCost(const int32 Cost) { SlideCostPoint = Cost; };
 	FORCEINLINE virtual void SetSlideAcceler(const float Acceler) { SlideAcceler = Acceler; };
 
-	virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn);
-	virtual FVector GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn);
+	virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false);
+	virtual FVector GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false);
 	//~ End UXkTargetMovementComponent Interface
 
 	static FVector CalcParaCurve(const FVector& Start, const FVector& End, const float CurveArc, const float CurveDist);

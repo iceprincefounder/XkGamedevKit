@@ -8,6 +8,7 @@
 #include "Components/SceneCaptureComponent2D.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Engine/World.h"
+#include "Misc/ConfigCacheIni.h"
 
 AXkCamera::AXkCamera(const FObjectInitializer& ObjectInitializer)
 {
@@ -20,14 +21,21 @@ AXkCamera::AXkCamera(const FObjectInitializer& ObjectInitializer)
 
 void AXkCamera::OnConstruction(const FTransform& Transform)
 {
-	Super::OnConstruction(Transform);
-
 	SetEnableStylizedPostProcess(CVarSetEnableStylizedRendering->AsVariable());
+	Super::OnConstruction(Transform);
 }
 
 
-void AXkCamera::Tick(float DeltaSeconds)
+void AXkCamera::SetEnableStylizedPostProcess(IConsoleVariable* Var)
 {
+	bool bInEnable = Var->GetBool();
+	GConfig->SetBool(
+		TEXT("XkGamedevKit"),
+		TEXT("r.EnableStylizedRendering"),
+		bInEnable,
+		GGameUserSettingsIni
+	);
+	GConfig->Flush(false, GGameUserSettingsIni);
 }
 
 
@@ -105,6 +113,7 @@ void AXkCharacterCamera::SetEnableStylizedPostProcess(IConsoleVariable* Var)
 			}
 			StylizedPostProcessMaterialDyns.Empty();
 		}
+		AXkCamera::SetEnableStylizedPostProcess(Var);
 	}
 }
 
@@ -189,9 +198,6 @@ AXkTopDownCamera::AXkTopDownCamera(const FObjectInitializer& ObjectInitializer)
 
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder(TEXT("/XkGamedevKit/Materials/M_CameraPostProcess"));
 	PostProcessMaterial = ObjectFinder.Object;
-	CVarSetEnableStylizedRendering->SetOnChangedCallback(
-		FConsoleVariableDelegate::CreateUObject(this, &AXkTopDownCamera::SetEnableStylizedPostProcess));
-	bEnableStylizePostProcess = false;
 	bUseCameraRotationLock = false;
 	CameraRotationLock = FVector2D(-75.0, -55.0);
 	CameraZoomArmLength = 1200.0;
@@ -283,6 +289,7 @@ void AXkTopDownCamera::SetEnableStylizedPostProcess(IConsoleVariable* Var)
 			}
 			StylizedPostProcessMaterialDyns.Empty();
 		}
+		AXkCamera::SetEnableStylizedPostProcess(Var);
 	}
 }
 
