@@ -578,6 +578,7 @@ UXkHexagonBasedFortressComponent::UXkHexagonBasedFortressComponent(const FObject
 {
 	TrapezoidWallMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
 
+	bEnableFlatShading = true;
 	bEnableComplexCollision = true;
 	bDeferCollisionUpdates = true;
 	CollisionType = ECollisionTraceFlag::CTF_UseComplexAsSimple;
@@ -881,19 +882,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortress()
 				FVector3d Vertex = EditMesh.GetVertex(vid);
 				EditMesh.SetVertex(vid, Transform.InverseTransformPosition(Vertex));
 			}
-			// Normals
-			EditMesh.EnableVertexNormals(FVector3f::UpVector);
-			for (int32 tid : EditMesh.TriangleIndicesItr())
-			{
-				FIndex3i Tri = EditMesh.GetTriangle(tid);
-				FVector3d A = EditMesh.GetVertex(Tri.A);
-				FVector3d B = EditMesh.GetVertex(Tri.B);
-				FVector3d C = EditMesh.GetVertex(Tri.C);
-				FVector3d Normal = FVector3d::CrossProduct(A - C, A - B).GetSafeNormal();
-				EditMesh.SetVertexNormal(Tri.A, FVector3f(Normal));
-				EditMesh.SetVertexNormal(Tri.B, FVector3f(Normal));
-				EditMesh.SetVertexNormal(Tri.C, FVector3f(Normal));
-			}
+			// Skip Normals, use flat shading
 		});
 	SetDynamicMesh(DynamicMesh);
 	SetMaterial(0, TrapezoidWallMaterial);

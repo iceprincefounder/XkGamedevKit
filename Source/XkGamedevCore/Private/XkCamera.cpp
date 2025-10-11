@@ -12,15 +12,25 @@
 
 AXkCamera::AXkCamera(const FObjectInitializer& ObjectInitializer)
 {
-	CVarSetEnableStylizedRendering->SetOnChangedCallback(
-		FConsoleVariableDelegate::CreateUObject(this, &AXkCamera::SetEnableStylizedPostProcess));
-	bEnableStylizePostProcess = false;
-
+	// Register MainVolume console variable
+	{
+		GConfig->GetBool(
+			TEXT("XkGamedevKit"),
+			TEXT("r.EnableStylizedRendering"),
+			bEnableStylizePostProcess,
+			GGameUserSettingsIni
+		);
+		IConsoleVariable* CVar = IConsoleManager::Get().RegisterConsoleVariable(
+			TEXT("r.EnableStylizedRendering"), bEnableStylizePostProcess, TEXT("Enable stylized rendering in game."), ECVF_Default | ECVF_Scalability);
+		check(CVar);
+		CVar->SetOnChangedCallback(FConsoleVariableDelegate::CreateUObject(this, &AXkCamera::SetEnableStylizedPostProcess));
+	}
 }
 
 
 void AXkCamera::OnConstruction(const FTransform& Transform)
 {
+	IConsoleVariable* CVarSetEnableStylizedRendering = IConsoleManager::Get().FindConsoleVariable(TEXT("r.EnableStylizedRendering"));
 	SetEnableStylizedPostProcess(CVarSetEnableStylizedRendering->AsVariable());
 	Super::OnConstruction(Transform);
 }
@@ -87,34 +97,31 @@ AXkCharacterCamera::AXkCharacterCamera(const FObjectInitializer& ObjectInitializ
 void AXkCharacterCamera::SetEnableStylizedPostProcess(IConsoleVariable* Var)
 {
 	bool bInEnable = Var->GetBool();
-	if (bEnableStylizePostProcess != bInEnable)
+	bEnableStylizePostProcess = bInEnable;
+	if (bEnableStylizePostProcess)
 	{
-		bEnableStylizePostProcess = bInEnable;
-		if (bEnableStylizePostProcess)
+		for (UMaterialInterface* MaterialInterface : StylizedPostProcessMaterials)
 		{
-			for (UMaterialInterface* MaterialInterface : StylizedPostProcessMaterials)
+			if (MaterialInterface && IsValid(MaterialInterface))
 			{
-				if (MaterialInterface && IsValid(MaterialInterface))
-				{
-					UMaterialInstanceDynamic* MaterialDyn = UMaterialInstanceDynamic::Create(MaterialInterface, this);
-					StylizedPostProcessMaterialDyns.Add(MaterialDyn);
-					SceneCaptureComponent->PostProcessSettings.AddBlendable(MaterialDyn, 1.0f);
-				}
+				UMaterialInstanceDynamic* MaterialDyn = UMaterialInstanceDynamic::Create(MaterialInterface, this);
+				StylizedPostProcessMaterialDyns.Add(MaterialDyn);
+				SceneCaptureComponent->PostProcessSettings.AddBlendable(MaterialDyn, 1.0f);
 			}
 		}
-		else
-		{
-			for (UMaterialInstanceDynamic* MaterialDyn : StylizedPostProcessMaterialDyns)
-			{
-				if (MaterialDyn && IsValid(MaterialDyn))
-				{
-					SceneCaptureComponent->PostProcessSettings.RemoveBlendable(MaterialDyn);
-				}
-			}
-			StylizedPostProcessMaterialDyns.Empty();
-		}
-		AXkCamera::SetEnableStylizedPostProcess(Var);
 	}
+	else
+	{
+		for (UMaterialInstanceDynamic* MaterialDyn : StylizedPostProcessMaterialDyns)
+		{
+			if (MaterialDyn && IsValid(MaterialDyn))
+			{
+				SceneCaptureComponent->PostProcessSettings.RemoveBlendable(MaterialDyn);
+			}
+		}
+		StylizedPostProcessMaterialDyns.Empty();
+	}
+	AXkCamera::SetEnableStylizedPostProcess(Var);
 }
 
 
@@ -263,34 +270,31 @@ void AXkTopDownCamera::Tick(float DeltaSeconds)
 void AXkTopDownCamera::SetEnableStylizedPostProcess(IConsoleVariable* Var)
 {
 	bool bInEnable = Var->GetBool();
-	if (bEnableStylizePostProcess != bInEnable)
+	bEnableStylizePostProcess = bInEnable;
+	if (bEnableStylizePostProcess)
 	{
-		bEnableStylizePostProcess = bInEnable;
-		if (bEnableStylizePostProcess)
+		for (UMaterialInterface* MaterialInterface : StylizedPostProcessMaterials)
 		{
-			for (UMaterialInterface* MaterialInterface : StylizedPostProcessMaterials)
+			if (MaterialInterface && IsValid(MaterialInterface))
 			{
-				if (MaterialInterface && IsValid(MaterialInterface))
-				{
-					UMaterialInstanceDynamic* MaterialDyn = UMaterialInstanceDynamic::Create(MaterialInterface, this);
-					StylizedPostProcessMaterialDyns.Add(MaterialDyn);
-					TopDownCameraComponent->PostProcessSettings.AddBlendable(MaterialDyn, 1.0f);
-				}
+				UMaterialInstanceDynamic* MaterialDyn = UMaterialInstanceDynamic::Create(MaterialInterface, this);
+				StylizedPostProcessMaterialDyns.Add(MaterialDyn);
+				TopDownCameraComponent->PostProcessSettings.AddBlendable(MaterialDyn, 1.0f);
 			}
 		}
-		else
-		{
-			for (UMaterialInstanceDynamic* MaterialDyn : StylizedPostProcessMaterialDyns)
-			{
-				if (MaterialDyn && IsValid(MaterialDyn))
-				{
-					TopDownCameraComponent->PostProcessSettings.RemoveBlendable(MaterialDyn);
-				}
-			}
-			StylizedPostProcessMaterialDyns.Empty();
-		}
-		AXkCamera::SetEnableStylizedPostProcess(Var);
 	}
+	else
+	{
+		for (UMaterialInstanceDynamic* MaterialDyn : StylizedPostProcessMaterialDyns)
+		{
+			if (MaterialDyn && IsValid(MaterialDyn))
+			{
+				TopDownCameraComponent->PostProcessSettings.RemoveBlendable(MaterialDyn);
+			}
+		}
+		StylizedPostProcessMaterialDyns.Empty();
+	}
+	AXkCamera::SetEnableStylizedPostProcess(Var);
 }
 
 

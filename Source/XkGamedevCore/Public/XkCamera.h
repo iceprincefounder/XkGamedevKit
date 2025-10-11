@@ -9,22 +9,13 @@
 class UCapsuleComponent;
 class UArrowComponent;
 
-static bool GEnableStylizedRendering = 1;
-static FAutoConsoleVariableRef CVarSetEnableStylizedRendering
-(
-	TEXT("r.EnableStylizedRendering"),
-	GEnableStylizedRendering,
-	TEXT("Enable stylized rendering in game."),
-	ECVF_Scalability | ECVF_RenderThreadSafe
-);
-
 UCLASS(Blueprintable)
 class XKGAMEDEVCORE_API AXkCamera : public APawn
 {
 	GENERATED_BODY()
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]")
 	bool bEnableStylizePostProcess;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]")
