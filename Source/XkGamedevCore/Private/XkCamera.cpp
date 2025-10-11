@@ -12,6 +12,7 @@
 
 AXkCamera::AXkCamera(const FObjectInitializer& ObjectInitializer)
 {
+	bEnableStylizePostProcess = true;
 	// Register MainVolume console variable
 	{
 		GConfig->GetBool(

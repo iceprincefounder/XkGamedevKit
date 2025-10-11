@@ -174,6 +174,8 @@ public:
 	virtual void MoveToTarget(const FVector& InTarget, const bool bImmediately = false);
 	virtual FRotator GetForwardRotator() const;
 	virtual bool IsTravelingMode() const { return bTravelingMode; }
+	virtual float GetTravelingSpeed() const { return TravelingSpeed; }
+	virtual float GetTravelingZoom() const { return TravelingZoom; }
 	virtual void SetTravelingMode(const bool bInTravelingMode);
 	//~ End AXkTopDownCamera Interface
 private:
