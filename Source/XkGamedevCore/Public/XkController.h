@@ -125,6 +125,9 @@ class XKGAMEDEVCORE_API AXkGamepadCursor : public ADecalActor
 {
 	GENERATED_BODY()
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta=(AllowPrivateAccess = "true"))
+	TObjectPtr<class UWidgetComponent> WidgetComponent;
+
 	/** Time Threshold to know if it was a short press */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	float Radius;

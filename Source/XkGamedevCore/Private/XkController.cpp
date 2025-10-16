@@ -19,6 +19,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/CanvasPanelSlot.h"
+#include "Components/WidgetComponent.h"
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -183,6 +184,12 @@ AXkGamepadCursor::AXkGamepadCursor(const FObjectInitializer& ObjectInitializer)
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder(TEXT("/XkGamedevKit/Materials/M_CursorFocus"));
 	GetDecal()->SetDecalMaterial(ObjectFinder.Object);
 	GetDecal()->DecalSize = FVector(512, 128, 128);
+
+	WidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("Widget"));
+	WidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
+	WidgetComponent->SetVisibility(true);
+	WidgetComponent->SetupAttachment(RootComponent);
+
 	Radius = 50.0;
 }
 
@@ -271,6 +278,7 @@ bool AXkGamepadCursor::GetHitResultUnderGamepadCursor(const ECollisionChannel Tr
 void AXkGamepadCursor::SetVisibility(const bool Input)
 {
 	GetDecal()->SetVisibility(Input);
+	WidgetComponent->SetVisibility(Input);
 }
 
 
