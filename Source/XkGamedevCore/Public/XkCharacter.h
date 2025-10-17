@@ -211,6 +211,9 @@ public:
 	FORCEINLINE virtual void SetSlideCost(const int32 Cost) { SlideCostPoint = Cost; };
 	FORCEINLINE virtual void SetSlideAcceler(const float Acceler) { SlideAcceler = Acceler; };
 
+	FORCEINLINE virtual void SetLeftFootRelativeLocation(const FVector& Input) { LeftFootRelativeLocation = Input; };
+	FORCEINLINE virtual void SetRightFootRelativeLocation(const FVector& Input) { RightFootRelativeLocation = Input; };
+
 	virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false);
 	virtual FVector GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false);
 	//~ End UXkTargetMovementComponent Interface
@@ -221,6 +224,8 @@ public:
 private:
 	TOptional<FVector> LastTarget;
 	TOptional<FVector> LastLocation;
+	TOptional<FVector> LeftFootRelativeLocation;
+	TOptional<FVector> RightFootRelativeLocation;
 };
 
 

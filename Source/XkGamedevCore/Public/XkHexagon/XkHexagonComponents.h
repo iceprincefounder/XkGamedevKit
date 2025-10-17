@@ -9,6 +9,7 @@
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/DynamicMeshComponent.h"
 #include "XkHexagonPathfinding.h"
+#include "XkGeometry/XkGeometry.h"
 #include "XkHexagonComponents.generated.h"
 
 
@@ -141,11 +142,20 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* TrapezoidWallMaterial;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
-	TArray<FVector> TrapezoidWallAnchors;
+	UPROPERTY(Transient)
+	TArray<FVector> TrapezoidBaseAnchors;
 
 	//~ Begin UXkHexagonBasedFortressComponent interface
-	virtual void UpdateHexagonBasedFortress();
+	virtual void UpdateHexagonBasedFortressBase();
+	virtual void UpdateHexagonBasedFortressWall();
 	virtual void UpdateHexagonBasedFortressPhysics();
 	//~ End UXkHexagonBasedFortressComponent interface
+
+private:
+	TArray<FXkGeomEdge> GetTrapezoidBaseBoundaryEdges() const;
+
+private:
+	TArray<TPair<FVector, FVector>> TrapezoidBaseEdges;
+	TArray<TArray<FVector>> TrapezoidBaseContours;
+	TArray<FVector> TrapezoidBaseIntersectionPoints;
 };

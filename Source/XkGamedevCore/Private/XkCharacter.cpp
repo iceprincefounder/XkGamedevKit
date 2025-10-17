@@ -207,7 +207,15 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 		}
 		else if (CurrentTarget.Key == EActionType::Jump)
 		{
-			TargetLocation = GetSphereTraceLocation(TargetLocation);
+			TargetLocation = GetLineTraceLocation(TargetLocation, ECollisionChannel::ECC_Pawn, true);
+			if (LeftFootRelativeLocation.IsSet() && RightFootRelativeLocation.IsSet())
+			{
+				FVector LeftFootLocation = TargetLocation + LeftFootRelativeLocation.GetValue();
+				FVector RightFootLocation = TargetLocation + RightFootRelativeLocation.GetValue();
+				LeftFootLocation = GetLineTraceLocation(LeftFootLocation, ECollisionChannel::ECC_Pawn, true);
+				RightFootLocation = GetLineTraceLocation(RightFootLocation, ECollisionChannel::ECC_Pawn, true);
+				TargetLocation.Z = (FMath::Max3(LeftFootLocation.Z, RightFootLocation.Z, TargetLocation.Z));
+			}
 			if (CheckDistance2DSafely(Location, TargetLocation))
 			{
 				bIsJumping = false;
@@ -364,6 +372,14 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 		// Snap to ground
 		FVector ActorLocation = GetMovementActor()->GetActorLocation();
 		FVector TargetLocation = GetLineTraceLocation(ActorLocation, ECollisionChannel::ECC_Pawn, true);
+		if (LeftFootRelativeLocation.IsSet() && RightFootRelativeLocation.IsSet())
+		{
+			FVector LeftFootLocation = TargetLocation + LeftFootRelativeLocation.GetValue();
+			FVector RightFootLocation = TargetLocation + RightFootRelativeLocation.GetValue();
+			LeftFootLocation = GetLineTraceLocation(LeftFootLocation, ECollisionChannel::ECC_Pawn, true);
+			RightFootLocation = GetLineTraceLocation(RightFootLocation, ECollisionChannel::ECC_Pawn, true);
+			TargetLocation.Z = (FMath::Max(LeftFootLocation.Z, RightFootLocation.Z));
+		}
 		FVector NewLocation = ActorLocation;
 		if (CheckHeightSafely(ActorLocation, TargetLocation))
 		{

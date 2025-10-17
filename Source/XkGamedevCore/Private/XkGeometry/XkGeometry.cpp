@@ -36,7 +36,182 @@
 using namespace UE::Geometry;
 
 
-FXkGeomBounds::FXkGeomBounds(const UObject* InitObject)
+bool FXkGeomEdge::IsPointOnEdge(const FVector& Point, const float Tolerance) const
+{
+	// Determines whether the given point lies on this segment within a specified tolerance. 
+	// The function calculates the distance from A to B (segment length), from A to Point, and from Point to B. 
+	// If the sum of AP and PB is nearly equal to AB (within Tolerance), and both AP and PB are not longer than AB, 
+	// it means the point is on the segment (including endpoints), considering floating-point errors.
+	float AB = (B - A).Size();
+	float AP = (Point - A).Size();
+	float PB = (B - Point).Size();
+	return FMath::IsNearlyEqual(AB, AP + PB, Tolerance) && AP <= AB && PB <= AB;
+}
+
+
+bool FXkGeomEdge::IsPointOnEdge(const FVector2d& Point, const float Tolerance) const
+{
+	FVector2d A2d = FVector2d(A.X, A.Y);
+	FVector2d B2d = FVector2d(B.X, B.Y);
+	float AB = (B2d - A2d).Size();
+	float AP = (Point - A2d).Size();
+	float PB = (B2d - Point).Size();
+	return FMath::IsNearlyEqual(AB, AP + PB, Tolerance) && AP <= AB && PB <= AB;
+}
+
+
+bool FXkGeomEdge::IsPointAtStartOrEnd(const FVector& Point, const float Tolerance) const
+{
+	return A.Equals(Point, Tolerance) || B.Equals(Point, Tolerance);
+}
+
+
+bool FXkGeomEdge::IsPointAtStartOrEnd(const FVector2d& Point, const float Tolerance) const
+{
+	return FVector2d(A.X, A.Y).Equals(Point, Tolerance) || FVector2d(B.X, B.Y).Equals(Point, Tolerance);
+}
+
+
+bool FXkGeomEdge::FindPointOnEdge(FVector& OutPoint, const FVector2d& InPoint2D, const float Tolerance) const
+{
+	if (IsPointOnEdge(InPoint2D, Tolerance))
+	{
+		// Project the 2D point onto the 3D edge
+		FVector2d A2d = FVector2d(A.X, A.Y);
+		FVector2d B2d = FVector2d(B.X, B.Y);
+		FVector2d AB = B2d - A2d;
+		FVector2d AP = InPoint2D - A2d;
+		float AB_LengthSquared = AB.SizeSquared();
+		if (AB_LengthSquared > KINDA_SMALL_NUMBER)
+		{
+			float T = FVector2d::DotProduct(AP, AB) / AB_LengthSquared;
+			T = FMath::Clamp(T, 0.0f, 1.0f);
+			OutPoint = A + T * (B - A);
+			return true;
+		}
+	}
+	return false;
+}
+
+
+bool FXkGeomEdge::FindIntersection(FVector2d& OutPoint, const FXkGeomEdge& OtherEdge, const float Tolerance) const
+{
+	const FVector2d VectorA = FVector2d(B.X - A.X, B.Y - A.Y);
+	const FVector2d VectorB = FVector2d(OtherEdge.B.X - OtherEdge.A.X, OtherEdge.B.Y - OtherEdge.A.Y);
+
+	const FVector2d::FReal S = (-VectorA.Y * (A.X - OtherEdge.A.X) + VectorA.X * (A.Y - OtherEdge.A.Y)) / (-VectorB.X * VectorA.Y + VectorA.X * VectorB.Y);
+	const FVector2d::FReal T = (VectorB.X * (A.Y - OtherEdge.A.Y) - VectorB.Y * (A.X - OtherEdge.A.X)) / (-VectorB.X * VectorA.Y + VectorA.X * VectorB.Y);
+
+	const bool bIntersects = (S >= -Tolerance) && (S <= 1.0f + Tolerance) && (T >= -Tolerance) && (T <= 1.0f + Tolerance);
+
+	if (bIntersects)
+	{
+		OutPoint.X = A.X + (T * VectorA.X);
+		OutPoint.Y = A.Y + (T * VectorA.Y);
+		return true;
+	}
+	return false;
+}
+
+
+bool FXkGeomEdge::FindIntersection(FVector& OutPoint, const FXkGeomEdge& OtherEdge, const float Tolerance) const
+{
+	if (FVector2d Intersection2D; FindIntersection(Intersection2D, OtherEdge, Tolerance))
+	{
+		FVector PointOnA; FindPointOnEdge(PointOnA, Intersection2D, Tolerance);
+		FVector PointOnB; OtherEdge.FindPointOnEdge(PointOnB, Intersection2D, Tolerance);
+		float AverageZ = (PointOnA.Z + PointOnB.Z) * 0.5f;
+		OutPoint = FVector(Intersection2D.X, Intersection2D.Y, AverageZ);
+		return true;
+	}
+	return false;
+}
+
+
+TArray<FXkGeomEdge> FXkGeomEdge::Split(const FVector& Point, const float Tolerance) const
+{
+	TArray<FXkGeomEdge> Result;
+	if (IsPointOnEdge(Point, Tolerance))
+	{
+		if (!A.Equals(Point, Tolerance))
+		{
+			Result.Add(FXkGeomEdge(A, Point));
+		}
+		if (!B.Equals(Point, Tolerance))
+		{
+			Result.Add(FXkGeomEdge(Point, B));
+		}
+	}
+	else
+	{
+		Result.Add(*this);
+	}
+	return Result;
+}
+
+
+TArray<FXkGeomEdge> FXkGeomEdge::Split(const FVector2d& Point, const float Tolerance) const
+{
+	if (FVector NewPoint; FindPointOnEdge(NewPoint, Point, Tolerance))
+	{
+		return Split(NewPoint, Tolerance);
+	}
+	return TArray<FXkGeomEdge>{ *this };
+}
+
+
+bool FXkGeomEdge::CheckIsEdgeIntersected2D(const FVector2D& A1, const FVector2D& A2, const FVector2D& B1, const FVector2D& B2, const float Tolerance)
+{
+	const FVector2D VectorA = A2 - A1;
+	const FVector2D VectorB = B2 - B1;
+
+	const FVector::FReal S = (-VectorA.Y * (A1.X - B1.X) + VectorA.X * (A1.Y - B1.Y)) / (-VectorB.X * VectorA.Y + VectorA.X * VectorB.Y);
+	const FVector::FReal T = (VectorB.X * (A1.Y - B1.Y) - VectorB.Y * (A1.X - B1.X)) / (-VectorB.X * VectorA.Y + VectorA.X * VectorB.Y);
+
+	const bool bIntersects = (S >= -Tolerance) && (S <= 1.0f + Tolerance) && (T >= -Tolerance) && (T <= 1.0f + Tolerance);
+
+	return bIntersects;
+}
+
+
+bool FXkGeomEdge::CheckIsPointInsideEdgeLoops2D(const FVector2D& P, const TArray<FVector2D>& Loops, const float Tolerance)
+{
+	int32 NumCrossings = 0;
+	int32 NumVerts = Loops.Num();
+	for (int32 i = 0; i < NumVerts; ++i)
+	{
+		const FVector2D& A = Loops[i];
+		const FVector2D& B = Loops[(i + 1) % NumVerts];
+
+		// check if the ray from Vertex1 to +X direction crosses edge AB
+		if (((A.Y > P.Y) != (B.Y > P.Y)) &&
+			(P.X < (B.X - A.X) * (P.Y - A.Y) / (B.Y - A.Y + Tolerance) + A.X))
+		{
+			NumCrossings++;
+		}
+	}
+	return ((NumCrossings % 2) == 1);
+}
+
+
+bool FXkGeomEdge::CheckIsPointInsideEdgeLoops2D(const FVector& P, const TArray<FVector>& Loops, const float Tolerance)
+{
+	TArray<FVector2d> Loops2D;
+	for (const FVector& Vertex : Loops)
+	{
+		Loops2D.Add(FVector2d(Vertex.X, Vertex.Y));
+	}
+	return CheckIsPointInsideEdgeLoops2D(FVector2d(P.X, P.Y), Loops2D, Tolerance);
+}
+
+
+void FXkGeomEdge::DrawDebugEdge(const UWorld* InWorld, FColor const& Color, bool bPersistentLines, float LifeTime, uint8 DepthPriority, float Thickness) const
+{
+	::DrawDebugLine(InWorld, A, B, Color, bPersistentLines, LifeTime, DepthPriority, Thickness);
+}
+
+
+FXkGeomBound::FXkGeomBound(const UObject* InitObject)
 {
 	LocalBox = FBox(ForceInit);
 	if (InitObject && InitObject->IsA<UClass>())
@@ -62,7 +237,7 @@ FXkGeomBounds::FXkGeomBounds(const UObject* InitObject)
 }
 
 
-FDynamicMesh3 FXkGeomBounds::ToDynamicMesh(const bool bLocalSpace) const
+FDynamicMesh3 FXkGeomBound::ToDynamicMesh(const bool bLocalSpace) const
 {
 	TArray<FVector> Vertices = GetVertices();
 	if (bLocalSpace)
@@ -90,7 +265,7 @@ FDynamicMesh3 FXkGeomBounds::ToDynamicMesh(const bool bLocalSpace) const
 }
 
 
-void FXkGeomBounds::ExpandBy(const FVector& Expand)
+void FXkGeomBound::ExpandBy(const FVector& Expand)
 {
 	FVector Scale = Transform.GetScale3D();
 	FVector ScaledExpand = Expand / Scale;
@@ -98,7 +273,7 @@ void FXkGeomBounds::ExpandBy(const FVector& Expand)
 }
 
 
-bool FXkGeomBounds::Intersect(const UWorld* World, const ECollisionChannel Channel) const
+bool FXkGeomBound::Intersect(const UWorld* World, const ECollisionChannel Channel) const
 {
 	if (!World || !IsValid(World))
 	{
@@ -121,7 +296,7 @@ bool FXkGeomBounds::Intersect(const UWorld* World, const ECollisionChannel Chann
 }
 
 
-bool FXkGeomBounds::InsideOrOn(const FXkGeomBounds& GeomBounds) const
+bool FXkGeomBound::InsideOrOn(const FXkGeomBound& GeomBounds) const
 {
 	TArray<FVector> OwnerVertices = GetVertices();
 	// Iterate through each vertex of the box
@@ -140,7 +315,7 @@ bool FXkGeomBounds::InsideOrOn(const FXkGeomBounds& GeomBounds) const
 }
 
 
-bool FXkGeomBounds::InsideOrOn(const FVector& Point) const
+bool FXkGeomBound::InsideOrOn(const FVector& Point) const
 {
 	FVector LocalPoint = Transform.InverseTransformPosition(Point);
 	if (LocalBox.IsInsideOrOn(LocalPoint))
@@ -155,7 +330,7 @@ bool FXkGeomBounds::InsideOrOn(const FVector& Point) const
 }
 
 
-void FXkGeomBounds::DrawDebugRect(const UWorld* InWorld, FColor const& Color, bool bPersistentLines, float LifeTime, uint8 DepthPriority, float Thickness) const
+void FXkGeomBound::DrawDebugRect(const UWorld* InWorld, FColor const& Color, bool bPersistentLines, float LifeTime, uint8 DepthPriority, float Thickness) const
 {
 	FVector Origin = GetCenter();
 	FVector Extent = GetExtent();
@@ -166,7 +341,7 @@ void FXkGeomBounds::DrawDebugRect(const UWorld* InWorld, FColor const& Color, bo
 }
 
 
-void FXkGeomBounds::DrawDebugBox(const UWorld* InWorld,
+void FXkGeomBound::DrawDebugBox(const UWorld* InWorld,
 		FColor const& Color, 
 		bool bPersistentLines, 
 		float LifeTime, 
@@ -180,7 +355,7 @@ void FXkGeomBounds::DrawDebugBox(const UWorld* InWorld,
 }
 
 
-void FXkGeomBounds::DrawDebugPoints(const UWorld* InWorld,
+void FXkGeomBound::DrawDebugPoints(const UWorld* InWorld,
 	FColor const& Color,
 	bool bPersistentLines,
 	float LifeTime,
@@ -196,7 +371,7 @@ void FXkGeomBounds::DrawDebugPoints(const UWorld* InWorld,
 }
 
 
-void FXkGeomBounds::DrawDebugCenter(const UWorld* InWorld, FColor const& Color, bool bPersistentLines, float LifeTime, uint8 DepthPriority, float Thickness) const
+void FXkGeomBound::DrawDebugCenter(const UWorld* InWorld, FColor const& Color, bool bPersistentLines, float LifeTime, uint8 DepthPriority, float Thickness) const
 {
 	FVector Origin = GetCenter();
 	::DrawDebugLine(InWorld, Origin + FVector(-5.0f, 0.0f, 0.0f), Origin + FVector(5.0f, 0.0f, 0.0f), Color, bPersistentLines, LifeTime, DepthPriority, Thickness);
@@ -205,7 +380,7 @@ void FXkGeomBounds::DrawDebugCenter(const UWorld* InWorld, FColor const& Color, 
 }
 
 
-bool FXkGeomBounds::CheckPointInsideBox(const FVector& Point, const TArray<FVector>& Vertices)
+bool FXkGeomBound::CheckPointInsideBox(const FVector& Point, const TArray<FVector>& Vertices)
 {
 	for (int32 i = 0; i < 6; ++i)
 	{
@@ -232,7 +407,7 @@ bool FXkGeomBounds::CheckPointInsideBox(const FVector& Point, const TArray<FVect
 }
 
 
-bool FXkGeomBounds::CheckPointInsideOrOnBox(const FVector& Point, const TArray<FVector>& Vertices)
+bool FXkGeomBound::CheckPointInsideOrOnBox(const FVector& Point, const TArray<FVector>& Vertices)
 {
 	for (int32 i = 0; i < 6; ++i)
 	{
@@ -259,7 +434,7 @@ bool FXkGeomBounds::CheckPointInsideOrOnBox(const FVector& Point, const TArray<F
 }
 
 
-bool FXkGeomBounds::CheckBoxIntersecting(const TArray<FVector>& LhsBoxCorners, const TArray<FVector> RhsBoxCorners)
+bool FXkGeomBound::CheckBoxIntersecting(const TArray<FVector>& LhsBoxCorners, const TArray<FVector> RhsBoxCorners)
 {
 	TArray<FVector> Axes;
 	Axes.Add(LhsBoxCorners[1] - LhsBoxCorners[0]); // X-axis of Box1
@@ -313,7 +488,7 @@ bool FXkGeomBounds::CheckBoxIntersecting(const TArray<FVector>& LhsBoxCorners, c
 }
 
 
-bool FXkGeomBounds::CheckSphereIntersectsBoundingBox(const FVector& SphereCenter, const float SphereRadius, const FBox& Box)
+bool FXkGeomBound::CheckSphereIntersectsBoundingBox(const FVector& SphereCenter, const float SphereRadius, const FBox& Box)
 {
 	FVector ClosestPoint = Box.GetClosestPointTo(SphereCenter);
 	float DistSqr = FVector::DistSquared(ClosestPoint, SphereCenter);
@@ -321,7 +496,7 @@ bool FXkGeomBounds::CheckSphereIntersectsBoundingBox(const FVector& SphereCenter
 }
 
 
-bool FXkGeomBounds::CheckSphereIntersectsTriangle(const FVector& SphereCenter, const float SphereRadius, const FVector& A, const FVector& B, const FVector& C)
+bool FXkGeomBound::CheckSphereIntersectsTriangle(const FVector& SphereCenter, const float SphereRadius, const FVector& A, const FVector& B, const FVector& C)
 {
 	FVector ClosestPoint = FMath::ClosestPointOnTriangleToPoint(SphereCenter, A, B, C);
 	float DistSqr = FVector::DistSquared(SphereCenter, ClosestPoint);

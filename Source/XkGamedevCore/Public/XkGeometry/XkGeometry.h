@@ -14,39 +14,131 @@
 
 using namespace UE::Geometry;
 
+USTRUCT(BlueprintType)
+struct XKGAMEDEVCORE_API FXkGeomEdge
+{
+	GENERATED_BODY()
+
+	FXkGeomEdge()
+		: A(FVector::ZeroVector)
+		, B(FVector::ZeroVector)
+	{}
+
+	FXkGeomEdge(const TPair<FVector, FVector>& InPair)
+		: A(InPair.Key)
+		, B(InPair.Value)
+	{}
+
+	FXkGeomEdge(const FVector& InA, const FVector& InB)
+		: A(InA)
+		, B(InB)
+	{}
+
+	bool IsPointOnEdge(const FVector& Point, const float Tolerance = KINDA_SMALL_NUMBER) const;
+
+	bool IsPointOnEdge(const FVector2d& Point, const float Tolerance = KINDA_SMALL_NUMBER) const;
+
+	bool IsPointAtStartOrEnd(const FVector& Point, const float Tolerance = KINDA_SMALL_NUMBER) const;
+
+	bool IsPointAtStartOrEnd(const FVector2d& Point, const float Tolerance = KINDA_SMALL_NUMBER) const;
+
+	bool FindPointOnEdge(FVector& OutPoint, const FVector2d& InPoint2D, const float Tolerance = KINDA_SMALL_NUMBER) const;
+
+	bool FindIntersection(FVector2d& OutPoint, const FXkGeomEdge& OtherEdge, const float Tolerance = KINDA_SMALL_NUMBER) const;
+
+	bool FindIntersection(FVector& OutPoint, const FXkGeomEdge& OtherEdge, const float Tolerance = KINDA_SMALL_NUMBER) const;
+
+	TArray<FXkGeomEdge> Split(const FVector& Point, const float Tolerance = KINDA_SMALL_NUMBER) const;
+
+	TArray<FXkGeomEdge> Split(const FVector2d& Point, const float Tolerance = KINDA_SMALL_NUMBER) const;
+
+	inline bool Equals(const FXkGeomEdge& Rhs, const float Tolerance = KINDA_SMALL_NUMBER) const
+	{
+		return (A.Equals(Rhs.A, Tolerance) && B.Equals(Rhs.B, Tolerance)) || (A.Equals(Rhs.B, Tolerance) && B.Equals(Rhs.A, Tolerance));
+	}
+
+	inline void Flip() { Swap(A, B); }
+
+	inline bool operator == (const FXkGeomEdge& Rhs) const
+	{
+		return (A == Rhs.A && B == Rhs.B) || (A == Rhs.B && B == Rhs.A);
+	}
+
+	inline FVector GetCenter() const { return (A + B) * 0.5f; }
+
+	inline FVector GetForward() const { return (B - A).GetSafeNormal(); }
+
+	inline FVector GetRight() const { return FVector::CrossProduct(GetForward(), FVector::UpVector).GetSafeNormal(); }
+
+	inline FVector GetStart() const { return A; }
+
+	inline FVector GetEnd() const { return B; }
+
+	inline uint32 GetHash() const
+	{
+		uint32 HashA = GetTypeHash(A); uint32 HashB = GetTypeHash(B);
+		if (HashA < HashB)
+		{
+			return HashCombine(HashA, HashB);
+		}
+		return HashCombine(HashB, HashA);
+	}
+
+	//~ Begin FXkGeomEdge Test Helpers
+	static bool CheckIsEdgeIntersected2D(const FVector2D& A1, const FVector2D& A2, const FVector2D& B1, const FVector2D& B2, const float Tolerance = KINDA_SMALL_NUMBER);
+	static bool CheckIsPointInsideEdgeLoops2D(const FVector2D& P, const TArray<FVector2D>& Loops, const float Tolerance = KINDA_SMALL_NUMBER);
+	static bool CheckIsPointInsideEdgeLoops2D(const FVector& P, const TArray<FVector>& Loops, const float Tolerance = KINDA_SMALL_NUMBER);
+	//~ End FXkGeomEdge Test Helpers
+
+	void DrawDebugEdge(const UWorld* InWorld, FColor const& Color, bool bPersistentLines = false, float LifeTime = -1.f, uint8 DepthPriority = SDPG_World, float Thickness = 0.f) const;
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GeomEdge")
+	FVector A;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GeomEdge")
+	FVector B;
+};
+
+
+inline uint32 GetTypeHash(const FXkGeomEdge& GeomEdge)
+{
+	return GeomEdge.GetHash();
+}
+
+
 /** XkGeomBounds
  * AABB local box with transform and parent(reference to actor or assets).
 */
 USTRUCT(BlueprintType)
-struct XKGAMEDEVCORE_API FXkGeomBounds
+struct XKGAMEDEVCORE_API FXkGeomBound
 {
 	GENERATED_BODY()
 
-	FXkGeomBounds()
+	FXkGeomBound()
 		: LocalBox(FBox(ForceInit))
 		, Transform(FTransform::Identity)
 		, Parent(nullptr)
 	{}
 
-	FXkGeomBounds(const UObject* InitObject);
+	FXkGeomBound(const UObject* InitObject);
 
-	FXkGeomBounds(const UObject* InitObject, const FTransform& InTransform)
-		: FXkGeomBounds(InitObject)
+	FXkGeomBound(const UObject* InitObject, const FTransform& InTransform)
+		: FXkGeomBound(InitObject)
 	{
 		Transform = InTransform;
 	}
 
 	void ExpandBy(const FVector& Expand);
 
-	bool Intersect(const FXkGeomBounds& GeomBounds) const { return CheckBoxIntersecting(GetVertices(), GeomBounds.GetVertices()); };
+	bool Intersect(const FXkGeomBound& GeomBounds) const { return CheckBoxIntersecting(GetVertices(), GeomBounds.GetVertices()); };
 
 	bool Intersect(const UWorld* World, const ECollisionChannel Channel = ECC_WorldStatic) const;
 
-	bool InsideOrOn(const FXkGeomBounds& GeomBounds) const;
+	bool InsideOrOn(const FXkGeomBound& GeomBounds) const;
 
 	bool InsideOrOn(const FVector& Point) const;
 
-	bool Overlap(const FXkGeomBounds& GeomBounds) const { return Intersect(GeomBounds) || InsideOrOn(GeomBounds); };
+	bool Overlap(const FXkGeomBound& GeomBounds) const { return Intersect(GeomBounds) || InsideOrOn(GeomBounds); };
 
 	FDynamicMesh3 ToDynamicMesh(const bool bLocalSpace = true) const;
 
@@ -112,7 +204,7 @@ struct XKGAMEDEVCORE_API FXkGeomBounds
 
 	inline TSoftObjectPtr<> GetParent() const { return Parent; }
 
-	inline bool operator == (const FXkGeomBounds& Rhs) const
+	inline bool operator == (const FXkGeomBound& Rhs) const
 	{
 		return LocalBox == Rhs.LocalBox && Transform.Equals(Rhs.Transform) && Parent == Rhs.Parent;
 	}
@@ -183,7 +275,7 @@ private:
 };
 
 
-inline uint32 GetTypeHash(const FXkGeomBounds& GeomBounds)
+inline uint32 GetTypeHash(const FXkGeomBound& GeomBounds)
 {
 	return GeomBounds.GetHash();
 }

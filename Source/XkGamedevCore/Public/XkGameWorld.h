@@ -69,8 +69,12 @@ public:
 	void RegenerateWorld();
 
 public:
-	static float CalcSphericalHeight(const FVector& CameraLocation, const FVector& WorldLocation)
+	static FVector CalcSphericalLocation(const FVector& CameraLocation, const FVector& WorldLocation)
 	{
-		return SphericalHeight(CameraLocation, WorldLocation);
+		float HeightZ = SphericalHeight(CameraLocation, WorldLocation);
+		// Compensate for floating-point precision loss at large distances to reduce terrain height errors
+		float Dist = FVector::Dist2D(CameraLocation, WorldLocation);
+		float Compensate = FMath::Max(Dist - 6400.0f, 0.0) / 6400.0f * 250.0;
+		return FVector(WorldLocation.X, WorldLocation.Y, HeightZ - Compensate);
 	}
 };
