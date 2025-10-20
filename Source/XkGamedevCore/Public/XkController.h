@@ -12,8 +12,8 @@
 UENUM(BlueprintType, Blueprintable)
 enum class EXkControlsMode : uint8
 {
-	RealTime = 0,
-	TurnBased,
+	TurnBased = 0,
+	RealTime,
 };
 
 

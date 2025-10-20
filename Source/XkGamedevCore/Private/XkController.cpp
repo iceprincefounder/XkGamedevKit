@@ -528,6 +528,8 @@ void AXkController::BeginPlay()
 	{
 		Subsystem->AddMappingContext(DefaultRealTimeMappingContext, 0);
 	}
+
+	ControlsMode = EXkControlsMode::TurnBased;
 	ControlsFlavor = EXkControlsFlavor::None;
 
 	ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();

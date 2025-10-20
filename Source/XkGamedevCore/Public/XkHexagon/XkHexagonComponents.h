@@ -145,15 +145,25 @@ public:
 	UPROPERTY(Transient)
 	TArray<FVector> TrapezoidBaseAnchors;
 
+	UPROPERTY(Transient)
+	TArray<FVector> NeighborHexagonCenters;
+
 	//~ Begin UXkHexagonBasedFortressComponent interface
 	virtual void UpdateHexagonBasedFortressBase();
 	virtual void UpdateHexagonBasedFortressWall();
+	virtual void UpdateHexagonBasedFortressTower();
+	virtual void UpdateHexagonBasedFortressGate();
 	virtual void UpdateHexagonBasedFortressPhysics();
 	//~ End UXkHexagonBasedFortressComponent interface
 
 private:
 	TArray<FXkGeomEdge> GetTrapezoidBaseBoundaryEdges() const;
-
+	void UpdateTrapezoidDynamicMeshInternal(const FDynamicMesh3& InDynamicMesh, const bool bForceUpdate = false);
+	FDynamicMesh3 BuildTrapezoidWallByBoundaryEdges(const TArray<FXkGeomEdge>& InBoundaryEdges);
+	FDynamicMesh3 BooleanOperationInternal(const FMeshBoolean::EBooleanOp Operation, 
+		const FDynamicMesh3& MeshA, const FDynamicMesh3& MeshB, 
+		const FTransformSRT3d& TransformA = FTransformSRT3d::Identity(),
+		const FTransformSRT3d& TransformB = FTransformSRT3d::Identity());
 private:
 	TArray<TPair<FVector, FVector>> TrapezoidBaseEdges;
 	TArray<TArray<FVector>> TrapezoidBaseContours;

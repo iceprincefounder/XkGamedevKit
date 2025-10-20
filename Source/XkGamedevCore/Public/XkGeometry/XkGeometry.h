@@ -130,6 +130,8 @@ struct XKGAMEDEVCORE_API FXkGeomBound
 
 	void ExpandBy(const FVector& Expand);
 
+	void TransformBy(const FTransform& InTransform) { Transform = Transform * InTransform; }
+	
 	bool Intersect(const FXkGeomBound& GeomBounds) const { return CheckBoxIntersecting(GetVertices(), GeomBounds.GetVertices()); };
 
 	bool Intersect(const UWorld* World, const ECollisionChannel Channel = ECC_WorldStatic) const;
