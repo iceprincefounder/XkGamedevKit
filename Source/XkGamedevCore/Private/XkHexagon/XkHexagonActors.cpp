@@ -19,30 +19,63 @@ static const TArray<FLinearColor> GXkHexagonColor = {
 
 AXkHexagonActor::AXkHexagonActor(const FObjectInitializer& ObjectInitializer)
 {
-	StaticProcMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticProcMesh"));
-	StaticProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	StaticProcMesh->SetCollisionProfileName(FName(TEXT("NoCollision")));
-	StaticProcMesh->SetCastShadow(false);
-	StaticProcMesh->bAffectDistanceFieldLighting = false;
-	StaticProcMesh->bAffectDynamicIndirectLighting = false;
-	StaticProcMesh->bAffectIndirectLightingWhileHidden = false;
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_StandardHexagonWithUV.SM_StandardHexagonWithUV"));
-	UStaticMesh* StaticMeshObject = ObjectFinder.Object;
-	StaticProcMesh->SetStaticMesh(StaticMeshObject);
-	SetRootComponent(StaticProcMesh);
+	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+	SceneRoot->SetMobility(EComponentMobility::Movable);
+	SetRootComponent(SceneRoot);
+
+	auto InitStaticMeshComponent = [this](UStaticMeshComponent*& StaticMeshComp)
+		{
+			StaticMeshComp->SetMobility(EComponentMobility::Movable);
+			StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			StaticMeshComp->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
+			StaticMeshComp->SetCastShadow(false);
+			StaticMeshComp->bAffectDistanceFieldLighting = false;
+			StaticMeshComp->bAffectDynamicIndirectLighting = false;
+			StaticMeshComp->bAffectIndirectLightingWhileHidden = false;
+			StaticMeshComp->SetupAttachment(RootComponent);
+		};
+	{
+		StaticMeshBase = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshBase"));
+		static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_HexagonBase.SM_HexagonBase"));
+		UStaticMesh* StaticMeshObject = ObjectFinder.Object;
+		StaticMeshBase->SetStaticMesh(StaticMeshObject);
+		InitStaticMeshComponent(StaticMeshBase);
+	}
+	{
+		StaticMeshEdge = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshEdge"));
+		static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_HexagonEdge.SM_HexagonEdge"));
+		UStaticMesh* StaticMeshObject = ObjectFinder.Object;
+		StaticMeshEdge->SetStaticMesh(StaticMeshObject);
+		InitStaticMeshComponent(StaticMeshEdge);
+	}
+	{
+		StaticMeshPivot = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshPivot"));
+		static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_HexagonPivot.SM_HexagonPivot"));
+		UStaticMesh* StaticMeshObject = ObjectFinder.Object;
+		StaticMeshPivot->SetStaticMesh(StaticMeshObject);
+		InitStaticMeshComponent(StaticMeshPivot);
+	}
+
 
 #if WITH_EDITORONLY_DATA
-	ProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProcMesh"));
-	ProcMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	ProcMesh->SetCollisionProfileName(FName(TEXT("NoCollision")));
-	ProcMesh->SetVisibility(false);
-	ProcMesh->SetCastShadow(false);
-	ProcMesh->SetupAttachment(RootComponent);
-	ProcMesh->SetTranslucentSortPriority(9999);
+	ProcMeshBase = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProcMeshBase"));
+	ProcMeshBase->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ProcMeshBase->SetCollisionProfileName(FName(TEXT("NoCollision")));
+	ProcMeshBase->SetVisibility(false);
+	ProcMeshBase->SetCastShadow(false);
+	ProcMeshBase->SetupAttachment(RootComponent);
+
+	ProcMeshEdge = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProcMeshEdge"));
+	ProcMeshEdge->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ProcMeshEdge->SetCollisionProfileName(FName(TEXT("NoCollision")));
+	ProcMeshEdge->SetVisibility(false);
+	ProcMeshEdge->SetCastShadow(false);
+	ProcMeshEdge->SetupAttachment(RootComponent);
 #endif
 
-	BaseMaterial = StaticProcMesh->GetMaterial(0);
-	EdgeMaterial = StaticProcMesh->GetMaterial(1);
+	BaseMaterial = StaticMeshBase->GetMaterial(BASE_SECTION_INDEX);
+	EdgeMaterial = StaticMeshEdge->GetMaterial(EDGE_SECTION_INDEX);
+	PivotMaterial = StaticMeshPivot->GetMaterial(PIVOT_SECTION_INDEX);
 }
 
 
@@ -108,73 +141,78 @@ void AXkHexagonActor::OnEdgeHighlight(const FLinearColor& InColor)
 }
 
 
+void AXkHexagonActor::OnPivotHighlight(const float InHeightZ, const FLinearColor& InColor)
+{
+	float HeightOffset = InHeightZ - GetActorLocation().Z;
+	float HeightScale = HeightOffset / HEXAGON_HEIGHT;
+	StaticMeshPivot->SetRelativeLocation(FVector(0.0f, 0.0f, HeightOffset));
+	StaticMeshPivot->SetRelativeScale3D(FVector(0.1));
+	StaticMeshPivot->SetVisibility(true);
+	StaticMeshPivot->MarkRenderStateDirty();
+	if (IsValid(PivotMID))
+	{
+		PivotMID->SetVectorParameterValue(FName("Color"), InColor);
+	}
+}
+
+
 void AXkHexagonActor::UpdateMaterial()
 {
 	if (!BaseMID && BaseMaterial)
 	{
 		BaseMID = UMaterialInstanceDynamic::Create(BaseMaterial, this);
 	}
-	if (BaseMID && IsValid(BaseMID) && ParentHexagonalWorld.IsValid())
-	{
-		FLinearColor BaseColor = ParentHexagonalWorld->BaseColor;
-		BaseColor.A = 1.0;
-		BaseMID->SetVectorParameterValue(FName("Color"), BaseColor);
-	}
 	if (!EdgeMID && EdgeMaterial)
 	{
 		EdgeMID = UMaterialInstanceDynamic::Create(EdgeMaterial, this);
 	}
-	if (EdgeMID && IsValid(EdgeMID) && ParentHexagonalWorld.IsValid())
+	if (!PivotMID && PivotMaterial)
 	{
-		FLinearColor EdgeColor = ParentHexagonalWorld->EdgeColor;
-		EdgeColor.A = 1.0;
-		EdgeMID->SetVectorParameterValue(FName("Color"), EdgeColor);
+		PivotMID = UMaterialInstanceDynamic::Create(PivotMaterial, this);
 	}
-	StaticProcMesh->SetMaterial(0, BaseMID);
-	StaticProcMesh->SetMaterial(1, EdgeMID);
+	StaticMeshBase->SetMaterial(BASE_SECTION_INDEX, BaseMID);
+	StaticMeshEdge->SetMaterial(EDGE_SECTION_INDEX, EdgeMID);
+	StaticMeshPivot->SetMaterial(PIVOT_SECTION_INDEX, PivotMID);
 }
 
 #if WITH_EDITOR
 void AXkHexagonActor::UpdateProcMesh()
 {
-	if (ParentHexagonalWorld.IsValid())
-	{
-		TArray<FVector> BaseVertices;
-		TArray<int32> BaseIndices;
+	TArray<FVector> BaseVertices;
+	TArray<int32> BaseIndices;
 
-		TArray<FVector> EdgeVertices;
-		TArray<int32> EdgeIndices;
+	TArray<FVector> EdgeVertices;
+	TArray<int32> EdgeIndices;
 
-		BuildHexagon(BaseVertices, BaseIndices, EdgeVertices, EdgeIndices, 
-			ParentHexagonalWorld->Radius, 
-			ParentHexagonalWorld->Height, 
-			ParentHexagonalWorld->BaseInnerGap, 
-			ParentHexagonalWorld->BaseOuterGap, 
-			ParentHexagonalWorld->EdgeInnerGap, 
-			ParentHexagonalWorld->EdgeOuterGap);
+	BuildHexagon(BaseVertices, BaseIndices, EdgeVertices, EdgeIndices,
+		HEXAGON_RADIUS,
+		HEXAGON_HEIGHT,
+		HEXAGON_BASE_INNER_GAP,
+		HEXAGON_BASE_OUTER_GAP,
+		HEXAGON_EDGE_INNER_GAP,
+		HEXAGON_EDGE_OUTER_GAP);
 
-		auto GenerateUV = [](const TArray<FVector>& Vertices, const float Radius) -> TArray<FVector2D>
+	auto GenerateUV = [](const TArray<FVector>& Vertices, const float Radius) -> TArray<FVector2D>
+		{
+			TArray<FVector2D> UV0s;
+			UV0s.Init(FVector2D::ZeroVector, Vertices.Num());
+			for (int32 i = 0; i < Vertices.Num(); i++)
 			{
-				TArray<FVector2D> UV0s;
-				UV0s.Init(FVector2D::ZeroVector, Vertices.Num());
-				for (int32 i = 0; i < Vertices.Num(); i++)
-				{
-					FVector Position = Vertices[i];
-					FVector2D UV = FVector2D(Position.Y, -Position.X);
-					UV = (UV + Radius) / (Radius * 2.0);
-					UV0s[i] = UV;
-				}
-				return UV0s;
-			};
-		TArray<FVector2D> BaseUV0s = GenerateUV(BaseVertices, ParentHexagonalWorld->Radius);
-		ProcMesh->CreateMeshSection(BASE_SECTION_INDEX, BaseVertices, BaseIndices, TArray<FVector>(), BaseUV0s, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
-		ProcMesh->SetMaterial(BASE_SECTION_INDEX, BaseMID);
-		ProcMesh->Bounds = FBoxSphereBounds(FBox(BaseVertices));
+				FVector Position = Vertices[i];
+				FVector2D UV = FVector2D(Position.Y, -Position.X);
+				UV = (UV + Radius) / (Radius * 2.0);
+				UV0s[i] = UV;
+			}
+			return UV0s;
+		};
+	TArray<FVector2D> BaseUV0s = GenerateUV(BaseVertices, HEXAGON_RADIUS);
+	ProcMeshBase->CreateMeshSection(BASE_SECTION_INDEX, BaseVertices, BaseIndices, TArray<FVector>(), BaseUV0s, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
+	ProcMeshBase->SetMaterial(BASE_SECTION_INDEX, BaseMID);
+	ProcMeshBase->Bounds = FBoxSphereBounds(FBox(BaseVertices));
 
-		TArray<FVector2D> EdgeUV0s = GenerateUV(EdgeVertices, ParentHexagonalWorld->Radius);
-		ProcMesh->CreateMeshSection(EDGE_SECTION_INDEX, EdgeVertices, EdgeIndices, TArray<FVector>(), EdgeUV0s, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
-		ProcMesh->SetMaterial(EDGE_SECTION_INDEX, EdgeMID);
-	}
+	TArray<FVector2D> EdgeUV0s = GenerateUV(EdgeVertices, HEXAGON_RADIUS);
+	ProcMeshEdge->CreateMeshSection(EDGE_SECTION_INDEX, EdgeVertices, EdgeIndices, TArray<FVector>(), EdgeUV0s, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
+	ProcMeshEdge->SetMaterial(EDGE_SECTION_INDEX, EdgeMID);
 }
 #endif
 
@@ -188,24 +226,38 @@ void AXkHexagonActor::InitHexagon(const FIntVector& InCoord)
 		if (HexagonNode)
 		{
 			FVector4f Position = HexagonNode->Position;
-			FVector NewLocation = FVector(Position.X, Position.Y, Position.Z + 2.0 /* Fix Z-Fighting, Leave 1.0 for other surface.*/);
+			FVector NewLocation = FVector(Position.X, Position.Y, Position.Z);
 			SetActorLocation(NewLocation, true);
 		}
 	}
-	StaticProcMesh->SetVisibility(true);
-	StaticProcMesh->MarkRenderStateDirty();
+	StaticMeshBase->SetVisibility(true);
+	StaticMeshBase->MarkRenderStateDirty();
+	StaticMeshEdge->SetVisibility(true);
+	StaticMeshEdge->MarkRenderStateDirty();
+	StaticMeshPivot->SetVisibility(false);
+	StaticMeshPivot->MarkRenderStateDirty();
 }
 
 
 void AXkHexagonActor::FreeHexagon()
 {
-	StaticProcMesh->SetVisibility(false);
+	StaticMeshBase->SetVisibility(false);
+	StaticMeshBase->MarkRenderStateDirty();
+	StaticMeshEdge->SetVisibility(false);
+	StaticMeshEdge->MarkRenderStateDirty();
+	StaticMeshPivot->SetVisibility(false);
+	StaticMeshPivot->MarkRenderStateDirty();
 	SetActorLocation(FVector(0.0, 0.0, -HALF_WORLD_MAX));
+	StaticMeshBase->SetRelativeLocation(FVector::ZeroVector);
+	StaticMeshEdge->SetRelativeLocation(FVector::ZeroVector);
+	StaticMeshBase->SetRelativeScale3D(FVector::OneVector);
+	StaticMeshEdge->SetRelativeScale3D(FVector::OneVector);
 	// Clear hight light colors
-	if (BaseMID && IsValid(BaseMID) && EdgeMID && IsValid(EdgeMID))
+	if (BaseMID && IsValid(BaseMID) && EdgeMID && IsValid(EdgeMID) && PivotMID && IsValid(PivotMID))
 	{
-		BaseMID->SetVectorParameterValue(FName("Color"), FLinearColor(1.0, 1.0, 1.0, 0.0));
-		EdgeMID->SetVectorParameterValue(FName("Color"), FLinearColor(1.0, 1.0, 1.0, 0.0));
+		BaseMID->SetVectorParameterValue(FName("Color"), FLinearColor::Transparent);
+		EdgeMID->SetVectorParameterValue(FName("Color"), FLinearColor::Transparent);
+		PivotMID->SetVectorParameterValue(FName("Color"), FLinearColor::Transparent);
 	}
 }
 
@@ -232,13 +284,6 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 	//InstancedHexagonComponent->RuntimeVirtualTextures.Empty();
 	//InstancedHexagonComponent->RuntimeVirtualTextures.Add(RVT);
 
-	Radius = 100.0;
-	Height = 10.0;
-	GapWidth = 0.0;
-	BaseInnerGap = 0.0;
-	BaseOuterGap = 0.0;
-	EdgeInnerGap = 9.0;
-	EdgeOuterGap = 1.0;
 	BaseColor = FLinearColor(1.0, 1.0, 1.0, 0.0);
 	EdgeColor = FLinearColor(1.0, 1.0, 1.0, 0.0);
 	MaxManhattanDistance = 32;
@@ -330,9 +375,9 @@ void AXkHexagonalWorldActor::BeginPlay()
 void AXkHexagonalWorldActor::OnConstruction(const FTransform& Transform)
 {
 #if WITH_EDITOR
-	float Distance = Radius + GapWidth;
-	SceneRoot->ArrowHeight = Height;
-	SceneRoot->ArrowUnitStep = Radius;
+	float Distance = HEXAGON_RADIUS + HEXAGON_GAP_WIDTH;
+	SceneRoot->ArrowHeight = HEXAGON_HEIGHT;
+	SceneRoot->ArrowUnitStep = HEXAGON_RADIUS;
 	SceneRoot->SetArrowLength(MaxManhattanDistance * Distance * 1.5);
 
 	if (IsValid(HexagonStarter))
@@ -359,7 +404,7 @@ FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNode(const FIntVector& InCoord
 FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNode(const FVector& InPosition) const
 {
 	FIntVector InputCoord = HexagonAStarPathfinding.CalcHexagonCoord(
-		InPosition.X, InPosition.Y, (Radius + GapWidth));
+		InPosition.X, InPosition.Y, (HEXAGON_RADIUS + HEXAGON_GAP_WIDTH));
 	FXkHexagonNode* HexagonNode = GetHexagonNode(InputCoord);
 	if (HexagonNode)
 	{
@@ -499,7 +544,7 @@ int32 AXkHexagonalWorldActor::GetHexagonManhattanDistance(const FVector& A, cons
 
 FVector2D AXkHexagonalWorldActor::GetHexagonalWorldExtent() const
 {
-	float Distance = Radius + GapWidth;
+	float Distance = HEXAGON_RADIUS + HEXAGON_GAP_WIDTH;
 	float X = MaxManhattanDistance * Distance * 1.5 + Distance;
 	float Y = MaxManhattanDistance * Distance * 2.0 * XkCos30 + Distance * XkCos30;
 	return FVector2D(X, Y);
@@ -517,8 +562,8 @@ FVector2D AXkHexagonalWorldActor::GetFullUnscaledWorldSize(const FVector2D& Unsc
 
 void AXkHexagonalWorldActor::BuildHexagonData(TArray<FVector4f>& OutVertices, TArray<uint32>& OutIndices)
 {
-	TArray<FVector4f> EdgeVertices;
-	TArray<uint32> EdgeIndices;
-	BuildHexagon(OutVertices, OutIndices, EdgeVertices, EdgeIndices,
-		Radius, Height, BaseInnerGap, BaseOuterGap, EdgeInnerGap, EdgeOuterGap);
+	TArray<FVector4f> TmpEdgeVertices;
+	TArray<uint32> TmpEdgeIndices;
+	BuildHexagon(OutVertices, OutIndices, TmpEdgeVertices, TmpEdgeIndices,
+		HEXAGON_RADIUS, HEXAGON_HEIGHT, HEXAGON_BASE_INNER_GAP, HEXAGON_BASE_OUTER_GAP, HEXAGON_EDGE_INNER_GAP, HEXAGON_EDGE_OUTER_GAP);
 }

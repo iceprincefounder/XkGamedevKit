@@ -7,10 +7,16 @@
 #include "XkHexagonPathfinding.h"
 #include "XkHexagonActors.generated.h"
 
-// when EXkHexagonType is greater that AVAILABLEMARK,
-// which mean that actor is unreachable!
 #define BASE_SECTION_INDEX 0
-#define EDGE_SECTION_INDEX 1
+#define EDGE_SECTION_INDEX 0
+#define PIVOT_SECTION_INDEX 0
+#define HEXAGON_RADIUS 100.0f
+#define HEXAGON_HEIGHT 10.0f
+#define HEXAGON_GAP_WIDTH 0.0f
+#define HEXAGON_BASE_INNER_GAP 0.0f
+#define HEXAGON_BASE_OUTER_GAP 0.0f
+#define HEXAGON_EDGE_INNER_GAP 9.0f
+#define HEXAGON_EDGE_OUTER_GAP 1.0f
 
 class UProceduralMeshComponent;
 
@@ -21,11 +27,23 @@ class XKGAMEDEVCORE_API AXkHexagonActor : public AActor
 
 #if WITH_EDITORONLY_DATA
 	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
-	class UProceduralMeshComponent* ProcMesh;
+	class UProceduralMeshComponent* ProcMeshBase;
+
+	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
+	class UProceduralMeshComponent* ProcMeshEdge;
 #endif
 
 	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
-	class UStaticMeshComponent* StaticProcMesh;
+	class USceneComponent* SceneRoot;
+
+	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
+	class UStaticMeshComponent* StaticMeshBase;
+
+	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
+	class UStaticMeshComponent* StaticMeshEdge;
+
+	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
+	class UStaticMeshComponent* StaticMeshPivot;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	FIntVector Coord;
@@ -36,11 +54,17 @@ class XKGAMEDEVCORE_API AXkHexagonActor : public AActor
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	class UMaterialInterface* EdgeMaterial;
 
+	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
+	class UMaterialInterface* PivotMaterial;
+
 	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	class UMaterialInstanceDynamic* BaseMID;
 
 	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	class UMaterialInstanceDynamic* EdgeMID;
+
+	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
+	class UMaterialInstanceDynamic* PivotMID;
 public:
 	AXkHexagonActor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
@@ -59,7 +83,9 @@ public:
 	virtual void SetHexagonWorld(class AXkHexagonalWorldActor* Input);
 	virtual void OnBaseHighlight(const FLinearColor& InColor = FLinearColor::White);
 	virtual void OnEdgeHighlight(const FLinearColor& InColor = FLinearColor::White);
-	virtual UStaticMeshComponent* GetStaticProcMesh() const { return StaticProcMesh; };
+	virtual void OnPivotHighlight(const float InHeightZ, const FLinearColor& InColor);
+	virtual UStaticMeshComponent* GetStaticMeshBase() const { return StaticMeshBase; };
+	virtual UStaticMeshComponent* GetStaticMeshEdge() const { return StaticMeshEdge; };
 	//~ End AXkHexagonActor Interface
 
 protected:
@@ -106,28 +132,6 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
 	TArray<TObjectPtr<class AXkHexagonActor>> HexagonBlockers;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
-	float Radius;
-
-	// Height of base(top) hexagon from edge(bottom) hexagon
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
-	float Height;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
-	float GapWidth;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
-	float BaseInnerGap;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
-	float BaseOuterGap;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
-	float EdgeInnerGap;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
-	float EdgeOuterGap;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
 	FLinearColor BaseColor;

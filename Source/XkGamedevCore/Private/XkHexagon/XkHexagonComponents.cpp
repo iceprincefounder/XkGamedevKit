@@ -1230,10 +1230,10 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 		MakeTrapezoidBoxAlongLine(
 			GateTowerMesh,
 			TopEdges,
-			Origin + FVector(0.0f, 0.0f, 200.0f) - FVector::XAxisVector * 75.0f,
-			Origin + FVector(0.0f, 0.0f, 200.0f) + FVector::XAxisVector * 75.0f,
-			150.0f,
-			150.0f,
+			Origin + FVector(0.0f, 0.0f, 200.0f) - FVector::XAxisVector * 50.0f,
+			Origin + FVector(0.0f, 0.0f, 200.0f) + FVector::XAxisVector * 50.0f,
+			100.0f,
+			100.0f,
 			50.0f,
 			0
 		);

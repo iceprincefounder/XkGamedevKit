@@ -89,13 +89,13 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 	{
 		for (int32 Y = -MaxManhattanDistance; Y < (MaxManhattanDistance + 1); Y++)
 		{
-			float Dist = Radius + GapWidth;
+			float Dist = HEXAGON_RADIUS + HEXAGON_GAP_WIDTH;
 			FVector2D Pos = FXkHexagonAStarPathfinding::CalcHexagonPosition(X, Y, Dist);
 			//////////////////////////////////////////////////////////////
 			// calculate XkHexagon coordinate
 			FIntVector HexagonCoord = FXkHexagonAStarPathfinding::CalcHexagonCoord(Pos.X, Pos.Y, Dist);
 			int32 ManhattanDistanceToCenter = FXkHexagonAStarPathfinding::CalcManhattanDistance(HexagonCoord, FIntVector(0, 0, 0));
-			FVector4f Position = FVector4f(Pos.X, Pos.Y, 0.0, Radius);
+			FVector4f Position = FVector4f(Pos.X, Pos.Y, 0.0, HEXAGON_RADIUS);
 
 			FXkHexagonNode HexagonNode = FXkHexagonNode(EXkHexagonType::Unavailable | EXkHexagonType::Ocean, Position, FVector4f::Zero(), HexagonCoord);
 			if (ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
