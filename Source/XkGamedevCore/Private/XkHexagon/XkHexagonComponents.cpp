@@ -608,19 +608,19 @@ UXkHexagonBasedFortressComponent::UXkHexagonBasedFortressComponent(const FObject
 }
 
 
-void MakeTrapezoidBaseHexagon(
+void MakeTrapezoidHexagon(
 	FDynamicMesh3& Mesh,
 	TArray<TPair<FVector, FVector>>& Edges,
 	TArray<TArray<FVector>>& Contours,
 	const TArray<TPair<FVector, FVector>>& EdgesToBlend,
 	const FVector& Center,
 	const FVector& PointTo,
-	const float BtmRadius,
 	const float TopRadius,
+	const float BtmRadius,
 	const float Height,
+	const int32 GroupId,
 	const bool bBlendingWithMesh,
-	const bool bHalfRadialSlices,
-	const int32 GroupId)
+	const bool bHalfRadialSlices)
 {
 	using namespace UE::Geometry;
 	const int32 RadialSlices = 6;
@@ -753,18 +753,105 @@ void MakeTrapezoidBaseHexagon(
 }
 
 
-void MakeTrapezoidBaseAlongLine(
+void MakeTrapezoidHexagon(
+	FDynamicMesh3& Mesh,
+	const TArray<TPair<FVector, FVector>>& EdgesToBlend,
+	const FVector& Center,
+	const FVector& PointTo,
+	const float TopRadius,
+	const float BtmRadius,
+	const float Height,
+	const int32 GroupId,
+	const bool bBlendingWithMesh,
+	const bool bHalfRadialSlices)
+{
+	TArray<TPair<FVector, FVector>> TmpEdges;
+	TArray<TArray<FVector>> TmpContours;
+	MakeTrapezoidHexagon(
+		Mesh,
+		TmpEdges,
+		TmpContours,
+		EdgesToBlend,
+		Center,
+		PointTo,
+		TopRadius,
+		BtmRadius,
+		Height,
+		GroupId,
+		bBlendingWithMesh,
+		bHalfRadialSlices);
+}
+
+void MakeTrapezoidHexagon(
+	FDynamicMesh3& Mesh,
+	TArray<TPair<FVector, FVector>>& Edges,
+	const FVector& Center,
+	const FVector& PointTo,
+	const float TopRadius,
+	const float BtmRadius,
+	const float Height,
+	const int32 GroupId
+)
+{
+	TArray<TArray<FVector>> TmpContours;
+	TArray<TPair<FVector, FVector>> TmpEdgesToBlend;
+	MakeTrapezoidHexagon(
+		Mesh,
+		Edges,
+		TmpContours,
+		TmpEdgesToBlend,
+		Center,
+		PointTo,
+		TopRadius,
+		BtmRadius,
+		Height,
+		GroupId,
+		false,
+		false);
+}
+
+
+void MakeTrapezoidHexagon(
+	FDynamicMesh3& Mesh,
+	const FVector& Center,
+	const FVector& PointTo,
+	const float TopRadius,
+	const float BtmRadius,
+	const float Height,
+	const int32 GroupId
+)
+{
+	TArray<TPair<FVector, FVector>> TmpEdges;
+	TArray<TArray<FVector>> TmpContours;
+	TArray<TPair<FVector, FVector>> TmpEdgesToBlend;
+	MakeTrapezoidHexagon(
+		Mesh,
+		TmpEdges,
+		TmpContours,
+		TmpEdgesToBlend,
+		Center,
+		PointTo,
+		TopRadius,
+		BtmRadius,
+		Height,
+		GroupId,
+		false,
+		false);
+}
+
+void MakeTrapezoidBoxAlongLine(
 	FDynamicMesh3& Mesh,
 	TArray<TPair<FVector, FVector>>& TopEdges,
 	TArray<TPair<FVector, FVector>>& BtmEdges,
 	TArray<TArray<FVector>>& Contours,
 	const FVector& Start,
 	const FVector& End,
-	bool bMoveEndToMid,
-	float BottomWidth,
 	float TopWidth,
+	float BottomWidth,
 	float Height,
-	int32 GroupId)
+	const int32 GroupId,
+	bool bMoveEndToMid,
+	bool bRecordFullEdges)
 {
 	using namespace UE::Geometry;
 
@@ -843,6 +930,11 @@ void MakeTrapezoidBaseAlongLine(
 
 		BtmEdges.Add(TPair<FVector, FVector>(v4, v0));
 		BtmEdges.Add(TPair<FVector, FVector>(v1, v5));
+		if (bRecordFullEdges)
+		{
+			BtmEdges.Add(TPair<FVector, FVector>(v0, v1));
+			BtmEdges.Add(TPair<FVector, FVector>(v5, v4));
+		}
 	}
 
 	// Top plane
@@ -856,121 +948,95 @@ void MakeTrapezoidBaseAlongLine(
 
 		TopEdges.Add(TPair<FVector, FVector>(v2, v6));
 		TopEdges.Add(TPair<FVector, FVector>(v7, v3));
-
+		if (bRecordFullEdges)
+		{
+			TopEdges.Add(TPair<FVector, FVector>(v6, v7));
+			TopEdges.Add(TPair<FVector, FVector>(v3, v2));
+		}
 		Contours.Add(TArray<FVector>{ v3, v2, v6, v7 });
 	}
 }
 
 
-void MakeTrapezoidWallAlongLine(
+void MakeTrapezoidBoxAlongLine(
 	FDynamicMesh3& Mesh,
 	TArray<TPair<FVector, FVector>>& TopEdges,
 	TArray<TPair<FVector, FVector>>& BtmEdges,
 	const FVector& Start,
 	const FVector& End,
-	float BottomWidth,
 	float TopWidth,
+	float BottomWidth,
 	float Height,
-	int32 GroupId)
+	const int32 GroupId
+	)
 {
 	TArray<TArray<FVector>> TmpContours;
-	MakeTrapezoidBaseAlongLine(
+	MakeTrapezoidBoxAlongLine(
 		Mesh,
 		TopEdges,
 		BtmEdges,
 		TmpContours,
 		Start,
 		End,
-		false,
-		BottomWidth,
 		TopWidth,
-		Height,
-		GroupId);
+		BottomWidth,
+		Height, 
+		GroupId,
+		false, false);
 }
 
 
-void MakeTrapezoidWallHexagon(
+void MakeTrapezoidBoxAlongLine(
 	FDynamicMesh3& Mesh,
-	const TArray<TPair<FVector, FVector>>& EdgesToBlend,
-	const FVector& Center,
-	const FVector& PointTo,
-	const float BtmRadius,
-	const float TopRadius,
-	const float Height,
-	const bool bBlendingWithMesh,
-	const bool bHalfRadialSlices,
-	const int32 GroupId)
+	TArray<TPair<FVector, FVector>>& TopEdges,
+	const FVector& Start,
+	const FVector& End,
+	float TopWidth,
+	float BottomWidth,
+	float Height,
+	const int32 GroupId
+	)
 {
-	TArray<TPair<FVector, FVector>> TmpEdges;
+	TArray<TPair<FVector, FVector>> TmpBtmEdges;
 	TArray<TArray<FVector>> TmpContours;
-	MakeTrapezoidBaseHexagon(
+	MakeTrapezoidBoxAlongLine(
 		Mesh,
-		TmpEdges,
+		TopEdges,
+		TmpBtmEdges,
 		TmpContours,
-		EdgesToBlend,
-		Center,
-		PointTo,
-		BtmRadius,
-		TopRadius,
-		Height,
-		bBlendingWithMesh,
-		bHalfRadialSlices,
-		GroupId);
+		Start,
+		End,
+		TopWidth,
+		BottomWidth,
+		Height, 
+		GroupId,
+		false, true);
 }
 
-
-void MakeTrapezoidTowerHexagon(
-	FDynamicMesh3& Mesh,
-	TArray<TPair<FVector, FVector>>& Edges,
-	const FVector& Center,
-	const FVector& PointTo,
-	const float BtmRadius,
-	const float TopRadius,
-	const float Height,
-	const int32 GroupId)
-{
-	TArray<TArray<FVector>> TmpContours;
-	TArray<TPair<FVector, FVector>> TmpEdgesToBlend;
-	MakeTrapezoidBaseHexagon(
-		Mesh,
-		Edges,
-		TmpContours,
-		TmpEdgesToBlend,
-		Center,
-		PointTo,
-		BtmRadius,
-		TopRadius,
-		Height,
-		false,
-		false,
-		GroupId);
-}
-
-
-void MakeTrapezoidGateAlongLine(
+void MakeTrapezoidBoxAlongLine(
 	FDynamicMesh3& Mesh,
 	const FVector& Start,
 	const FVector& End,
-	float BottomWidth,
 	float TopWidth,
+	float BottomWidth,
 	float Height,
 	int32 GroupId)
 {
 	TArray<TPair<FVector, FVector>> TmpTopEdges;
 	TArray<TPair<FVector, FVector>> TmpBtmEdges;
 	TArray<TArray<FVector>> TmpContours;
-	MakeTrapezoidBaseAlongLine(
+	MakeTrapezoidBoxAlongLine(
 		Mesh,
 		TmpTopEdges,
 		TmpBtmEdges,
 		TmpContours,
 		Start,
 		End,
-		false,
-		BottomWidth,
 		TopWidth,
-		Height,
-		GroupId);
+		BottomWidth,
+		Height, 
+		GroupId,
+		false, false);
 }
 
 
@@ -990,19 +1056,18 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressBase()
 		TArray<TPair<FVector, FVector>> TopEdges;
 		TArray<TPair<FVector, FVector>> BtmEdges;
 		TArray<TArray<FVector>> Contours;
-		MakeTrapezoidBaseAlongLine(
+		MakeTrapezoidBoxAlongLine(
 			ShapeMesh,
 			TopEdges,
 			BtmEdges,
 			Contours,
 			Origin,
 			Target,
-			true,
-			100.0f,
 			65.0f,
-			200.0f,
-			0
-		);
+			100.0f,
+			200.0f, 
+			0,
+			true, false);
 		TrapezoidBaseEdges.Append(TopEdges);
 		TrapezoidBaseContours.Append(Contours);
 		EdgesToBlend.Append(TopEdges);
@@ -1012,21 +1077,21 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressBase()
 	{
 		FVector Target = TrapezoidBaseAnchors.Num() > 0 ? TargetAmount / TrapezoidBaseAnchors.Num() : Origin;
 		Target.Z = Origin.Z;
-		MakeTrapezoidBaseHexagon(
+		MakeTrapezoidHexagon(
 			ShapeMesh,
 			TrapezoidBaseEdges,
 			TrapezoidBaseContours,
 			EdgesToBlend,
 			Origin,
 			Target,
-			100.0f,
 			65.0f,
+			100.0f,
 			200.0f,
+			0,
 			true,
-			TrapezoidBaseAnchors.Num() > 0,
-			0);
+			TrapezoidBaseAnchors.Num() > 0);
 	}
-	UpdateTrapezoidDynamicMeshInternal(ShapeMesh, true);
+	UpdateDynamicMeshInternal(ShapeMesh, true);
 	SetMaterial(0, TrapezoidWallMaterial);
 	
 #if WITH_EDITOR
@@ -1046,10 +1111,12 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressBase()
 
 void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressWall()
 {
+	UpdateHexagonBasedFortressBase();
+
 	TArray<FXkGeomEdge> BoundaryEdges = GetTrapezoidBaseBoundaryEdges();
 	using namespace UE::Geometry;
-	FDynamicMesh3 ShapeMesh = BuildTrapezoidWallByBoundaryEdges(BoundaryEdges);
-	UpdateTrapezoidDynamicMeshInternal(ShapeMesh);
+	FDynamicMesh3 ShapeMesh = CalcWavePatternByBoundaryEdgesInternal(BoundaryEdges);
+	UpdateDynamicMeshInternal(ShapeMesh);
 	SetMaterial(0, TrapezoidWallMaterial);
 }
 
@@ -1069,91 +1136,138 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressTower()
 	{
 		FVector Target = TrapezoidBaseAnchors.Num() > 0 ? TargetAmount / TrapezoidBaseAnchors.Num() : Origin;
 		Target.Z = Origin.Z;
-		MakeTrapezoidTowerHexagon(
+		MakeTrapezoidHexagon(
 			ShapeMesh,
 			Edges,
 			Origin,
 			Target,
-			100.0f,
-			95.0f,
+			120.0f,
+			150.0f,
 			300.0f,
-			0);
+			0
+			);
 	}
 	TArray<FXkGeomEdge> BoundaryEdges;
 	for (const TPair<FVector, FVector>& Edge : Edges)
 	{
 		BoundaryEdges.Add(FXkGeomEdge(Edge));
 	}
-	UpdateTrapezoidDynamicMeshInternal(ShapeMesh);
-	FDynamicMesh3 WallShapeMesh = BuildTrapezoidWallByBoundaryEdges(BoundaryEdges);
-	UpdateTrapezoidDynamicMeshInternal(WallShapeMesh);
+	UpdateDynamicMeshInternal(ShapeMesh);
+	FDynamicMesh3 WallShapeMesh = CalcWavePatternByBoundaryEdgesInternal(BoundaryEdges);
+	UpdateDynamicMeshInternal(WallShapeMesh);
 	SetMaterial(0, TrapezoidWallMaterial);
 }
 
 
 void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 {
-	using namespace UE::Geometry;
-	FDynamicMesh3 ShapeMesh = FDynamicMesh3();
 	FVector Origin = GetComponentLocation();
 	FVector Direction = FVector::ZeroVector;
+	bool bHasValidConnection = false;
 	for (int32 Index = 0; Index < NeighborHexagonCenters.Num() / 2; Index++)
 	{
 		FVector A = NeighborHexagonCenters[Index];
-		if (TrapezoidBaseAnchors.Contains(A))
-		{
-			continue;
-		}
 		FVector B = NeighborHexagonCenters[(Index + 3) % NeighborHexagonCenters.Num()];
-		if (TrapezoidBaseAnchors.Contains(B))
+		if (TrapezoidBaseAnchors.Contains(A) && TrapezoidBaseAnchors.Contains(B))
 		{
-			continue;
+			Direction = (B - A).GetSafeNormal();
+			bHasValidConnection = true;
 		}
-		Direction += (B - A).GetSafeNormal();
-
-		MakeTrapezoidGateAlongLine(
-			ShapeMesh,
-			Origin - Direction.GetSafeNormal() * 100.0f + FVector(0.0f, 0.0f, -5.0f),
-			Origin + Direction.GetSafeNormal() * 100.0f + FVector(0.0f, 0.0f, -5.0f),
-			75.0f,
-			55.0f,
-			185.0f,
-			0);
 	}
-	UDynamicMesh* DynamicMesh = GetDynamicMesh();
-	FDynamicMesh3 OriginMesh(DynamicMesh->GetMeshRef());
-	FDynamicMesh3 MergedMesh = BooleanOperationInternal(FMeshBoolean::EBooleanOp::Difference, OriginMesh, ShapeMesh, GetComponentTransform());
-	UpdateTrapezoidDynamicMeshInternal(MergedMesh, true);
-
-	TArray<TPair<FVector, FVector>> Edges;
-	FDynamicMesh3 GateTowerMesh = FDynamicMesh3();
-	MakeTrapezoidTowerHexagon(
-		GateTowerMesh,
-		Edges,
-		Origin + FVector(0.0f, 0.0f, 200.0f),
-		Origin + Direction.GetSafeNormal() * 100.0f + FVector(0.0f, 0.0f, 200.0f),
-		125.0f,
-		125.0f,
-		35.0f,
-		0);
-	MakeTrapezoidTowerHexagon(
-		GateTowerMesh,
-		Edges,
-		Origin + FVector(0.0f, 0.0f, 235.0f),
-		Origin + Direction.GetSafeNormal() * 100.0f + FVector(0.0f, 0.0f, 235.0f),
-		150.0f,
-		10.0f,
-		100.0f,
-		0);
-	TArray<FXkGeomEdge> BoundaryEdges;
-	for (const TPair<FVector, FVector>& Edge : Edges)
 	{
-		BoundaryEdges.Add(FXkGeomEdge(Edge));
+		FDynamicMesh3 ShapeMesh = FDynamicMesh3();
+		FVector NewOrigin = Origin + FVector(0.0f, 0.0f, -100.0f);
+		MakeTrapezoidHexagon(
+			ShapeMesh,
+			NewOrigin,
+			NewOrigin + FVector::XAxisVector,
+			250.0f,
+			250.0f,
+			280.0f,
+			0);
+		UDynamicMesh* DynamicMesh = GetDynamicMesh();
+		FDynamicMesh3 OriginMesh(DynamicMesh->GetMeshRef());
+		FDynamicMesh3 MergedMesh = CalcBooleanOperationInternal(FMeshBoolean::EBooleanOp::Difference, OriginMesh, ShapeMesh, GetComponentTransform());
+		UpdateDynamicMeshInternal(MergedMesh, true);
 	}
-	UpdateTrapezoidDynamicMeshInternal(GateTowerMesh);
-	//FDynamicMesh3 WallShapeMesh = BuildTrapezoidWallByBoundaryEdges(BoundaryEdges);
-	//UpdateTrapezoidDynamicMeshInternal(WallShapeMesh);
 
+	if (TrapezoidBaseAnchors.Num() == 2 && bHasValidConnection)
+	{
+		FDynamicMesh3 GateTowerMesh = FDynamicMesh3();
+		TArray<TPair<FVector, FVector>> TopEdges;
+		FVector RightVector = FVector::CrossProduct(FVector::UpVector, Direction).GetSafeNormal();
+		MakeTrapezoidBoxAlongLine(
+			GateTowerMesh,
+			TopEdges,
+			Origin - RightVector.GetSafeNormal() * 75.0f + FVector(0.0f, 0.0f, 185.0f),
+			Origin + RightVector.GetSafeNormal() * 75.0f + FVector(0.0f, 0.0f, 185.0f),
+			175.0f,
+			175.0f,
+			75.0f,
+			0
+		);
+		TArray<FXkGeomEdge> BoundaryEdges;
+		for (const TPair<FVector, FVector>& Edge : TopEdges)
+		{
+			BoundaryEdges.Add(FXkGeomEdge(Edge));
+		}
+		UpdateDynamicMeshInternal(GateTowerMesh);
+		FDynamicMesh3 WallShapeMesh = CalcWavePatternByBoundaryEdgesInternal(BoundaryEdges);
+		UpdateDynamicMeshInternal(WallShapeMesh);
+	}
+	else if (TrapezoidBaseAnchors.Num() == 0)
+	{
+		FDynamicMesh3 GateTowerMesh = FDynamicMesh3();
+		MakeTrapezoidHexagon(
+			GateTowerMesh,
+			Origin,
+			Origin,
+			50.0,
+			20.0,
+			200.0,
+			0);
+		TArray<TPair<FVector, FVector>> TopEdges;
+		MakeTrapezoidBoxAlongLine(
+			GateTowerMesh,
+			TopEdges,
+			Origin + FVector(0.0f, 0.0f, 200.0f) - FVector::XAxisVector * 75.0f,
+			Origin + FVector(0.0f, 0.0f, 200.0f) + FVector::XAxisVector * 75.0f,
+			150.0f,
+			150.0f,
+			50.0f,
+			0
+		);
+		TArray<FXkGeomEdge> BoundaryEdges;
+		for (const TPair<FVector, FVector>& Edge : TopEdges)
+		{
+			BoundaryEdges.Add(FXkGeomEdge(Edge));
+		}
+		UpdateDynamicMeshInternal(GateTowerMesh);
+		FDynamicMesh3 WallShapeMesh = CalcWavePatternByBoundaryEdgesInternal(BoundaryEdges);
+		UpdateDynamicMeshInternal(WallShapeMesh);
+	}
+	else if (TrapezoidBaseAnchors.Num() > 2)
+	{
+		FDynamicMesh3 GateTowerMesh = FDynamicMesh3();
+		TArray<TPair<FVector, FVector>> TopEdges;
+		MakeTrapezoidHexagon(
+			GateTowerMesh,
+			TopEdges,
+			Origin + FVector(0.0f, 0.0f, 185.0f),
+			Origin + FVector(0.0f, 0.0f, 185.0f),
+			150.0,
+			150.0,
+			50.0,
+			0);
+		UpdateDynamicMeshInternal(GateTowerMesh);
+		TArray<FXkGeomEdge> BoundaryEdges;
+		for (const TPair<FVector, FVector>& Edge : TopEdges)
+		{
+			BoundaryEdges.Add(FXkGeomEdge(Edge));
+		}
+		FDynamicMesh3 WallShapeMesh = CalcWavePatternByBoundaryEdgesInternal(BoundaryEdges);
+		UpdateDynamicMeshInternal(WallShapeMesh);
+	}
 	SetMaterial(0, TrapezoidWallMaterial);
 }
 
@@ -1247,7 +1361,7 @@ TArray<FXkGeomEdge> UXkHexagonBasedFortressComponent::GetTrapezoidBaseBoundaryEd
 }
 
 
-void UXkHexagonBasedFortressComponent::UpdateTrapezoidDynamicMeshInternal(const FDynamicMesh3& InDynamicMesh, const bool bForceUpdate)
+void UXkHexagonBasedFortressComponent::UpdateDynamicMeshInternal(const FDynamicMesh3& InDynamicMesh, const bool bForceUpdate)
 {
 	UDynamicMesh* DynamicMesh = GetDynamicMesh();
 	if (!DynamicMesh || !IsValid(DynamicMesh))
@@ -1292,7 +1406,24 @@ void UXkHexagonBasedFortressComponent::UpdateTrapezoidDynamicMeshInternal(const 
 }
 
 
-FDynamicMesh3 UXkHexagonBasedFortressComponent::BuildTrapezoidWallByBoundaryEdges(const TArray<FXkGeomEdge>& InBoundaryEdges)
+FVector UXkHexagonBasedFortressComponent::CalcDynamicMeshCenterPivotInternal(const FDynamicMesh3& InDynamicMesh, const FTransformSRT3d& InTransform) const
+{
+	FVector3d Center = FVector3d::ZeroVector;
+	int32 VertexCount = 0;
+	for (int32 vid : InDynamicMesh.VertexIndicesItr())
+	{
+		Center += InDynamicMesh.GetVertex(vid);
+		VertexCount++;
+	}
+	if (VertexCount > 0)
+	{
+		Center /= (double)VertexCount;
+	}
+	return InTransform.TransformPosition((FVector)Center);
+}
+
+
+FDynamicMesh3 UXkHexagonBasedFortressComponent::CalcWavePatternByBoundaryEdgesInternal(const TArray<FXkGeomEdge>& InBoundaryEdges)
 {
 	using namespace UE::Geometry;
 	FDynamicMesh3 ResultMesh = FDynamicMesh3();
@@ -1300,7 +1431,7 @@ FDynamicMesh3 UXkHexagonBasedFortressComponent::BuildTrapezoidWallByBoundaryEdge
 	TArray<TPair<FVector, FVector>> BtmEdges;
 	for (const FXkGeomEdge& Edge : InBoundaryEdges)
 	{
-		MakeTrapezoidWallAlongLine(
+		MakeTrapezoidBoxAlongLine(
 			ResultMesh,
 			TopEdges,
 			BtmEdges,
@@ -1310,7 +1441,29 @@ FDynamicMesh3 UXkHexagonBasedFortressComponent::BuildTrapezoidWallByBoundaryEdge
 			10.0f,
 			20.0f,
 			0
-		);
+			);
+		float EdgeLength = FVector::Dist(Edge.GetStart(), Edge.GetEnd());
+		float WaveLength = 15.0f;
+		int32 NumSegments = FMath::FloorToInt(EdgeLength / WaveLength);
+		float Remainder = EdgeLength - NumSegments * WaveLength;
+		float CurrentLength = Remainder / 2.0f;
+		for (int32 SegmentIndex = 0; SegmentIndex < NumSegments; SegmentIndex++)
+		{
+			if (SegmentIndex % 2 == 0)
+			{
+				FVector StartPoint = Edge.GetStart() + Edge.GetForward() * CurrentLength;
+				FVector EndPoint = Edge.GetStart() + Edge.GetForward() * (CurrentLength + WaveLength);
+				MakeTrapezoidBoxAlongLine(
+					ResultMesh,
+					StartPoint + FVector(0.0f, 0.0f, 20.0f),
+					EndPoint + FVector(0.0f, 0.0f, 20.0f),
+					7.5f,
+					10.0f,
+					10.0f,
+					0);
+			}
+			CurrentLength += WaveLength;
+		}
 	}
 	TArray<TPair<FVector, FVector>> EdgesToBlend;
 	EdgesToBlend.Append(TopEdges);
@@ -1343,7 +1496,7 @@ FDynamicMesh3 UXkHexagonBasedFortressComponent::BuildTrapezoidWallByBoundaryEdge
 				}
 				FVector Target = Point + (V1 + V2).GetSafeNormal() * 25.0f;
 				Target.Z = Point.Z;
-				MakeTrapezoidWallHexagon(
+				MakeTrapezoidHexagon(
 					ResultMesh,
 					EdgesToBlend,
 					Point,
@@ -1351,9 +1504,9 @@ FDynamicMesh3 UXkHexagonBasedFortressComponent::BuildTrapezoidWallByBoundaryEdge
 					10.0f,
 					10.0f,
 					20.0f,
+					0,
 					true,
-					true,
-					0
+					true
 				);
 			}
 		}
@@ -1363,7 +1516,7 @@ FDynamicMesh3 UXkHexagonBasedFortressComponent::BuildTrapezoidWallByBoundaryEdge
 }
 
 
-FDynamicMesh3 UXkHexagonBasedFortressComponent::BooleanOperationInternal(const FMeshBoolean::EBooleanOp Operation, 
+FDynamicMesh3 UXkHexagonBasedFortressComponent::CalcBooleanOperationInternal(const FMeshBoolean::EBooleanOp Operation, 
 	const FDynamicMesh3& MeshA, const FDynamicMesh3& MeshB, const FTransformSRT3d& TransformA, const FTransformSRT3d& TransformB)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(UXkHexagonBasedFortressComponent::BooleanOp);

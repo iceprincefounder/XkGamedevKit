@@ -214,7 +214,7 @@ public:
 	FORCEINLINE virtual void SetLeftFootRelativeLocation(const FVector& Input) { LeftFootRelativeLocation = Input; };
 	FORCEINLINE virtual void SetRightFootRelativeLocation(const FVector& Input) { RightFootRelativeLocation = Input; };
 
-	virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false);
+	virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false, const bool bTraceCharacterStep = true);
 	virtual FVector GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false);
 	//~ End UXkTargetMovementComponent Interface
 

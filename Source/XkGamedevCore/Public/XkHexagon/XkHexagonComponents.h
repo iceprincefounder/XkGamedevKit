@@ -158,9 +158,10 @@ public:
 
 private:
 	TArray<FXkGeomEdge> GetTrapezoidBaseBoundaryEdges() const;
-	void UpdateTrapezoidDynamicMeshInternal(const FDynamicMesh3& InDynamicMesh, const bool bForceUpdate = false);
-	FDynamicMesh3 BuildTrapezoidWallByBoundaryEdges(const TArray<FXkGeomEdge>& InBoundaryEdges);
-	FDynamicMesh3 BooleanOperationInternal(const FMeshBoolean::EBooleanOp Operation, 
+	void UpdateDynamicMeshInternal(const FDynamicMesh3& InDynamicMesh, const bool bForceUpdate = false);
+	FVector CalcDynamicMeshCenterPivotInternal(const FDynamicMesh3& InDynamicMesh, const FTransformSRT3d& InTransform = FTransformSRT3d::Identity()) const;
+	FDynamicMesh3 CalcWavePatternByBoundaryEdgesInternal(const TArray<FXkGeomEdge>& InBoundaryEdges);
+	FDynamicMesh3 CalcBooleanOperationInternal(const FMeshBoolean::EBooleanOp Operation, 
 		const FDynamicMesh3& MeshA, const FDynamicMesh3& MeshB, 
 		const FTransformSRT3d& TransformA = FTransformSRT3d::Identity(),
 		const FTransformSRT3d& TransformB = FTransformSRT3d::Identity());
