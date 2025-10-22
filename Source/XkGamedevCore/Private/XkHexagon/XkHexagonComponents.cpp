@@ -618,11 +618,31 @@ void MakeTrapezoidHexagon(
 	const float TopRadius,
 	const float BtmRadius,
 	const float Height,
-	const int32 GroupId,
+	const int32 GroupId0,
+	const int32 GroupId1,
 	const bool bBlendingWithMesh,
 	const bool bHalfRadialSlices)
 {
 	using namespace UE::Geometry;
+
+	if (!Mesh.HasAttributes())
+	{
+		Mesh.EnableAttributes();
+	}
+	if (!Mesh.HasTriangleGroups())
+	{
+		Mesh.EnableTriangleGroups();
+	}
+	if (!Mesh.Attributes()->HasMaterialID())
+	{
+		Mesh.Attributes()->EnableMaterialID();
+	}
+	if (!Mesh.HasTriangleGroups())
+	{
+		Mesh.EnableTriangleGroups();
+	}
+	FDynamicMeshMaterialAttribute* MaterialIDs = Mesh.Attributes()->GetMaterialID();
+
 	const int32 RadialSlices = 6;
 	FVector Target = (PointTo - Center).GetSafeNormal();
 	FVector RightY = FVector::RightVector;
@@ -721,11 +741,16 @@ void MakeTrapezoidHexagon(
 		int32 i0 = SidVerticesMap[TopA];
 		int32 i1 = SidVerticesMap[TopB];
 		int32 i2 = SidVerticesMap[BtmA];
-		Mesh.AppendTriangle(i0, i1, i2, GroupId);
+		int Tri0 = Mesh.AppendTriangle(i0, i1, i2);
+		Mesh.SetTriangleGroup(Tri0, GroupId0);
+		MaterialIDs->SetValue(Tri0, GroupId0);
+
 		int32 i3 = SidVerticesMap[BtmA];
 		int32 i4 = SidVerticesMap[TopB];
 		int32 i5 = SidVerticesMap[BtmB];
-		Mesh.AppendTriangle(i3, i4, i5, GroupId);
+		int Tri1 = Mesh.AppendTriangle(i3, i4, i5);
+		Mesh.SetTriangleGroup(Tri1, GroupId0);
+		MaterialIDs->SetValue(Tri1, GroupId0);
 	}
 	TArray<FVector> Contour;
 	// Create indices for the top circle
@@ -735,7 +760,10 @@ void MakeTrapezoidHexagon(
 		int32 TopA = TopVerticesMap[i];
 		int32 TopB = TopVerticesMap[NextIndex];
 		int32 CenterTopIndex = TopVerticesMap[TopVertices.Num() - 1];
-		Mesh.AppendTriangle(TopA, CenterTopIndex, TopB, GroupId);
+		int Trid = Mesh.AppendTriangle(TopA, CenterTopIndex, TopB);
+		Mesh.SetTriangleGroup(Trid, GroupId1);
+		MaterialIDs->SetValue(Trid, GroupId1);
+
 		Contour.AddUnique(TopVertices[i]);
 		Contour.AddUnique(TopVertices[NextIndex]);
 		Edges.Add(TPair<FVector, FVector>(TopVertices[NextIndex], TopVertices[i]));
@@ -748,7 +776,9 @@ void MakeTrapezoidHexagon(
 		int32 BtmA = BtmVerticesMap[i];
 		int32 BtmB = BtmVerticesMap[NextIndex];
 		int32 CenterBtmIndex = BtmVerticesMap[BtmVertices.Num() - 1];
-		Mesh.AppendTriangle(BtmA, BtmB, CenterBtmIndex, GroupId);
+		int Trid = Mesh.AppendTriangle(BtmA, BtmB, CenterBtmIndex);
+		Mesh.SetTriangleGroup(Trid, GroupId1);
+		MaterialIDs->SetValue(Trid, GroupId1);
 	}
 }
 
@@ -761,7 +791,8 @@ void MakeTrapezoidHexagon(
 	const float TopRadius,
 	const float BtmRadius,
 	const float Height,
-	const int32 GroupId,
+	const int32 GroupId0,
+	const int32 GroupId1,
 	const bool bBlendingWithMesh,
 	const bool bHalfRadialSlices)
 {
@@ -777,7 +808,8 @@ void MakeTrapezoidHexagon(
 		TopRadius,
 		BtmRadius,
 		Height,
-		GroupId,
+		GroupId0,
+		GroupId1,
 		bBlendingWithMesh,
 		bHalfRadialSlices);
 }
@@ -790,7 +822,8 @@ void MakeTrapezoidHexagon(
 	const float TopRadius,
 	const float BtmRadius,
 	const float Height,
-	const int32 GroupId
+	const int32 GroupId0,
+	const int32 GroupId1
 )
 {
 	TArray<TArray<FVector>> TmpContours;
@@ -805,7 +838,8 @@ void MakeTrapezoidHexagon(
 		TopRadius,
 		BtmRadius,
 		Height,
-		GroupId,
+		GroupId0,
+		GroupId1,
 		false,
 		false);
 }
@@ -818,7 +852,8 @@ void MakeTrapezoidHexagon(
 	const float TopRadius,
 	const float BtmRadius,
 	const float Height,
-	const int32 GroupId
+	const int32 GroupId0,
+	const int32 GroupId1
 )
 {
 	TArray<TPair<FVector, FVector>> TmpEdges;
@@ -834,7 +869,8 @@ void MakeTrapezoidHexagon(
 		TopRadius,
 		BtmRadius,
 		Height,
-		GroupId,
+		GroupId0,
+		GroupId1,
 		false,
 		false);
 }
@@ -849,11 +885,30 @@ void MakeTrapezoidBoxAlongLine(
 	float TopWidth,
 	float BottomWidth,
 	float Height,
-	const int32 GroupId,
+	const int32 GroupId0,
+	const int32 GroupId1,
 	bool bMoveEndToMid,
 	bool bRecordFullEdges)
 {
 	using namespace UE::Geometry;
+
+	if (!Mesh.HasAttributes())
+	{
+		Mesh.EnableAttributes();
+	}
+	if (!Mesh.HasTriangleGroups())
+	{
+		Mesh.EnableTriangleGroups();
+	}
+	if (!Mesh.Attributes()->HasMaterialID())
+	{
+		Mesh.Attributes()->EnableMaterialID();
+	}
+	if (!Mesh.HasTriangleGroups())
+	{
+		Mesh.EnableTriangleGroups();
+	}
+	FDynamicMeshMaterialAttribute* MaterialIDs = Mesh.Attributes()->GetMaterialID();
 
 	FVector Forward = (End - Start).GetSafeNormal();
 	FVector Right = FVector::CrossProduct(FVector::UpVector, Forward).GetSafeNormal();
@@ -885,8 +940,12 @@ void MakeTrapezoidBoxAlongLine(
 		int i1 = Mesh.AppendVertex((FVector3d)v1);
 		int i2 = Mesh.AppendVertex((FVector3d)v2);
 		int i3 = Mesh.AppendVertex((FVector3d)v3);
-		Mesh.AppendTriangle(i0, i1, i3, GroupId);
-		Mesh.AppendTriangle(i1, i2, i3, GroupId);
+		int Tri0 = Mesh.AppendTriangle(i0, i1, i3);
+		int Tri1 = Mesh.AppendTriangle(i1, i2, i3);
+		Mesh.SetTriangleGroup(Tri0, GroupId0);
+		Mesh.SetTriangleGroup(Tri1, GroupId0);
+		MaterialIDs->SetValue(Tri0, GroupId0);
+		MaterialIDs->SetValue(Tri1, GroupId0);
 	}
 
 	// End plane
@@ -895,8 +954,12 @@ void MakeTrapezoidBoxAlongLine(
 		int i5 = Mesh.AppendVertex((FVector3d)v5);
 		int i6 = Mesh.AppendVertex((FVector3d)v6);
 		int i7 = Mesh.AppendVertex((FVector3d)v7);
-		Mesh.AppendTriangle(i4, i7, i5, GroupId);
-		Mesh.AppendTriangle(i5, i7, i6, GroupId);
+		int Tri0 = Mesh.AppendTriangle(i4, i7, i5);
+		int Tri1 = Mesh.AppendTriangle(i5, i7, i6);
+		Mesh.SetTriangleGroup(Tri0, GroupId0);
+		Mesh.SetTriangleGroup(Tri1, GroupId0);
+		MaterialIDs->SetValue(Tri0, GroupId0);
+		MaterialIDs->SetValue(Tri1, GroupId0);
 	}
 
 	// Right plane
@@ -905,8 +968,12 @@ void MakeTrapezoidBoxAlongLine(
 		int i2 = Mesh.AppendVertex((FVector3d)v2);
 		int i5 = Mesh.AppendVertex((FVector3d)v5);
 		int i6 = Mesh.AppendVertex((FVector3d)v6);
-		Mesh.AppendTriangle(i1, i5, i2, GroupId);
-		Mesh.AppendTriangle(i2, i5, i6, GroupId);
+		int Tri0 = Mesh.AppendTriangle(i1, i5, i2);
+		int Tri1 = Mesh.AppendTriangle(i2, i5, i6);
+		Mesh.SetTriangleGroup(Tri0, GroupId0);
+		Mesh.SetTriangleGroup(Tri1, GroupId0);
+		MaterialIDs->SetValue(Tri0, GroupId0);
+		MaterialIDs->SetValue(Tri1, GroupId0);
 	}
 
 	// Left plane
@@ -915,8 +982,12 @@ void MakeTrapezoidBoxAlongLine(
 		int i3 = Mesh.AppendVertex((FVector3d)v3);
 		int i4 = Mesh.AppendVertex((FVector3d)v4);
 		int i7 = Mesh.AppendVertex((FVector3d)v7);
-		Mesh.AppendTriangle(i3, i7, i0, GroupId);
-		Mesh.AppendTriangle(i0, i7, i4, GroupId);
+		int Tri0 = Mesh.AppendTriangle(i3, i7, i0);
+		int Tri1 = Mesh.AppendTriangle(i0, i7, i4);
+		Mesh.SetTriangleGroup(Tri0, GroupId0);
+		Mesh.SetTriangleGroup(Tri1, GroupId0);
+		MaterialIDs->SetValue(Tri0, GroupId0);
+		MaterialIDs->SetValue(Tri1, GroupId0);
 	}
 
 	// Bottom plane
@@ -925,8 +996,12 @@ void MakeTrapezoidBoxAlongLine(
 		int i1 = Mesh.AppendVertex((FVector3d)v1);
 		int i4 = Mesh.AppendVertex((FVector3d)v4);
 		int i5 = Mesh.AppendVertex((FVector3d)v5);
-		Mesh.AppendTriangle(i0, i4, i1, GroupId);
-		Mesh.AppendTriangle(i1, i4, i5, GroupId);
+		int Tri0 = Mesh.AppendTriangle(i0, i4, i1);
+		int Tri1 = Mesh.AppendTriangle(i1, i4, i5);
+		Mesh.SetTriangleGroup(Tri0, GroupId1);
+		Mesh.SetTriangleGroup(Tri1, GroupId1);
+		MaterialIDs->SetValue(Tri0, GroupId1);
+		MaterialIDs->SetValue(Tri1, GroupId1);
 
 		BtmEdges.Add(TPair<FVector, FVector>(v4, v0));
 		BtmEdges.Add(TPair<FVector, FVector>(v1, v5));
@@ -943,8 +1018,12 @@ void MakeTrapezoidBoxAlongLine(
 		int i3 = Mesh.AppendVertex((FVector3d)v3);
 		int i6 = Mesh.AppendVertex((FVector3d)v6);
 		int i7 = Mesh.AppendVertex((FVector3d)v7);
-		Mesh.AppendTriangle(i2, i6, i3, GroupId);
-		Mesh.AppendTriangle(i3, i6, i7, GroupId);
+		int Tri0 = Mesh.AppendTriangle(i2, i6, i3);
+		int Tri1 = Mesh.AppendTriangle(i3, i6, i7);
+		Mesh.SetTriangleGroup(Tri0, GroupId1);
+		Mesh.SetTriangleGroup(Tri1, GroupId1);
+		MaterialIDs->SetValue(Tri0, GroupId1);
+		MaterialIDs->SetValue(Tri1, GroupId1);
 
 		TopEdges.Add(TPair<FVector, FVector>(v2, v6));
 		TopEdges.Add(TPair<FVector, FVector>(v7, v3));
@@ -967,7 +1046,8 @@ void MakeTrapezoidBoxAlongLine(
 	float TopWidth,
 	float BottomWidth,
 	float Height,
-	const int32 GroupId
+	const int32 GroupId0,
+	const int32 GroupId1
 	)
 {
 	TArray<TArray<FVector>> TmpContours;
@@ -981,7 +1061,8 @@ void MakeTrapezoidBoxAlongLine(
 		TopWidth,
 		BottomWidth,
 		Height, 
-		GroupId,
+		GroupId0,
+		GroupId1,
 		false, false);
 }
 
@@ -994,7 +1075,8 @@ void MakeTrapezoidBoxAlongLine(
 	float TopWidth,
 	float BottomWidth,
 	float Height,
-	const int32 GroupId
+	const int32 GroupId0,
+	const int32 GroupId1
 	)
 {
 	TArray<TPair<FVector, FVector>> TmpBtmEdges;
@@ -1009,7 +1091,8 @@ void MakeTrapezoidBoxAlongLine(
 		TopWidth,
 		BottomWidth,
 		Height, 
-		GroupId,
+		GroupId0,
+		GroupId1,
 		false, true);
 }
 
@@ -1020,7 +1103,9 @@ void MakeTrapezoidBoxAlongLine(
 	float TopWidth,
 	float BottomWidth,
 	float Height,
-	int32 GroupId)
+	int32 GroupId0,
+	int32 GroupId1
+	)
 {
 	TArray<TPair<FVector, FVector>> TmpTopEdges;
 	TArray<TPair<FVector, FVector>> TmpBtmEdges;
@@ -1035,7 +1120,8 @@ void MakeTrapezoidBoxAlongLine(
 		TopWidth,
 		BottomWidth,
 		Height, 
-		GroupId,
+		GroupId0,
+		GroupId1,
 		false, false);
 }
 
@@ -1067,6 +1153,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressBase()
 			100.0f,
 			200.0f, 
 			0,
+			1,
 			true, false);
 		TrapezoidBaseEdges.Append(TopEdges);
 		TrapezoidBaseContours.Append(Contours);
@@ -1088,12 +1175,11 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressBase()
 			100.0f,
 			200.0f,
 			0,
+			1,
 			true,
 			TrapezoidBaseAnchors.Num() > 0);
 	}
 	UpdateDynamicMeshInternal(ShapeMesh, true);
-	SetMaterial(0, TrapezoidWallMaterial);
-	
 #if WITH_EDITOR
 	if (bExplicitShowWireframe)
 	{
@@ -1111,13 +1197,10 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressBase()
 
 void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressWall()
 {
-	UpdateHexagonBasedFortressBase();
-
 	TArray<FXkGeomEdge> BoundaryEdges = GetTrapezoidBaseBoundaryEdges();
 	using namespace UE::Geometry;
 	FDynamicMesh3 ShapeMesh = CalcWavePatternByBoundaryEdgesInternal(BoundaryEdges);
 	UpdateDynamicMeshInternal(ShapeMesh);
-	SetMaterial(0, TrapezoidWallMaterial);
 }
 
 
@@ -1144,7 +1227,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressTower()
 			120.0f,
 			150.0f,
 			300.0f,
-			0
+			0, 1
 			);
 	}
 	TArray<FXkGeomEdge> BoundaryEdges;
@@ -1155,7 +1238,6 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressTower()
 	UpdateDynamicMeshInternal(ShapeMesh);
 	FDynamicMesh3 WallShapeMesh = CalcWavePatternByBoundaryEdgesInternal(BoundaryEdges);
 	UpdateDynamicMeshInternal(WallShapeMesh);
-	SetMaterial(0, TrapezoidWallMaterial);
 }
 
 
@@ -1184,7 +1266,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 			250.0f,
 			250.0f,
 			280.0f,
-			0);
+			0, 1);
 		UDynamicMesh* DynamicMesh = GetDynamicMesh();
 		FDynamicMesh3 OriginMesh(DynamicMesh->GetMeshRef());
 		FDynamicMesh3 MergedMesh = CalcBooleanOperationInternal(FMeshBoolean::EBooleanOp::Difference, OriginMesh, ShapeMesh, GetComponentTransform());
@@ -1199,12 +1281,12 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 		MakeTrapezoidBoxAlongLine(
 			GateTowerMesh,
 			TopEdges,
-			Origin - RightVector.GetSafeNormal() * 75.0f + FVector(0.0f, 0.0f, 185.0f),
-			Origin + RightVector.GetSafeNormal() * 75.0f + FVector(0.0f, 0.0f, 185.0f),
-			175.0f,
-			175.0f,
+			Origin - RightVector.GetSafeNormal() * 60.0f + FVector(0.0f, 0.0f, 185.0f),
+			Origin + RightVector.GetSafeNormal() * 60.0f + FVector(0.0f, 0.0f, 185.0f),
+			150.0f,
+			150.0f,
 			75.0f,
-			0
+			0, 1
 		);
 		TArray<FXkGeomEdge> BoundaryEdges;
 		for (const TPair<FVector, FVector>& Edge : TopEdges)
@@ -1225,7 +1307,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 			50.0,
 			20.0,
 			200.0,
-			0);
+			0, 1);
 		TArray<TPair<FVector, FVector>> TopEdges;
 		MakeTrapezoidBoxAlongLine(
 			GateTowerMesh,
@@ -1235,7 +1317,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 			100.0f,
 			100.0f,
 			50.0f,
-			0
+			0, 1
 		);
 		TArray<FXkGeomEdge> BoundaryEdges;
 		for (const TPair<FVector, FVector>& Edge : TopEdges)
@@ -1258,7 +1340,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 			150.0,
 			150.0,
 			50.0,
-			0);
+			0, 1);
 		UpdateDynamicMeshInternal(GateTowerMesh);
 		TArray<FXkGeomEdge> BoundaryEdges;
 		for (const TPair<FVector, FVector>& Edge : TopEdges)
@@ -1268,7 +1350,6 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 		FDynamicMesh3 WallShapeMesh = CalcWavePatternByBoundaryEdgesInternal(BoundaryEdges);
 		UpdateDynamicMeshInternal(WallShapeMesh);
 	}
-	SetMaterial(0, TrapezoidWallMaterial);
 }
 
 
@@ -1368,6 +1449,7 @@ void UXkHexagonBasedFortressComponent::UpdateDynamicMeshInternal(const FDynamicM
 	{
 		DynamicMesh = NewObject<UDynamicMesh>(this);
 	}
+
 	FTransform Transform = GetComponentTransform();
 	DynamicMesh->EditMesh([&](FDynamicMesh3& EditMesh)
 		{
@@ -1382,6 +1464,23 @@ void UXkHexagonBasedFortressComponent::UpdateDynamicMeshInternal(const FDynamicM
 			}
 			else
 			{
+				if (!EditMesh.HasAttributes())
+				{
+					EditMesh.EnableAttributes();
+				}
+				if (!EditMesh.HasTriangleGroups())
+				{
+					EditMesh.EnableTriangleGroups();
+				}
+				if (!EditMesh.Attributes()->HasMaterialID())
+				{
+					EditMesh.Attributes()->EnableMaterialID();
+				}
+				if (!EditMesh.HasTriangleGroups())
+				{
+					EditMesh.EnableTriangleGroups();
+				}
+				FDynamicMeshMaterialAttribute* MaterialIDs = EditMesh.Attributes()->GetMaterialID();
 				TMap<int32, int32> VerticesMap;
 				for (int32 vid : InDynamicMesh.VertexIndicesItr())
 				{
@@ -1393,16 +1492,20 @@ void UXkHexagonBasedFortressComponent::UpdateDynamicMeshInternal(const FDynamicM
 				for (int32 tid : InDynamicMesh.TriangleIndicesItr())
 				{
 					FIndex3i Triangle = InDynamicMesh.GetTriangle(tid);
-					EditMesh.AppendTriangle(
+					int GroupID = InDynamicMesh.GetTriangleGroup(tid);
+					int Tri = EditMesh.AppendTriangle(
 						VerticesMap[Triangle.A],
 						VerticesMap[Triangle.B],
-						VerticesMap[Triangle.C],
-						0);
+						VerticesMap[Triangle.C]);
+					EditMesh.SetTriangleGroup(Tri, GroupID);
+					MaterialIDs->SetValue(Tri, GroupID);
 				}
 			}
 			// Skip Normals, use flat shading
 		});
 	SetDynamicMesh(DynamicMesh);
+	SetMaterial(0, TrapezoidWallMaterial);
+	SetMaterial(1, TrapezoidTopMaterial);
 }
 
 
@@ -1440,7 +1543,7 @@ FDynamicMesh3 UXkHexagonBasedFortressComponent::CalcWavePatternByBoundaryEdgesIn
 			10.0f,
 			10.0f,
 			20.0f,
-			0
+			0, 0
 			);
 		float EdgeLength = FVector::Dist(Edge.GetStart(), Edge.GetEnd());
 		float WaveLength = 15.0f;
@@ -1460,7 +1563,7 @@ FDynamicMesh3 UXkHexagonBasedFortressComponent::CalcWavePatternByBoundaryEdgesIn
 					7.5f,
 					10.0f,
 					10.0f,
-					0);
+					0, 0);
 			}
 			CurrentLength += WaveLength;
 		}
@@ -1504,7 +1607,7 @@ FDynamicMesh3 UXkHexagonBasedFortressComponent::CalcWavePatternByBoundaryEdgesIn
 					10.0f,
 					10.0f,
 					20.0f,
-					0,
+					0, 0,
 					true,
 					true
 				);

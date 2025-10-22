@@ -142,6 +142,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* TrapezoidWallMaterial;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	UMaterialInterface* TrapezoidTopMaterial;
+
 	UPROPERTY(Transient)
 	TArray<FVector> TrapezoidBaseAnchors;
 
