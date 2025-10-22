@@ -409,14 +409,10 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 }
 
 
-FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceCharacterStep)
+FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderFoots)
 {
 	FHitResult HitResult;
-	FVector Start = Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
-	if (bTraceCharacterStep)
-	{
-		Start = Input;
-	}
+	FVector Start = bTraceUnderFoots ? Input : Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
 	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
@@ -426,6 +422,22 @@ FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, c
 		return HitResult.ImpactPoint + FVector(0.0, 0.0, CapsuleHalfHeight);
 	}
 	return Input;
+}
+
+
+AActor* UXkTargetMovementComponent::GetLineTraceActor(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderFoots)
+{
+	FHitResult HitResult;
+	FVector Start = bTraceUnderFoots ? Input : Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
+	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(GetMovementActor());
+	CollisionParams.bTraceComplex = bTraceComplex;
+	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, Channel, CollisionParams))
+	{
+		return HitResult.GetActor();
+	}
+	return nullptr;
 }
 
 

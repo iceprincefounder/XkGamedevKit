@@ -141,17 +141,13 @@ void AXkHexagonActor::OnEdgeHighlight(const FLinearColor& InColor)
 }
 
 
-void AXkHexagonActor::OnPivotHighlight(const float InHeightZ, const FLinearColor& InColor)
+void AXkHexagonActor::OnPivotHighlight(const FLinearColor& InColor)
 {
-	float HeightOffset = InHeightZ - GetActorLocation().Z;
-	float HeightScale = HeightOffset / HEXAGON_HEIGHT;
-	StaticMeshPivot->SetRelativeLocation(FVector(0.0f, 0.0f, HeightOffset));
-	StaticMeshPivot->SetRelativeScale3D(FVector(0.1));
-	StaticMeshPivot->SetVisibility(true);
-	StaticMeshPivot->MarkRenderStateDirty();
 	if (IsValid(PivotMID))
 	{
 		PivotMID->SetVectorParameterValue(FName("Color"), InColor);
+		StaticMeshPivot->SetMaterial(PIVOT_SECTION_INDEX, PivotMID);
+		StaticMeshPivot->MarkRenderStateDirty();
 	}
 }
 
@@ -161,18 +157,18 @@ void AXkHexagonActor::UpdateMaterial()
 	if (!BaseMID && BaseMaterial)
 	{
 		BaseMID = UMaterialInstanceDynamic::Create(BaseMaterial, this);
+		StaticMeshBase->SetMaterial(BASE_SECTION_INDEX, BaseMID);
 	}
 	if (!EdgeMID && EdgeMaterial)
 	{
 		EdgeMID = UMaterialInstanceDynamic::Create(EdgeMaterial, this);
+		StaticMeshEdge->SetMaterial(EDGE_SECTION_INDEX, EdgeMID);
 	}
 	if (!PivotMID && PivotMaterial)
 	{
 		PivotMID = UMaterialInstanceDynamic::Create(PivotMaterial, this);
+		StaticMeshPivot->SetMaterial(PIVOT_SECTION_INDEX, PivotMID);
 	}
-	StaticMeshBase->SetMaterial(BASE_SECTION_INDEX, BaseMID);
-	StaticMeshEdge->SetMaterial(EDGE_SECTION_INDEX, EdgeMID);
-	StaticMeshPivot->SetMaterial(PIVOT_SECTION_INDEX, PivotMID);
 }
 
 #if WITH_EDITOR
@@ -234,7 +230,7 @@ void AXkHexagonActor::InitHexagon(const FIntVector& InCoord)
 	StaticMeshBase->MarkRenderStateDirty();
 	StaticMeshEdge->SetVisibility(true);
 	StaticMeshEdge->MarkRenderStateDirty();
-	StaticMeshPivot->SetVisibility(false);
+	StaticMeshPivot->SetVisibility(true);
 	StaticMeshPivot->MarkRenderStateDirty();
 }
 

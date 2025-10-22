@@ -83,9 +83,10 @@ public:
 	virtual void SetHexagonWorld(class AXkHexagonalWorldActor* Input);
 	virtual void OnBaseHighlight(const FLinearColor& InColor = FLinearColor::White);
 	virtual void OnEdgeHighlight(const FLinearColor& InColor = FLinearColor::White);
-	virtual void OnPivotHighlight(const float InHeightZ, const FLinearColor& InColor);
+	virtual void OnPivotHighlight(const FLinearColor& InColor = FLinearColor::White);
 	virtual UStaticMeshComponent* GetStaticMeshBase() const { return StaticMeshBase; };
 	virtual UStaticMeshComponent* GetStaticMeshEdge() const { return StaticMeshEdge; };
+	virtual UStaticMeshComponent* GetStaticMeshPivot() const { return StaticMeshPivot; };
 	//~ End AXkHexagonActor Interface
 
 protected:
