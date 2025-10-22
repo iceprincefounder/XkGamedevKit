@@ -1339,7 +1339,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 			Origin + FVector(0.0f, 0.0f, 185.0f),
 			150.0,
 			150.0,
-			50.0,
+			75.0,
 			0, 1);
 		UpdateDynamicMeshInternal(GateTowerMesh);
 		TArray<FXkGeomEdge> BoundaryEdges;
