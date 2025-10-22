@@ -248,6 +248,8 @@ void AXkHexagonActor::FreeHexagon()
 	StaticMeshEdge->SetRelativeLocation(FVector::ZeroVector);
 	StaticMeshBase->SetRelativeScale3D(FVector::OneVector);
 	StaticMeshEdge->SetRelativeScale3D(FVector::OneVector);
+	StaticMeshPivot->SetRelativeLocation(FVector::ZeroVector);
+	StaticMeshPivot->SetRelativeScale3D(FVector::OneVector);
 	// Clear hight light colors
 	if (BaseMID && IsValid(BaseMID) && EdgeMID && IsValid(EdgeMID) && PivotMID && IsValid(PivotMID))
 	{
