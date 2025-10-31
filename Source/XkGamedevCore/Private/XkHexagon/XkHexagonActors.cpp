@@ -125,6 +125,13 @@ void AXkHexagonActor::SetHexagonWorld(class AXkHexagonalWorldActor* Input)
 
 void AXkHexagonActor::OnBaseHighlight(const FLinearColor& InColor)
 {
+	if (InColor == FLinearColor::Transparent)
+	{
+		StaticMeshBase->SetVisibility(false);
+		StaticMeshBase->MarkRenderStateDirty();
+		return;
+	}
+	StaticMeshBase->SetVisibility(true);
 	if (IsValid(BaseMID))
 	{
 		BaseMID->SetVectorParameterValue(FName("Color"), InColor);
@@ -134,6 +141,13 @@ void AXkHexagonActor::OnBaseHighlight(const FLinearColor& InColor)
 
 void AXkHexagonActor::OnEdgeHighlight(const FLinearColor& InColor)
 {
+	if (InColor == FLinearColor::Transparent)
+	{
+		StaticMeshEdge->SetVisibility(false);
+		StaticMeshEdge->MarkRenderStateDirty();
+		return;
+	}
+	StaticMeshEdge->SetVisibility(true);
 	if (IsValid(EdgeMID))
 	{
 		EdgeMID->SetVectorParameterValue(FName("Color"), InColor);
@@ -143,6 +157,13 @@ void AXkHexagonActor::OnEdgeHighlight(const FLinearColor& InColor)
 
 void AXkHexagonActor::OnPivotHighlight(const FLinearColor& InColor)
 {
+	if (InColor == FLinearColor::Transparent)
+	{
+		StaticMeshPivot->SetVisibility(false);
+		StaticMeshPivot->MarkRenderStateDirty();
+		return;
+	}
+	StaticMeshPivot->SetVisibility(true);
 	if (IsValid(PivotMID))
 	{
 		PivotMID->SetVectorParameterValue(FName("Color"), InColor);

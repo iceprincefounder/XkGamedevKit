@@ -220,6 +220,8 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 			{
 				bIsJumping = false;
 				LastTarget = TargetLocation;
+				Velocity = FVector::ZeroVector;
+				Acceleration = FVector::ZeroVector;
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
@@ -269,6 +271,8 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				// Closed enough, stop moving
 				bIsSliding = false;
 				LastTarget = TargetLocation;
+				Velocity = FVector::ZeroVector;
+				Acceleration = FVector::ZeroVector;
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
@@ -322,6 +326,8 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 			{
 				bIsFlying = false;
 				LastTarget = TargetLocation;
+				Velocity = FVector::ZeroVector;
+				Acceleration = FVector::ZeroVector;
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}

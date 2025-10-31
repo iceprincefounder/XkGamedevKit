@@ -3,6 +3,7 @@
 
 #include "XkHexagon/XkHexagonComponents.h"
 #include "XkHexagon/XkHexagonSceneProxy.h"
+#include "XkHexagon/XkHexagonActors.h"
 #include "XkGeometry/XkGeometry.h"
 #include "PrimitiveViewRelevance.h"
 #include "PrimitiveSceneProxy.h"
@@ -596,6 +597,9 @@ UXkHexagonBasedFortressComponent::UXkHexagonBasedFortressComponent(const FObject
 	: Super(ObjectInitializer)
 {
 	TrapezoidWallMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
+	TrapezoidWallTopMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
+	TrapezoidTowerTopMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
+	TrapezoidGateTopMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
 
 	bEnableFlatShading = true;
 	bEnableComplexCollision = true;
@@ -1180,6 +1184,8 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressBase()
 			TrapezoidBaseAnchors.Num() > 0);
 	}
 	UpdateDynamicMeshInternal(ShapeMesh, true);
+	SetMaterial(0, TrapezoidWallMaterial);
+	SetMaterial(1, TrapezoidWallTopMaterial);
 #if WITH_EDITOR
 	if (bExplicitShowWireframe)
 	{
@@ -1201,6 +1207,8 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressWall()
 	using namespace UE::Geometry;
 	FDynamicMesh3 ShapeMesh = CalcWavePatternByBoundaryEdgesInternal(BoundaryEdges);
 	UpdateDynamicMeshInternal(ShapeMesh);
+	SetMaterial(0, TrapezoidWallMaterial);
+	SetMaterial(1, TrapezoidWallTopMaterial);
 }
 
 
@@ -1227,7 +1235,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressTower()
 			120.0f,
 			150.0f,
 			300.0f,
-			0, 1
+			0, 2
 			);
 	}
 	TArray<FXkGeomEdge> BoundaryEdges;
@@ -1238,6 +1246,9 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressTower()
 	UpdateDynamicMeshInternal(ShapeMesh);
 	FDynamicMesh3 WallShapeMesh = CalcWavePatternByBoundaryEdgesInternal(BoundaryEdges);
 	UpdateDynamicMeshInternal(WallShapeMesh);
+	SetMaterial(0, TrapezoidWallMaterial);
+	SetMaterial(1, TrapezoidWallTopMaterial);
+	SetMaterial(2, TrapezoidTowerTopMaterial);
 }
 
 
@@ -1246,11 +1257,22 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 	FVector Origin = GetComponentLocation();
 	FVector Direction = FVector::ZeroVector;
 	bool bHasValidConnection = false;
+	TArray<FIntVector> TrapezoidBaseAnchors_HexagonCoords;
+	for (const FVector& Anchor : TrapezoidBaseAnchors)
+	{
+		FIntVector HexagonCoord = FXkHexagonAStarPathfinding::CalcHexagonCoord(
+			Anchor.X, Anchor.Y, (HEXAGON_RADIUS + HEXAGON_GAP_WIDTH));
+		TrapezoidBaseAnchors_HexagonCoords.AddUnique(HexagonCoord);
+	}
 	for (int32 Index = 0; Index < NeighborHexagonCenters.Num() / 2; Index++)
 	{
 		FVector A = NeighborHexagonCenters[Index];
 		FVector B = NeighborHexagonCenters[(Index + 3) % NeighborHexagonCenters.Num()];
-		if (TrapezoidBaseAnchors.Contains(A) && TrapezoidBaseAnchors.Contains(B))
+		FIntVector ACoord = FXkHexagonAStarPathfinding::CalcHexagonCoord(
+			A.X, A.Y, (HEXAGON_RADIUS + HEXAGON_GAP_WIDTH));
+		FIntVector BCoord = FXkHexagonAStarPathfinding::CalcHexagonCoord(
+			B.X, B.Y, (HEXAGON_RADIUS + HEXAGON_GAP_WIDTH));
+		if (TrapezoidBaseAnchors_HexagonCoords.Contains(ACoord) && TrapezoidBaseAnchors_HexagonCoords.Contains(BCoord))
 		{
 			Direction = (B - A).GetSafeNormal();
 			bHasValidConnection = true;
@@ -1286,7 +1308,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 			150.0f,
 			150.0f,
 			75.0f,
-			0, 1
+			0, 2
 		);
 		TArray<FXkGeomEdge> BoundaryEdges;
 		for (const TPair<FVector, FVector>& Edge : TopEdges)
@@ -1307,7 +1329,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 			50.0,
 			20.0,
 			200.0,
-			0, 1);
+			0, 2);
 		TArray<TPair<FVector, FVector>> TopEdges;
 		MakeTrapezoidBoxAlongLine(
 			GateTowerMesh,
@@ -1317,7 +1339,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 			100.0f,
 			100.0f,
 			50.0f,
-			0, 1
+			0, 2
 		);
 		TArray<FXkGeomEdge> BoundaryEdges;
 		for (const TPair<FVector, FVector>& Edge : TopEdges)
@@ -1340,7 +1362,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 			150.0,
 			150.0,
 			75.0,
-			0, 1);
+			0, 2);
 		UpdateDynamicMeshInternal(GateTowerMesh);
 		TArray<FXkGeomEdge> BoundaryEdges;
 		for (const TPair<FVector, FVector>& Edge : TopEdges)
@@ -1350,6 +1372,9 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressGate()
 		FDynamicMesh3 WallShapeMesh = CalcWavePatternByBoundaryEdgesInternal(BoundaryEdges);
 		UpdateDynamicMeshInternal(WallShapeMesh);
 	}
+	SetMaterial(0, TrapezoidWallMaterial);
+	SetMaterial(1, TrapezoidWallTopMaterial);
+	SetMaterial(2, TrapezoidGateTopMaterial);
 }
 
 
@@ -1504,8 +1529,6 @@ void UXkHexagonBasedFortressComponent::UpdateDynamicMeshInternal(const FDynamicM
 			// Skip Normals, use flat shading
 		});
 	SetDynamicMesh(DynamicMesh);
-	SetMaterial(0, TrapezoidWallMaterial);
-	SetMaterial(1, TrapezoidTopMaterial);
 }
 
 

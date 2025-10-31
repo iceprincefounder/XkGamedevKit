@@ -143,7 +143,13 @@ public:
 	UMaterialInterface* TrapezoidWallMaterial;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
-	UMaterialInterface* TrapezoidTopMaterial;
+	UMaterialInterface* TrapezoidWallTopMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	UMaterialInterface* TrapezoidTowerTopMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	UMaterialInterface* TrapezoidGateTopMaterial;
 
 	UPROPERTY(Transient)
 	TArray<FVector> TrapezoidBaseAnchors;
