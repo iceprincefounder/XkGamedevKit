@@ -415,17 +415,39 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 }
 
 
+FVector UXkTargetMovementComponent::GetMovementActorCenter() const
+{
+	if (AActor* Actor = GetMovementActor(); IsValid(Actor))
+	{
+		return Actor->GetComponentsBoundingBox().GetCenter();
+	}
+	return FVector::ZeroVector;
+}
+
+
+float UXkTargetMovementComponent::GetMovementActorHeight() const
+{
+	if (AActor* Actor = GetMovementActor(); IsValid(Actor))
+	{
+		return Actor->GetComponentsBoundingBox().GetSize().Z;
+	}
+	return 0.0f;
+}
+
+
 FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderFoots)
 {
 	FHitResult HitResult;
-	FVector Start = bTraceUnderFoots ? Input : Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
-	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
+	FVector Center = GetMovementActorCenter();
+	FVector Start = bTraceUnderFoots ? Center : Center + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
+	FVector End = Center + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
 	CollisionParams.bTraceComplex = bTraceComplex;
 	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, Channel, CollisionParams))
 	{
-		return HitResult.ImpactPoint + FVector(0.0, 0.0, CapsuleHalfHeight);
+		float HeightZ = HitResult.ImpactPoint.Z + CapsuleHalfHeight;
+		return FVector(Input.X, Input.Y, HeightZ);
 	}
 	return Input;
 }
@@ -434,8 +456,9 @@ FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, c
 AActor* UXkTargetMovementComponent::GetLineTraceActor(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderFoots)
 {
 	FHitResult HitResult;
-	FVector Start = bTraceUnderFoots ? Input : Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
-	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
+	FVector Center = GetMovementActorCenter();
+	FVector Start = bTraceUnderFoots ? Center : Center + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
+	FVector End = Center + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
 	CollisionParams.bTraceComplex = bTraceComplex;
@@ -450,8 +473,9 @@ AActor* UXkTargetMovementComponent::GetLineTraceActor(const FVector& Input, cons
 FVector UXkTargetMovementComponent::GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex)
 {
 	FHitResult HitResult;
-	FVector Start = Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
-	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
+	FVector Center = GetMovementActorCenter();
+	FVector Start = Center + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
+	FVector End = Center + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
 	CollisionParams.bTraceComplex = bTraceComplex;

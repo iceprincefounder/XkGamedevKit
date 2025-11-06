@@ -214,6 +214,8 @@ public:
 	FORCEINLINE virtual void SetLeftFootRelativeLocation(const FVector& Input) { LeftFootRelativeLocation = Input; };
 	FORCEINLINE virtual void SetRightFootRelativeLocation(const FVector& Input) { RightFootRelativeLocation = Input; };
 
+	virtual FVector GetMovementActorCenter() const;
+	virtual float GetMovementActorHeight() const;
 	virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false, const bool bTraceUnderFoots = true);
 	virtual AActor* GetLineTraceActor(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false, const bool bTraceUnderFoots = true);
 	virtual FVector GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false);
