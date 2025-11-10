@@ -167,6 +167,9 @@ public:
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float CapsuleHalfHeight;
 
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	float MaxStepHeight;
+
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
 	FOnMovementReachTargetEvent OnMovementReachTargetEvent;
 
@@ -211,9 +214,6 @@ public:
 	FORCEINLINE virtual void SetSlideCost(const int32 Cost) { SlideCostPoint = Cost; };
 	FORCEINLINE virtual void SetSlideAcceler(const float Acceler) { SlideAcceler = Acceler; };
 
-	FORCEINLINE virtual void SetLeftFootRelativeLocation(const FVector& Input) { LeftFootRelativeLocation = Input; };
-	FORCEINLINE virtual void SetRightFootRelativeLocation(const FVector& Input) { RightFootRelativeLocation = Input; };
-
 	virtual FVector GetMovementActorCenter() const;
 	virtual float GetMovementActorHeight() const;
 	virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false, const bool bTraceUnderFoots = true);
@@ -227,8 +227,6 @@ public:
 private:
 	TOptional<FVector> LastTarget;
 	TOptional<FVector> LastLocation;
-	TOptional<FVector> LeftFootRelativeLocation;
-	TOptional<FVector> RightFootRelativeLocation;
 };
 
 

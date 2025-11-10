@@ -53,6 +53,7 @@ UXkTargetMovementComponent::UXkTargetMovementComponent(const FObjectInitializer&
 	FlyArc = -0.1;
 	CapsuleRadius = 55.0f;
 	CapsuleHalfHeight = 96.0f;
+	MaxStepHeight = 45.0f;
 
 	// Set default values
 	ActionPoint = 0;
@@ -208,14 +209,6 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 		else if (CurrentTarget.Key == EActionType::Jump)
 		{
 			TargetLocation = GetLineTraceLocation(TargetLocation, ECollisionChannel::ECC_Pawn, true, false);
-			if (LeftFootRelativeLocation.IsSet() && RightFootRelativeLocation.IsSet())
-			{
-				FVector LeftFootLocation = TargetLocation + LeftFootRelativeLocation.GetValue();
-				FVector RightFootLocation = TargetLocation + RightFootRelativeLocation.GetValue();
-				LeftFootLocation = GetLineTraceLocation(LeftFootLocation, ECollisionChannel::ECC_Pawn, true);
-				RightFootLocation = GetLineTraceLocation(RightFootLocation, ECollisionChannel::ECC_Pawn, true);
-				TargetLocation.Z = (FMath::Max3(LeftFootLocation.Z, RightFootLocation.Z, TargetLocation.Z));
-			}
 			if (CheckDistance2DSafely(Location, TargetLocation))
 			{
 				bIsJumping = false;
@@ -378,14 +371,6 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 		// Snap to ground
 		FVector ActorLocation = GetMovementActor()->GetActorLocation();
 		FVector TargetLocation = GetLineTraceLocation(ActorLocation, ECollisionChannel::ECC_Pawn, true);
-		if (LeftFootRelativeLocation.IsSet() && RightFootRelativeLocation.IsSet())
-		{
-			FVector LeftFootLocation = TargetLocation + LeftFootRelativeLocation.GetValue();
-			FVector RightFootLocation = TargetLocation + RightFootRelativeLocation.GetValue();
-			LeftFootLocation = GetLineTraceLocation(LeftFootLocation, ECollisionChannel::ECC_Pawn, true);
-			RightFootLocation = GetLineTraceLocation(RightFootLocation, ECollisionChannel::ECC_Pawn, true);
-			TargetLocation.Z = (FMath::Max(LeftFootLocation.Z, RightFootLocation.Z));
-		}
 		FVector NewLocation = ActorLocation;
 		if (CheckHeightSafely(ActorLocation, TargetLocation))
 		{
@@ -438,9 +423,8 @@ float UXkTargetMovementComponent::GetMovementActorHeight() const
 FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderFoots)
 {
 	FHitResult HitResult;
-	FVector Center = GetMovementActorCenter();
-	FVector Start = bTraceUnderFoots ? Center : Center + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
-	FVector End = Center + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
+	FVector Start = bTraceUnderFoots ? Input + FVector(0.0, 0.0, MaxStepHeight) : Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
+	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
 	CollisionParams.bTraceComplex = bTraceComplex;
