@@ -53,7 +53,9 @@ public:
 	virtual void ShutdownModule() override;
 	/** Returns whether the Header View supports the given class */
 	static bool DoesAssetSupportExportToThumbnail(const FAssetData& AssetData);
+	static bool DoesAssetSupportConfigIconTexture(const FAssetData& AssetData);
 	static TArray<UTexture2D*> ExportThumbnailAsTexture(const TArray<FAssetData> SelectedAssets, bool bTransient = false, bool bForceRenderThumbnail = false);
+	static TArray<UTexture2D*> ConfigTextureAsIconUI(const TArray<FAssetData> SelectedAssets);
 	static void RenderThumbnail(UObject* InObject, const uint32 InImageWidth, const uint32 InImageHeight, FTextureRenderTargetResource* InRenderTargetResource = NULL, FObjectThumbnail* OutThumbnail = NULL);
 
 	static FString GetThumbnailFileName(UObject* InObject);
@@ -68,6 +70,7 @@ private:
 
 	static TSharedRef<FExtender> OnExtendContentBrowserAssetSelectionMenu(const TArray<FAssetData>& SelectedAssets);
 	static void ExecuteSaveThumbnailAsTexture(FMenuBuilder& MenuBuilder, const TArray<FAssetData> SelectedAssets);
+	static void ExecuteConfigTextureAsIconUI(FMenuBuilder& MenuBuilder, const TArray<FAssetData> SelectedAssets);
 
 	FDelegateHandle ContentBrowserExtenderDelegateHandle;
 

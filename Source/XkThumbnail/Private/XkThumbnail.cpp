@@ -65,6 +65,12 @@ bool FXkThumbnailModule::DoesAssetSupportExportToThumbnail(const FAssetData& Ass
 	return AssetName == TEXT("StaticMesh") || AssetName == TEXT("Blueprint") || AssetName == TEXT("SkeletalMesh");
 }
 
+bool FXkThumbnailModule::DoesAssetSupportConfigIconTexture(const FAssetData& AssetData)
+{
+	const FName AssetName = AssetData.AssetClassPath.GetAssetName();
+	return AssetName == TEXT("Texture2D");
+}
+
 
 TArray<UTexture2D*> FXkThumbnailModule::ExportThumbnailAsTexture(const TArray<FAssetData> SelectedAssets, bool bTransient, bool bForceRenderThumbnail)
 {
@@ -199,6 +205,31 @@ TArray<UTexture2D*> FXkThumbnailModule::ExportThumbnailAsTexture(const TArray<FA
 
 			NewTextureResults.Add(NewTexture);
 		}
+	}
+	return NewTextureResults;
+}
+
+
+TArray<UTexture2D*> FXkThumbnailModule::ConfigTextureAsIconUI(const TArray<FAssetData> SelectedAssets)
+{
+	TArray<UTexture2D*> NewTextureResults;
+	TextureMipGenSettings MipGenSettings = GetEditorSettings().MipGenSettings;
+	TextureGroup LODGroup = GetEditorSettings().LODGroup;
+	int32 MaxTextureSize = GetEditorSettings().MaxTextureSize;
+	for (const FAssetData& AssetData : SelectedAssets)
+	{
+		if (!DoesAssetSupportConfigIconTexture(AssetData))
+		{
+			// Skip unsupported class
+			continue;
+		}
+		UTexture2D* Texture2D = Cast<UTexture2D>(AssetData.GetAsset());
+		Texture2D->Modify();
+		Texture2D->MipGenSettings = MipGenSettings;
+		Texture2D->LODGroup = LODGroup;
+		Texture2D->MaxTextureSize = MaxTextureSize;
+		Texture2D->UpdateResource();
+		NewTextureResults.Add(Texture2D);
 	}
 	return NewTextureResults;
 }
@@ -464,6 +495,15 @@ TSharedRef<FExtender> FXkThumbnailModule::OnExtendContentBrowserAssetSelectionMe
 			break;
 		}
 	}
+	bool bAllAssetSupportConfigIconTexture = true;
+	for (const FAssetData& AssetData : SelectedAssets)
+	{
+		if (!DoesAssetSupportConfigIconTexture(AssetData))
+		{
+			bAllAssetSupportConfigIconTexture = false;
+			break;
+		}
+	}
 	if (bAllAssetSupportExportToThumbnail)
 	{
 		Extender->AddMenuExtension(
@@ -471,6 +511,15 @@ TSharedRef<FExtender> FXkThumbnailModule::OnExtendContentBrowserAssetSelectionMe
 			EExtensionHook::After,
 			nullptr,
 			FMenuExtensionDelegate::CreateStatic(&ExecuteSaveThumbnailAsTexture, SelectedAssets)
+		);
+	}
+	if (bAllAssetSupportConfigIconTexture)
+	{
+		Extender->AddMenuExtension(
+			"CommonAssetActions",
+			EExtensionHook::After,
+			nullptr,
+			FMenuExtensionDelegate::CreateStatic(&ExecuteConfigTextureAsIconUI, SelectedAssets)
 		);
 	}
 	return Extender;
@@ -495,6 +544,27 @@ void FXkThumbnailModule::ExecuteSaveThumbnailAsTexture(FMenuBuilder& MenuBuilder
 			{
 				ExportThumbnailAsTexture(SelectedAssets);
 			})),
+			NAME_None,
+			EUserInterfaceActionType::Button);
+	}
+	MenuBuilder.EndSection();
+}
+
+
+void FXkThumbnailModule::ExecuteConfigTextureAsIconUI(FMenuBuilder& MenuBuilder, const TArray<FAssetData> SelectedAssets)
+{
+	MenuBuilder.BeginSection("CreateTextureOffThumbnail", LOCTEXT("CreateTextureOffThumbnailMenuHeading", "XkThumbnail"));
+	{
+		// Add Menu Entry Here
+		MenuBuilder.AddMenuEntry(
+			LOCTEXT("Thumbnail_ConfigIcon", "Config as Icon UI"),
+			LOCTEXT("Thumbnail_ConfigIconTooltip",
+				"Will config asset's as icon texture."),
+			FSlateIcon(),
+			FUIAction(FExecuteAction::CreateLambda([SelectedAssets]()
+				{
+					ConfigTextureAsIconUI(SelectedAssets);
+				})),
 			NAME_None,
 			EUserInterfaceActionType::Button);
 	}

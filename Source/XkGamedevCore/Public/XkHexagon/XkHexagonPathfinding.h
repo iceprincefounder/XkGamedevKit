@@ -80,11 +80,15 @@ public:
 UENUM(BlueprintType, meta = (Bitflags))
 enum class EXkHexagonType : uint8
 {
-	None		= 0x00,
-	Unavailable = 1 << 0,
-	Ground		= 1 << 1,
-	Beach		= 1 << 2,
-	Ocean		= 1 << 3,
+	Unavailable = 0x00,
+	Ground		= 1 << 0,
+	Beach		= 1 << 1,
+	Ocean		= 1 << 2,
+	CustomType1	= 1 << 3,
+	CustomType2	= 1 << 4,
+	CustomType3	= 1 << 5,
+	CustomType4 = 1 << 6,
+	CustomType5 = 1 << 7,
 };
 ENUM_CLASS_FLAGS(EXkHexagonType);
 
@@ -423,10 +427,10 @@ FORCEINLINE static bool HexagonNodeIsValidLowLevel(const FXkHexagonNode* Node)
 
 FORCEINLINE static bool HexagonNodeIsValid(const FXkHexagonNode* Node)
 {
-	return Node && !EnumHasAnyFlags(Node->Type, EXkHexagonType::Unavailable);
+	return HexagonNodeIsValidLowLevel(Node) && !EnumHasAnyFlags(Node->Type, EXkHexagonType::Unavailable);
 }
 
-FORCEINLINE static bool HexagonNodeHasType(const FXkHexagonNode* Node, const EXkHexagonType InType)
+FORCEINLINE static bool HexagonNodeHasAnyFlags(const FXkHexagonNode* Node, const EXkHexagonType InType)
 {
 	return Node && EnumHasAnyFlags(Node->Type, InType);
 }

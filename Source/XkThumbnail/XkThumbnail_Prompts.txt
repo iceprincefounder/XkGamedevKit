@@ -1,0 +1,19 @@
+﻿This is a geme icon image. Change this image to a hand drawing style, giving it realistic materials and lighting.
+
+<Requirements>
+1. Generation shoule base on image elements.
+2. Keep the environment bright.
+3. Replace the background with a green screen.
+</Requirements>
+
+<Constraints>
+1. Do not change its structure or texture color information.
+2. Do not add any extra elements.
+3. Do not add ground or background.
+4. Do not cast shadow on ground or background.
+</Constraints>
+
+
+生成一个蜂窝状正六边形，它是一个地块，它的一部分是沙滩，另一部分是草地，底座是土和砂石，相机位置是右上方45度，视角正对物体。
+
+生成一个蜂窝状正六边形的面片,只有一个正六边形，位于屏幕正中间，它的表面是一个地面，有很多水洒在这里形成一个水面，相机位置是右上方45度，视角正对物体。

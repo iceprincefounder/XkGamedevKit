@@ -14,12 +14,21 @@ class XKTHUMBNAIL_API UXkThumbnailSettings : public UObject
 	UXkThumbnailSettings(const FObjectInitializer& ObjectInitializer);
 public:
 	/** The root of the directory in which to save the exported Texture2Ds. */
-	UPROPERTY(config, EditAnywhere, BlueprintReadWrite, Category = "Oasis Building Thumbnail Settings", meta = (ContentDir), DisplayName="Texture 2D Save Directory")
+	UPROPERTY(config, EditAnywhere, BlueprintReadWrite, Category = "Export Thumbnail", meta = (ContentDir), DisplayName="Texture 2D Save Directory")
 	FDirectoryPath Texture2DSaveDir;
 
 	/**
 	 * The Prefix to append to the name of the exported Texture2Ds
 	 */
-	UPROPERTY(config, EditAnywhere, BlueprintReadWrite, Category = "Oasis Building Thumbnail Settings")
+	UPROPERTY(config, EditAnywhere, BlueprintReadWrite, Category = "Export Thumbnail")
 	FString ThumbnailPrefix;
+
+	UPROPERTY(config, EditAnywhere, BlueprintReadWrite, Category = "Config Icon UI")
+	TEnumAsByte<enum TextureMipGenSettings> MipGenSettings;
+
+	UPROPERTY(config, EditAnywhere, BlueprintReadWrite, Category = "Config Icon UI")
+	TEnumAsByte<enum TextureGroup> LODGroup;
+
+	UPROPERTY(config, EditAnywhere, BlueprintReadWrite, Category = "Config Icon UI")
+	int32 MaxTextureSize;
 };

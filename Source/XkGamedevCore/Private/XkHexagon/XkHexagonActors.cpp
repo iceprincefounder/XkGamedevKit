@@ -540,7 +540,7 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonalWorldNodes(const EXk
 	TArray<FXkHexagonNode*> Results;
 	for (TPair<FIntVector, FXkHexagonNode>& NodePair: HexagonalWorldTable.Nodes)
 	{
-		if (NodePair.Value.Type == HexagonType)
+		if (HexagonNodeHasAnyFlags(&NodePair.Value, HexagonType))
 		{
 			Results.AddUnique(&NodePair.Value);
 		}
