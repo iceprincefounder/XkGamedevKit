@@ -484,7 +484,7 @@ void FXkHexagonalWorldSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
 	for (int i = 0; i < AllHexagonalWorldNodes.Num(); i++)
 	{
 		const FXkHexagonNode& Node = AllHexagonalWorldNodes[i];
-		if (Node.Type == EXkHexagonType::Unavailable)
+		if (HexagonNodeHasAnyFlags(&Node, EXkHexagonType::Unavailable))
 		{
 			continue;
 		}

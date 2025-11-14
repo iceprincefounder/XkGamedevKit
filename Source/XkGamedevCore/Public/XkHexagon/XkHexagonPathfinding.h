@@ -427,7 +427,7 @@ FORCEINLINE static bool HexagonNodeIsValidLowLevel(const FXkHexagonNode* Node)
 
 FORCEINLINE static bool HexagonNodeIsValid(const FXkHexagonNode* Node)
 {
-	return HexagonNodeIsValidLowLevel(Node) && !EnumHasAnyFlags(Node->Type, EXkHexagonType::Unavailable);
+	return HexagonNodeIsValidLowLevel(Node) && Node->Type != EXkHexagonType::Unavailable;
 }
 
 FORCEINLINE static bool HexagonNodeHasAnyFlags(const FXkHexagonNode* Node, const EXkHexagonType InType)
