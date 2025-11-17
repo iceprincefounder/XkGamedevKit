@@ -120,6 +120,19 @@ void AXkGameState::OnNavigationToTheTop()
 				CurrentIndex -= RowNum;
 			}
 			TileViewWidget->SetSelectedIndex(CurrentIndex);
+			if (CurrentIndex >= Num - RowNum)
+			{
+				TileViewWidget->ScrollToBottom();
+			}
+			else if (CurrentIndex < RowNum)
+			{
+				TileViewWidget->ScrollToTop();
+			}
+			else
+			{
+				TileViewWidget->ScrollIndexIntoView(CurrentIndex);
+			}
+			TileViewWidget->RequestRefresh();
 		}
 	}
 	else
@@ -146,6 +159,19 @@ void AXkGameState::OnNavigationToTheBottom()
 				CurrentIndex = (CurrentIndex + RowNum) % TotalRawNum;
 			}
 			TileViewWidget->SetSelectedIndex(CurrentIndex);
+			if (CurrentIndex >= Num - RowNum)
+			{
+				TileViewWidget->ScrollToBottom();
+			}
+			else if (CurrentIndex < RowNum)
+			{
+				TileViewWidget->ScrollToTop();
+			}
+			else
+			{
+				TileViewWidget->ScrollIndexIntoView(CurrentIndex);
+			}
+			TileViewWidget->RequestRefresh();
 		}
 	}
 	else
@@ -159,12 +185,27 @@ void AXkGameState::OnNavigationToTheLeft()
 {
 	if (TileViewWidget.IsValid())
 	{
+		int32 WidthSize = TileViewWidget->GetCachedGeometry().Size.X;
+		int32 RowNum = WidthSize / TileViewWidget->GetEntryWidth();
 		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
 		int32 Num = TileViewWidget->GetNumItems();
 		if (Num > 0)
 		{
 			CurrentIndex = (CurrentIndex - 1 + Num) % Num;
 			TileViewWidget->SetSelectedIndex(CurrentIndex);
+			if (CurrentIndex >= Num - RowNum)
+			{
+				TileViewWidget->ScrollToBottom();
+			}
+			else if (CurrentIndex < RowNum)
+			{
+				TileViewWidget->ScrollToTop();
+			}
+			else
+			{
+				TileViewWidget->ScrollIndexIntoView(CurrentIndex);
+			}
+			TileViewWidget->RequestRefresh();
 		}
 	}
 	else
@@ -178,12 +219,27 @@ void AXkGameState::OnNavigationToTheRight()
 {
 	if (TileViewWidget.IsValid())
 	{
+		int32 WidthSize = TileViewWidget->GetCachedGeometry().Size.X;
+		int32 RowNum = WidthSize / TileViewWidget->GetEntryWidth();
 		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
 		int32 Num = TileViewWidget->GetNumItems();
 		if (Num > 0)
 		{
 			CurrentIndex = (CurrentIndex + 1 + Num) % Num;
 			TileViewWidget->SetSelectedIndex(CurrentIndex);
+			if (CurrentIndex >= Num - RowNum)
+			{
+				TileViewWidget->ScrollToBottom();
+			}
+			else if (CurrentIndex < RowNum)
+			{
+				TileViewWidget->ScrollToTop();
+			}
+			else
+			{
+				TileViewWidget->ScrollIndexIntoView(CurrentIndex);
+			}
+			TileViewWidget->RequestRefresh();
 		}
 	}
 	else
