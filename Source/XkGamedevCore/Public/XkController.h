@@ -341,6 +341,8 @@ public:
 	virtual bool IsOnUI() const { return false; };
 	virtual bool IsCameraDragging() const { return bIsCameraDraggingButtonPressing; };
 	virtual bool IsCameraRotating() const { return bIsCameraRotatingButtonPressing; };
+	virtual bool IsGamepadController() const { return ControlsFlavor == EXkControlsFlavor::Gamepad; };
+	virtual bool IsKeyboardController() const { return ControlsFlavor == EXkControlsFlavor::Keyboard; };
 	virtual bool ControllerSelect() const;
 	virtual bool ControllerSelect(FHitResult& Hit) const;
 	virtual bool ControllerSelect(FHitResult& Hit, const ECollisionChannel Channel) const;

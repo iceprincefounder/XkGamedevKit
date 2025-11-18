@@ -108,7 +108,7 @@ void AXkGameState::OnNavigationToTheTop()
 	{
 		int32 ItemWidth = TileViewWidget->GetEntryWidth();
 		int32 WidthSize = TileViewWidget->GetCachedGeometry().Size.X;
-		int32 RowNum = WidthSize / TileViewWidget->GetEntryWidth();
+		int32 RowNum = FMath::FloorToInt32((float)WidthSize / (float)TileViewWidget->GetEntryWidth());
 		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
 		int32 Num = TileViewWidget->GetNumItems();
 		if (Num > 0)
@@ -147,7 +147,7 @@ void AXkGameState::OnNavigationToTheBottom()
 	if (TileViewWidget.IsValid())
 	{
 		int32 WidthSize = TileViewWidget->GetCachedGeometry().Size.X;
-		int32 RowNum = WidthSize / TileViewWidget->GetEntryWidth();
+		int32 RowNum = FMath::FloorToInt32((float)WidthSize / (float)TileViewWidget->GetEntryWidth());
 		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
 		int32 Num = TileViewWidget->GetNumItems();
 		if (Num > 0)
@@ -186,7 +186,7 @@ void AXkGameState::OnNavigationToTheLeft()
 	if (TileViewWidget.IsValid())
 	{
 		int32 WidthSize = TileViewWidget->GetCachedGeometry().Size.X;
-		int32 RowNum = WidthSize / TileViewWidget->GetEntryWidth();
+		int32 RowNum = FMath::FloorToInt32((float)WidthSize / (float)TileViewWidget->GetEntryWidth());
 		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
 		int32 Num = TileViewWidget->GetNumItems();
 		if (Num > 0)
@@ -220,7 +220,7 @@ void AXkGameState::OnNavigationToTheRight()
 	if (TileViewWidget.IsValid())
 	{
 		int32 WidthSize = TileViewWidget->GetCachedGeometry().Size.X;
-		int32 RowNum = WidthSize / TileViewWidget->GetEntryWidth();
+		int32 RowNum = FMath::FloorToInt32((float)WidthSize / (float)TileViewWidget->GetEntryWidth());
 		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
 		int32 Num = TileViewWidget->GetNumItems();
 		if (Num > 0)
