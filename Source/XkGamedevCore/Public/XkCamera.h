@@ -177,6 +177,7 @@ public:
 	virtual float GetTravelingSpeed() const { return TravelingSpeed; }
 	virtual float GetTravelingZoom() const { return TravelingZoom; }
 	virtual void SetTravelingMode(const bool bInTravelingMode);
+	virtual FConvexVolume GetCameraViewFrustum() const;
 	//~ End AXkTopDownCamera Interface
 private:
 	UPROPERTY()

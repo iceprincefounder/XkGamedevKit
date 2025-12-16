@@ -8,7 +8,9 @@
 #include "Components/SceneCaptureComponent2D.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Engine/World.h"
+#include "Engine/Engine.h"
 #include "Misc/ConfigCacheIni.h"
+#include "SceneView.h"
 
 AXkCamera::AXkCamera(const FObjectInitializer& ObjectInitializer)
 {
@@ -214,7 +216,7 @@ AXkTopDownCamera::AXkTopDownCamera(const FObjectInitializer& ObjectInitializer)
 	MaxAcceleration = 100.0;
 	bTravelingMode = false;
 	TravelingView = FRotator(-25.f, 0.f, 0.f);
-	TravelingZoom = 2500.0f;
+	TravelingZoom = 2500.0;
 	TravelingSpeed = 500.0;
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
@@ -236,7 +238,7 @@ void AXkTopDownCamera::OnConstruction(const FTransform& Transform)
 void AXkTopDownCamera::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-
+	GetCameraViewFrustum();
 	if (bMoveToTarget)
 	{
 		FVector Location = GetActorLocation();
@@ -492,4 +494,9 @@ void AXkTopDownCamera::SetTravelingMode(const bool bInTravelingMode)
 		Acceleration = FVector::ZeroVector;
 	}
 	bTravelingMode = bInTravelingMode;
+}
+
+FConvexVolume AXkTopDownCamera::GetCameraViewFrustum() const
+{
+	return FConvexVolume();
 }
