@@ -59,7 +59,7 @@ FPrimitiveSceneProxy* UXkLandscapeComponent::CreateSceneProxy()
 
 FBoxSphereBounds UXkLandscapeComponent::CalcBounds(const FTransform& LocalToWorld) const
 {
-	FBoxSphereBounds BoxSphereBounds = FBoxSphereBounds(FVector::ZeroVector, FVector(51200, 51200, 51200), 51200);
+	FBoxSphereBounds BoxSphereBounds = FBoxSphereBounds(FVector::ZeroVector, FVector(WORLD_MAX, WORLD_MAX, 6400), WORLD_MAX);
 	return FBoxSphereBounds(BoxSphereBounds).TransformBy(LocalToWorld);
 }
 

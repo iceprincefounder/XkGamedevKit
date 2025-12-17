@@ -67,7 +67,7 @@ void FQuadtreeNode::Cull(TArray<int32>& OutNodes, const FConvexVolume* InCamera,
 				{
 					bRenderNode = true;
 				}
-				else
+				else if (Quadtree->CullLodDistance.IsValidIndex(InDepth + 1))
 				{
 					float fTestDistChild = Quadtree->CullLodDistance[InDepth + 1];
 					if (MinDist2D >= fTestDistChild)
@@ -76,7 +76,7 @@ void FQuadtreeNode::Cull(TArray<int32>& OutNodes, const FConvexVolume* InCamera,
 					}
 				}
 			}
-			else
+			else if (Quadtree->CullLodDistance.IsValidIndex(InDepth - 1))
 			{
 				float fTestDistParent = Quadtree->CullLodDistance[InDepth - 1] * 2.0;
 				if (MinDist2D < fTestDistParent)

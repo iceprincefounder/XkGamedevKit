@@ -593,6 +593,15 @@ UXkInstancedHexagonComponent::UXkInstancedHexagonComponent(const FObjectInitiali
 }
 
 
+UXkSkydomeComponent::UXkSkydomeComponent(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_SkySphere"));
+	SetStaticMesh(ObjectFinder.Object);
+	SetRelativeScale3D(FVector(400.0f, 400.0f, 100.0f));
+}
+
+
 UXkHexagonBasedFortressComponent::UXkHexagonBasedFortressComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {

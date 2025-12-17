@@ -14,10 +14,20 @@
 AXkSphericalWorldWithOceanActor::AXkSphericalWorldWithOceanActor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	SkydomeComponent = CreateDefaultSubobject<UXkSkydomeComponent>(TEXT("SkydomeComponent"));
+	SkydomeComponent->SetupAttachment(RootComponent);
+	SkydomeComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SkydomeComponent->CastShadow = false;
+	SkydomeComponent->bAffectDistanceFieldLighting = false;
+	SkydomeComponent->bAffectDynamicIndirectLighting = false;
+	SkydomeComponent->bAffectIndirectLightingWhileHidden = false;
+	SkydomeSinkDistance = -150000.0f;
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> SkydomeMaterialFinder(TEXT("/XkGamedevKit/Materials/M_Sky_Panning_Cloud"));
+	SkydomeMaterial = SkydomeMaterialFinder.Object;
 	SphericalLandscapeComponent = CreateDefaultSubobject<UXkSphericalLandscapeWithWaterComponent>(TEXT("SphericalLandscape"));
-	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder(TEXT("/XkGamedevKit/Materials/M_SphericalWorld"));
-	SphericalLandscapeComponent->Material = ObjectFinder.Object;
-	SphericalLandscapeComponent->WaterMaterial = ObjectFinder.Object;
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MaterialFinder(TEXT("/XkGamedevKit/Materials/M_SphericalWorld"));
+	SphericalLandscapeComponent->Material = MaterialFinder.Object;
+	SphericalLandscapeComponent->WaterMaterial = MaterialFinder.Object;
 	SphericalLandscapeComponent->bNeverDistanceCull = true;
 	SphericalLandscapeComponent->LDMaxDrawDistance = 0.0f;
 	SphericalLandscapeComponent->bUseAsOccluder = true;
@@ -46,6 +56,20 @@ AXkSphericalWorldWithOceanActor::AXkSphericalWorldWithOceanActor(const FObjectIn
 void AXkSphericalWorldWithOceanActor::TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction)
 {
 	Super::TickActor(DeltaTime, TickType, ThisTickFunction);
+
+	// Set SkydomeComponent alway on center of camera
+	if (GetWorld())
+	{
+		APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
+		if (PlayerController && IsValid(PlayerController))
+		{
+			FVector CameraLocation;
+			FRotator CameraRotation;
+			PlayerController->GetPlayerViewPoint(CameraLocation, CameraRotation);
+			CameraLocation.Z += SkydomeSinkDistance;
+			SkydomeComponent->SetWorldLocation(CameraLocation);
+		}
+	}
 }
 
 
@@ -66,7 +90,6 @@ void AXkSphericalWorldWithOceanActor::OnConstruction(const FTransform& Transform
 #endif
 	CanvasRendererComponent->HorizonHeight = HorizonHeight;
 }
-
 
 void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 {

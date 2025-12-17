@@ -19,6 +19,9 @@ class XKGAMEDEVCORE_API AXkSphericalWorldWithOceanActor : public AXkHexagonalWor
 {
 	GENERATED_BODY()
 public:
+	UPROPERTY(VisibleDefaultsOnly, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
+	TObjectPtr<class UXkSkydomeComponent> SkydomeComponent;
+
 	UPROPERTY(VisibleAnywhere, Category = "SphericalWorldWithOcean [KEVINTSUIXUGAMEDEV]")
 	TObjectPtr<class UXkSphericalLandscapeWithWaterComponent> SphericalLandscapeComponent;
 
@@ -39,6 +42,12 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	UMaterialParameterCollection* HexagonMPC;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
+	UMaterialInterface* SkydomeMaterial;
+
+	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
+	float SkydomeSinkDistance;
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorldInGame [KEVINTSUIXUGAMEDEV]")
 	bool bSpawnActors;

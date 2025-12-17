@@ -131,6 +131,16 @@ public:
 };
 
 
+UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, ShowCategories = (VirtualTexture), meta = (BlueprintSpawnableComponent, DisplayName = "XkInstancedHexagonComponent"))
+class XKGAMEDEVCORE_API UXkSkydomeComponent : public UStaticMeshComponent
+{
+	GENERATED_BODY()
+
+public:
+	UXkSkydomeComponent(const FObjectInitializer& ObjectInitializer);
+};
+
+
 UCLASS(BlueprintType, Blueprintable, ClassGroup = XkGamedevCore, meta = (BlueprintSpawnableComponent, DisplayName = "XkHexagonBasedFortressComponent"))
 class XKGAMEDEVCORE_API UXkHexagonBasedFortressComponent : public UDynamicMeshComponent
 {
