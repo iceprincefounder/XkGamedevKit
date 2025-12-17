@@ -104,14 +104,14 @@ struct XKGAMEDEVCORE_API FXkHexagonNode
 public:
 	FXkHexagonNode()
 	{
-		Type = EXkHexagonType::Unavailable;
+		Type = 0;
 		Position = FVector4f::Zero();
 		Weights = FVector4f::Zero();
 		Coord = FIntVector::ZeroValue;
 		CustomData = FVector4f::Zero();
 	};
 	FXkHexagonNode(
-		const EXkHexagonType InType, const FVector4f& InPosition, const FVector4f InWeights, const FIntVector& InCoord) :
+		const uint8 InType, const FVector4f& InPosition, const FVector4f InWeights, const FIntVector& InCoord) :
 		Type(InType),
 		Position(InPosition),
 		Weights(InWeights),
@@ -122,8 +122,8 @@ public:
 	{
 	};
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
-	EXkHexagonType Type;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]", meta = (Bitmask, BitmaskEnum = "/Script/XkGamedevCore.EXkHexagonType"))
+	uint8 Type;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HexagonNode [KEVINTSUIXUGAMEDEV]")
 	FVector4f Position; // Position.W for hexagon radius.
@@ -152,6 +152,7 @@ public:
 		return *this;
 	};
 
+	EXkHexagonType GetType() const { return static_cast<EXkHexagonType>(Type); }
 	FVector GetLocation() const { return FVector(Position.X, Position.Y, Position.Z); }
 	float GetRadius() const { return Position.W; }
 	TArray<FVector> GetVertices() const {
@@ -427,12 +428,12 @@ FORCEINLINE static bool HexagonNodeIsValidLowLevel(const FXkHexagonNode* Node)
 
 FORCEINLINE static bool HexagonNodeIsValid(const FXkHexagonNode* Node)
 {
-	return HexagonNodeIsValidLowLevel(Node) && Node->Type != EXkHexagonType::Unavailable;
+	return HexagonNodeIsValidLowLevel(Node) && Node->GetType() != EXkHexagonType::Unavailable;
 }
 
 FORCEINLINE static bool HexagonNodeHasAnyFlags(const FXkHexagonNode* Node, const EXkHexagonType InType)
 {
-	return Node && EnumHasAnyFlags(Node->Type, InType);
+	return Node && EnumHasAnyFlags(Node->GetType(), InType);
 }
 
 FORCEINLINE static int32 HexagonNodeRandomSeed(FXkHexagonNode* Node)

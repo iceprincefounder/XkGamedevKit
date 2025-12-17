@@ -120,7 +120,7 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 			int32 ManhattanDistanceToCenter = FXkHexagonAStarPathfinding::CalcManhattanDistance(HexagonCoord, FIntVector(0, 0, 0));
 			FVector4f Position = FVector4f(Pos.X, Pos.Y, 0.0, HEXAGON_RADIUS);
 
-			FXkHexagonNode HexagonNode = FXkHexagonNode(EXkHexagonType::Unavailable, Position, FVector4f::Zero(), HexagonCoord);
+			FXkHexagonNode HexagonNode = FXkHexagonNode((uint8)EXkHexagonType::Unavailable, Position, FVector4f::Zero(), HexagonCoord);
 			if (ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
 			{
 				ModifyHexagonalWorldNodes().Add(HexagonCoord, HexagonNode);
@@ -165,13 +165,13 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 		FXkHexagonNode* Node = GetHexagonNode(NodeCoord);
 		if (Node && ManhattanDistanceToCenter < GroundManhattanDistance)
 		{
-			Node->Type = EXkHexagonType::Ground;
+			Node->Type = (uint8)EXkHexagonType::Ground;
 			Node->Position.Z = HorizonHeight;
 			Node->Weights = FVector4f(1.0f, 0.0f, 0.0f, 0.0f);
 		}
 		else if (Node && ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
 		{
-			Node->Type = EXkHexagonType::Beach;
+			Node->Type = (uint8)EXkHexagonType::Beach;
 			int32 ShorelineStep = ManhattanDistanceToCenter - GroundManhattanDistance;
 			Node->Position.Z = HorizonHeight - ShorelineStep * ShorelineEachStepHeight;
 			Node->Weights = FVector4f(0.0f, 0.0f, 0.0f, 1.0f);

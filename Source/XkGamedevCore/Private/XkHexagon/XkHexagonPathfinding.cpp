@@ -72,7 +72,7 @@ bool FXkHexagonAStarPathfinding::Pathfinding(const FIntVector& StartingPoint, co
 				if (!BlockList.Contains(NearPoint))
 				{
 					FXkHexagonNode* HexagonNode = NodeMap.Find(NearPoint);
-					if (HexagonNode && !EnumHasAnyFlags(HexagonNode->Type, EXkHexagonType::Unavailable))
+					if (HexagonNode && !EnumHasAnyFlags(HexagonNode->GetType(), EXkHexagonType::Unavailable))
 					{
 						NearPoints.Add(NearPoint);
 						if (!OpenList.Contains(NearPoint))
