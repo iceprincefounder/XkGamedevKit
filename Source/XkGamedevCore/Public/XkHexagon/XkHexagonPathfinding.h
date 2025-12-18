@@ -382,8 +382,8 @@ FORCEINLINE static float RandRangeFloatSin(int32 seed)
 	// use sin function to generate a pseudo-random float value between 0 and 1
 	// magic numbers: 12.9898 and 43758.5453
 	float value = FMath::Sin(seed * 12.9898f) * 43758.5453f;
-	value = value - FMath::FloorToFloat(value); // 取小数部分
-	return value; // 结果在 0~1 之间	
+	value = value - FMath::FloorToFloat(value);
+	return value;
 };
 
 FORCEINLINE static bool RandRangeBoolSin(int32 seed)
@@ -394,6 +394,22 @@ FORCEINLINE static bool RandRangeBoolSin(int32 seed)
 FORCEINLINE static int32 RandRangeIntSin(int32 seed)
 {
 	return static_cast<int32>(RandRangeFloatSin(seed) * INT32_MAX);
+}
+
+FORCEINLINE static FLinearColor RandRangeColorByHue(int32 seed, float H, float S, float V)
+{
+	int32 InputValue = seed * 1.71f;
+	int32 Hue = InputValue % (uint8)(H * 255);
+
+	// HSV: H(0~1), S(0~1), V(0~1)
+	FLinearColor Color = FLinearColor::MakeFromHSV8((uint8)Hue, (uint8)(S * 255), (uint8)(V * 255));
+
+	return Color.ToFColor(true);
+}
+
+FORCEINLINE static FLinearColor RandRangeColorByHue(int32 seed)
+{
+	return RandRangeColorByHue(seed, 1.0, 1.0, 1.0);
 }
 
 FORCEINLINE static FVector HexagonNodeXAxis()
