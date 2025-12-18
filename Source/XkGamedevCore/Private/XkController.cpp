@@ -91,18 +91,43 @@ bool AXkParabolaCurve::IsParabolaCurveIntersecting(const ECollisionChannel Trace
 		FVector B = ParabolaSpline->GetLocationAtSplinePoint(Index + 1, ESplineCoordinateSpace::World);
 		FHitResult HitResult;
 #if ENABLE_DRAW_DEBUG
+		/*- DEBUG CODE -*/
 		//DrawDebugLine(GetWorld(), A, B, FColor::Red, false, -1.0f, 0, 10.0);
 #endif
 		FCollisionQueryParams CollisionQueryParams;
 		CollisionQueryParams.AddIgnoredActors(IgnoreActors);
 		if (GetWorld()->LineTraceSingleByChannel(HitResult, A, B, TraceChannel, CollisionQueryParams))
 		{
+#if ENABLE_DRAW_DEBUG
+			/*- DEBUG CODE -*/
+			//FString DebugStr = HitResult.GetActor() ? HitResult.GetActor()->GetActorLabel() : FString("None");
+			//GEngine->AddOnScreenDebugMessage(-1, 0.0, FColor::Blue, *DebugStr);
+#endif
 			return true;
 		}
 	}
 	return false;
 }
 
+FVector AXkParabolaCurve::GetParabolaCurveStartLocation() const
+{
+	int32 NumPoints = ParabolaSpline->GetNumberOfSplinePoints();
+	if (NumPoints > 0)
+	{
+		return ParabolaSpline->GetLocationAtSplinePoint(0, ESplineCoordinateSpace::World);
+	}
+	return FVector::ZeroVector;
+}
+
+FVector AXkParabolaCurve::GetParabolaCurveEndLocation() const
+{
+	int32 NumPoints = ParabolaSpline->GetNumberOfSplinePoints();
+	if (NumPoints > 0)
+	{
+		return ParabolaSpline->GetLocationAtSplinePoint(NumPoints - 1, ESplineCoordinateSpace::World);
+	}
+	return FVector::ZeroVector;
+}
 
 void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& End, const float ParaCurveArc)
 {

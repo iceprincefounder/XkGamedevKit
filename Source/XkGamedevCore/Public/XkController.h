@@ -43,52 +43,52 @@ class XKGAMEDEVCORE_API AXkParabolaCurve : public AActor
 {
 	GENERATED_BODY()
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class USceneComponent> RootScene;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class USplineComponent> ParabolaSpline;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UStaticMeshComponent> ParabolaStartMeshComponent;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UStaticMeshComponent> ParabolaEndMeshComponent;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TArray<class USplineMeshComponent*> ParabolaSplineMeshComponents;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UStaticMesh* ParabolaMesh;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UStaticMesh* ParabolaStartMesh;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UStaticMesh* ParabolaEndMesh;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UMaterialInterface* ParabolaMeshMaterial;
 
 	UPROPERTY(Transient)
 	class UMaterialInstanceDynamic* ParabolaMeshMaterialDyn;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	FVector ParabolaStartMeshScale;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	FVector ParabolaEndMeshScale;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	float ParabolaStartScale;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	float ParabolaEndScale;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	int32 ParabolaPointsNum;
 
-	UPROPERTY(Category = "GuideLine [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	int32 ParabolaSortPriority;
 
 public:
@@ -97,25 +97,31 @@ public:
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 
-	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]")
 	virtual bool IsParabolaCurveIntersecting(const ECollisionChannel TraceChannel, const TArray<AActor*>& IgnoreActors) const;
 
-	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]")
+	virtual FVector GetParabolaCurveStartLocation() const;
+
+	UFUNCTION(BlueprintCallable, Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]")
+	virtual FVector GetParabolaCurveEndLocation() const;
+
+	UFUNCTION(BlueprintCallable, Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]")
 	virtual void UpdateParabolaCurve(const FVector& Start, const FVector& End, const float ParaCurveArc);
 
-	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]")
 	void SetParabolaStartEndVisibility(const bool StartVisible, const bool EndVisible);
 
-	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]")
 	void SetParabolaCurveColor(const FLinearColor& Color);
 
-	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]")
 	void SetParabolaScale(const float StartScale, const float EndScale) { ParabolaStartScale = StartScale; ParabolaEndScale = EndScale;};
 
-	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]")
 	void SetParabolaTranslucentPriority(const int32 Priority) { ParabolaSortPriority = Priority;};
 
-	UFUNCTION(BlueprintCallable, Category = "GuideLine [KEVINTSUIXUGAMEDEV]")
+	UFUNCTION(BlueprintCallable, Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]")
 	void SetParabolaNumPoints(const int32 Input) { ParabolaPointsNum = Input; };
 };
 
