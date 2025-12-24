@@ -470,6 +470,15 @@ FVector UXkTargetMovementComponent::GetSphereTraceLocation(const FVector& Input,
 	return Input;
 }
 
+void UXkTargetMovementComponent::ValidateOnGround()
+{
+	if (bFailToGround)
+	{
+		FVector ActorLocation = GetMovementActor()->GetActorLocation();
+		FVector TargetLocation = GetLineTraceLocation(ActorLocation, ECollisionChannel::ECC_Pawn, false /*Not bTraceUnderFoots*/);
+		GetMovementActor()->SetActorLocation(TargetLocation);
+	}
+}
 
 FVector UXkTargetMovementComponent::CalcParaCurve(const FVector& Start, const FVector& End, const float CurveArc, const float CurveDist)
 {
