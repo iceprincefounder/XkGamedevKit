@@ -398,7 +398,7 @@ FORCEINLINE static int32 RandRangeIntSin(int32 seed)
 
 FORCEINLINE static FLinearColor RandRangeColorByHue(int32 seed, float H, float S, float V)
 {
-	int32 InputValue = seed * 1.71f;
+	int32 InputValue = seed;
 	int32 Hue = InputValue % (uint8)(H * 255);
 
 	// HSV: H(0~1), S(0~1), V(0~1)
