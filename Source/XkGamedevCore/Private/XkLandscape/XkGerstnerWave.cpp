@@ -1,6 +1,6 @@
 ﻿// Copyright ©ICEPRINCE. All Rights Reserved.
 
-#include "XkLandscape/XkGerstnerWaterWave.h"
+#include "XkLandscape/XkGerstnerWave.h"
 #include "XkLandscape/XkLandscapeComponents.h"
 #include "Containers/DynamicRHIResourceArray.h"
 #include "RenderingThread.h"

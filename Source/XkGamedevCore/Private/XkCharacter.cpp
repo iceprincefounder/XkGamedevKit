@@ -2,6 +2,7 @@
 
 #include "XkCharacter.h"
 #include "XkController.h"
+#include "XkLandscape/XkBuoyancy.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Camera/CameraComponent.h"
 #include "Components/DecalComponent.h"
@@ -626,6 +627,9 @@ AXkCharacter::AXkCharacter(const FObjectInitializer& ObjectInitializer)
 	TargetMovement->bFailToGround = true;
 	TargetMovement->CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
 	TargetMovement->CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+
+	// Configure buoyancy component
+	BuoyancyComponent = CreateDefaultSubobject<UXkBuoyancyComponent>(TEXT("Buoyancy Component"));
 
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;

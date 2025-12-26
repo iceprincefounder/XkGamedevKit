@@ -4,6 +4,7 @@
 #include "XkLandscape/XkLandscapeComponents.h"
 #include "XkLandscape/XkLandscapeRenderUtils.h"
 #include "XkLandscape/XkLandscapeSceneProxy.h"
+#include "Materials/MaterialParameterCollectionInstance.h"
 
 
 static bool VisQuadtreeBounds = 0;
@@ -120,6 +121,8 @@ void UXkLandscapeComponent::FetchPatchData(TArray<FVector4f>& OutVertices, TArra
 
 UXkLandscapeWithWaterComponent::UXkLandscapeWithWaterComponent(const FObjectInitializer& ObjectInitializer)
 	: UXkLandscapeComponent(ObjectInitializer)
+	, WaterWavesAsset(nullptr)
+	, TargetWaveMaskDepth(2048.0)
 	, bDisableWaterBody(false)
 {
 }

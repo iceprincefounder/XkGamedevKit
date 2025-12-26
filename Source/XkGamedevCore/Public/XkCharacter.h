@@ -265,7 +265,10 @@ class XKGAMEDEVCORE_API AXkCharacter : public ACharacter
 	GENERATED_BODY()
 
 	UPROPERTY(Category= "Character [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess = "true"))
-	TObjectPtr<UXkTargetMovementComponent> TargetMovement;
+	TObjectPtr<class UXkTargetMovementComponent> TargetMovement;
+
+	UPROPERTY(Category= "Character [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess = "true"))
+	TObjectPtr<class UXkBuoyancyComponent> BuoyancyComponent;
 public:
 	/** Default UObject constructor. */
 	AXkCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
@@ -292,6 +295,7 @@ public:
 	virtual void OnBeginOverlap(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& Hit) {};
 
 	FORCEINLINE UXkTargetMovementComponent* GetXkTargetMovement() const { return TargetMovement; }
+	FORCEINLINE UXkBuoyancyComponent* GetXkBuoyancyComponent() const { return BuoyancyComponent; }
 	virtual void EnableCharacterMovement();
 	virtual void DisableCharacterMovement();
 };

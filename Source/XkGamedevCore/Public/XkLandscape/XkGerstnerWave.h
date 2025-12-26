@@ -6,7 +6,7 @@
 #include "SceneView.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "SceneViewExtension.h"
-#include "XkGerstnerWaterWave.generated.h"
+#include "XkGerstnerWave.generated.h"
 
 // FXkWaveGPUResources
 struct FXkWaveGPUResources
