@@ -298,6 +298,14 @@ FVector2D FXkHexagonAStarPathfinding::CalcHexagonPosition(const FIntVector& Inpu
 }
 
 
+FVector2D FXkHexagonAStarPathfinding::CalcHexagonPosition(const FVector2D& InputLocation, const float HexagonRadius)
+{
+	FIntVector Coord = CalcHexagonCoord(InputLocation.X, InputLocation.Y, HexagonRadius);
+	// Return center position of the hexagon
+	return CalcHexagonPosition(Coord, HexagonRadius);
+}
+
+
 FVector2D FXkHexagonAStarPathfinding::CalcHexagonPosition(const int32 IndexX, const int32 IndexY, const float Distance)
 {
 	double Pos_X = Distance * 1.5 * IndexX;

@@ -209,6 +209,12 @@ public:
 	static int32 CalcManhattanDistance(const FIntVector& PointA, const FIntVector& PointB);
 	static FIntVector CalcHexagonCoord(const float PositionX, const float PositionY, const float HexagonRadius);
 	static FVector2D CalcHexagonPosition(const FIntVector& InputCoord, const float HexagonRadius);
+	/**
+	* @brief Calculate hexagon actor position by Cartesian coordinate XY location
+	* @param InputLocation Cartesian coordinate XY location
+	* @return Location of the hexagon center
+	*/
+	static FVector2D CalcHexagonPosition(const FVector2D& InputLocation, const float HexagonRadius);
 	/** 
 	* @brief Calculate hexagon actor position by Cartesian coordinate XY index number
 	* @param IndexX Cartesian coordinate X index
