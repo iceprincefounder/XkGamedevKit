@@ -446,29 +446,6 @@ void AXkTopDownCamera::AddMoveTarget(const FVector& InTarget)
 }
 
 
-void AXkTopDownCamera::MoveToTarget(const FVector& InTarget, const bool bImmediately)
-{
-	SCOPED_NAMED_EVENT(AXkTopDownCamera_MoveToTarget, FColor::Red);
-	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkTopDownCamera_MoveToTarget);
-	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkTopDownCamera_MoveToTarget);
-	if (CameraBoom->bEnableCameraLag && bImmediately)
-	{
-		CameraBoom->bEnableCameraLag = false;
-		SetActorLocation(InTarget);
-		GetWorld()->GetTimerManager().SetTimerForNextTick(
-		FTimerDelegate::CreateLambda([this]()
-				{
-					CameraBoom->bEnableCameraLag = true;
-				})
-		);
-	}
-	else
-	{
-		SetActorLocation(InTarget);
-	}
-}
-
-
 FRotator AXkTopDownCamera::GetForwardRotator() const
 {
 	FTransform ComponentToWorld = CameraBoom->GetComponentToWorld();

@@ -544,6 +544,11 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonalWorldNodes(const EXk
 		{
 			Results.AddUnique(&NodePair.Value);
 		}
+		else if (HexagonType == EXkHexagonType::Unavailable &&
+			HexagonNodeIsValidLowLevel(&NodePair.Value) && !HexagonNodeIsValid(&NodePair.Value))
+		{
+			Results.AddUnique(&NodePair.Value);
+		}
 	}
 	return Results;
 }
