@@ -75,9 +75,11 @@ public:
 
 	virtual void UpdateCameraPos(const FVector& InCameraPos, const FVector& Position);
 
-	virtual void InitProcessFunc(const TFunction<void(FQuadtreeNode&, const FVector&, const int32)>& Input) { ProcessNode = Input; };
+	// Init pre process function for each node before cull
+	virtual void InitProcessFunc(const TFunction<void(FQuadtreeNode&, const FVector&, const int32)>& Input) { Processor = Input; };
 
-	virtual void ProcessNodeFunc(FQuadtreeNode& OutNode, const FVector& InCameraPos, const int32 InNodeID);
+	// Process each node before cull
+	virtual void ProcessFunc(FQuadtreeNode& OutNode, const FVector& InCameraPos, const int32 InNodeID);
 
 	virtual int32 GetTreeDepth(const int32 InMinNodeSize) const;
 
@@ -125,7 +127,7 @@ private:
 	
 private:
 	// std::function to post process node's center and extent
-	TFunction<void(FQuadtreeNode&, const FVector& /*Camera Pos*/, const int32)> ProcessNode;
+	TFunction<void(FQuadtreeNode&, const FVector& /*Camera Pos*/, const int32)> Processor;
 };
 
 // https://www.ronja-tutorials.com/post/041-hsv-colorspace/

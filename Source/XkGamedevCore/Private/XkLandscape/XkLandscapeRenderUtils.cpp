@@ -27,7 +27,7 @@ void FQuadtreeNode::Cull(TArray<int32>& OutNodes, const FConvexVolume* InCamera,
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_FQuadtreeNode_Cull);
 
 	// process and update node with extra info
-	Quadtree->ProcessNodeFunc(*this, InCameraPos, NodeID);
+	Quadtree->ProcessFunc(*this, InCameraPos, NodeID);
 
 	FVector RootOffset = Quadtree->RootOffset;
 	FVector vCenter3D = NodeBox.GetCenter();
@@ -282,11 +282,11 @@ void FQuadtree::UpdateCameraPos(const FVector& InCameraPos, const FVector& InPos
 }
 
 
-void FQuadtree::ProcessNodeFunc(FQuadtreeNode& OutNode, const FVector& InCameraPos, const int32 InNodeID) 
+void FQuadtree::ProcessFunc(FQuadtreeNode& OutNode, const FVector& InCameraPos, const int32 InNodeID) 
 { 
-	if (ProcessNode) // check if TFunction callable
+	if (Processor) // check if TFunction callable
 	{
-		ProcessNode(OutNode, InCameraPos, InNodeID);
+		Processor(OutNode, InCameraPos, InNodeID);
 	}
 }
 

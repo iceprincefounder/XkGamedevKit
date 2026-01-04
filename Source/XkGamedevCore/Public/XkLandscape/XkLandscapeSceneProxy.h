@@ -77,6 +77,8 @@ public:
 
 	typedef FXkQuadtreeSceneProxy Super;
 
+	virtual void GenerateBuffers() = 0;
+	virtual void UpdateBuffers(const FSceneView& View) = 0;
 protected:
 	mutable FQuadtree Quadtree;
 	UXkQuadtreeComponent* OwnerComponent;
@@ -112,10 +114,10 @@ public:
 	virtual bool CanBeOccluded() const override { return false; };
 	//~ End FPrimitiveSceneProxy Interface
 
-	void GenerateBuffers();
-	void GenerateBuffers_Renderthread(FRHICommandListImmediate& RHICmdList, FPatchData* InPatchData);
-	virtual void UpdateInstanceBuffer(const int16 InFrameTag);
-
+	//~ Begin FXkQuadtreeSceneProxy Interface
+	virtual void GenerateBuffers() override;
+	virtual void UpdateBuffers(const FSceneView& View) override;
+	//~ End FXkQuadtreeSceneProxy Interface
 protected:
 	FMaterialRenderProxy* MaterialRenderProxy;
 	FMaterialRelevance MaterialRelevance;
@@ -141,8 +143,8 @@ public:
 		FMaterialRenderProxy* InMaterialRenderProxy = nullptr, FMaterialRenderProxy* InWaterMaterialRenderProxy = nullptr);
 
 	virtual ~FXkLandscapeWithWaterSceneProxy();
-
-	//~ Begin FXkQuadtreeSceneProxy Interface
+	
+	//~ Begin FPrimitiveSceneProxy Interface
 	virtual void GetDynamicMeshElements(
 		const TArray<const FSceneView*>& Views,
 		const FSceneViewFamily& ViewFamily,
@@ -154,13 +156,12 @@ public:
 	virtual void CreateRenderThreadResources() override;
 #endif
 	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override;
+	//~ End FPrimitiveSceneProxy Interface
 
-	virtual void UpdateInstanceBuffer(const int16 InFrameTag) override;
+	//~ Begin FXkQuadtreeSceneProxy Interface
+	virtual void GenerateBuffers() override;
+	virtual void UpdateBuffers(const FSceneView& View) override;
 	//~ End FXkQuadtreeSceneProxy Interface
-
-private:
-	void GenerateBuffers();
-	void GenerateBuffers_Renderthread(FRHICommandListImmediate& RHICmdList, FPatchData* InPatchData);
 
 protected:
 	FXkQuadtreeVertexFactory* WaterVertexFactory;
@@ -190,12 +191,6 @@ public:
 	virtual ~FXkSphericalLandscapeWithWaterSceneProxy();
 
 	//~ Begin FXkQuadtreeSceneProxy Interface
-	virtual void GetDynamicMeshElements(
-		const TArray<const FSceneView*>& Views,
-		const FSceneViewFamily& ViewFamily,
-		uint32 VisibilityMap,
-		class FMeshElementCollector& Collector) const override;
-
-	void UpdateInstanceBuffer(const int16 InFrameTag) override;
+	virtual void UpdateBuffers(const FSceneView& View) override;
 	//~ End FXkQuadtreeSceneProxy Interface
 };

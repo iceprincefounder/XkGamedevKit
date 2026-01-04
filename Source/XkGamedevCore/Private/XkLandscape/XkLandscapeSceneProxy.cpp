@@ -251,18 +251,11 @@ void FXkLandscapeSceneProxy::GetDynamicMeshElements(const TArray<const FSceneVie
 	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 	{
 		const FSceneView& View = *Views[ViewIndex];
-		int16 FrameTag = View.GetOcclusionFrameCounter() % 65535;
-		FVector Position = GetActorPosition();
+		const_cast<FXkLandscapeSceneProxy*>(this)->UpdateBuffers(View);
 
-		if (!FreezeQuadtreeCulling)
-		{
-			Quadtree.Cull(&View.ViewFrustum, View.ViewLocation, Position, FrameTag);
-		}
-		int32 NunInst = Quadtree.GetVisibleNodes().Num();
+		const int32 NunInst = Quadtree.GetVisibleNodes().Num();
 		if (NunInst > 0)
 		{
-			const_cast<FXkLandscapeSceneProxy*>(this)->UpdateInstanceBuffer(FrameTag);
-
 			if (bDisableLandscapeBody)
 			{
 				return;
@@ -296,6 +289,7 @@ void FXkLandscapeSceneProxy::GetDynamicMeshElements(const TArray<const FSceneVie
 			TRACE_CPUPROFILER_EVENT_SCOPE(Collector.AddMesh);
 			Collector.AddMesh(ViewIndex, Mesh);
 		}
+		break;
 	}
 }
 
@@ -346,161 +340,84 @@ void FXkLandscapeSceneProxy::GenerateBuffers()
 		PatchDataRef->Vertices = PatchData.Vertices;
 		PatchDataRef->Indices = PatchData.Indices;
 
-		FXkLandscapeSceneProxy* SceneProxy = this;
-
 		ENQUEUE_RENDER_COMMAND(GenerateBuffers)(
-			[PatchDataRef, SceneProxy](FRHICommandListImmediate& RHICmdList)
+			[this, PatchDataRef](FRHICommandListImmediate& RHICmdList)
 			{
-				SceneProxy->GenerateBuffers_Renderthread(RHICmdList, PatchDataRef);
+				if (!PatchDataRef->Vertices.Num())
+					return;
+
+				FRHIResourceCreateInfo CreateInfo(TEXT("FXkLandscapeSceneProxy::GenerateBuffers_Renderthread"));
+
+				/** vertex buffer */
+				int32 NumSourceVerts = PatchDataRef->Vertices.Num();
+				VertexPositionBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
+					NumSourceVerts * sizeof(FVector4f),
+					BUF_Static | BUF_ShaderResource, CreateInfo);
+				void* RawVertexBuffer = RHILockBuffer(
+					VertexPositionBuffer_GPU.VertexBufferRHI, 0,
+					VertexPositionBuffer_GPU.VertexBufferRHI->GetSize(),
+					RLM_WriteOnly);
+				FMemory::Memcpy((char*)RawVertexBuffer, &PatchDataRef->Vertices[0], NumSourceVerts * sizeof(FVector4f));
+				RHIUnlockBuffer(VertexPositionBuffer_GPU.VertexBufferRHI);
+
+				/** index buffer */
+				int32 NumSourceIndices = PatchDataRef->Indices.Num();
+				IndexBuffer_GPU.IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint32), sizeof(uint32) * NumSourceIndices, BUF_Static, CreateInfo);
+				/** index buffer */
+				void* RawIndexBuffer = RHILockBuffer(
+					IndexBuffer_GPU.IndexBufferRHI,
+					0, NumSourceIndices * sizeof(uint32),
+					RLM_WriteOnly);
+				FMemory::Memcpy((char*)RawIndexBuffer, &PatchDataRef->Indices[0], NumSourceIndices * sizeof(uint32));
+				RHIUnlockBuffer(IndexBuffer_GPU.IndexBufferRHI);
+
+				/** instance position */
+				InstancePositionBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
+					MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f),
+					BUF_Dynamic | BUF_ShaderResource, CreateInfo);
+				void* RawInstancePositionBuffer = RHILockBuffer(
+					InstancePositionBuffer_GPU.VertexBufferRHI, 0,
+					InstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
+					RLM_WriteOnly);
+				FMemory::Memset((char*)RawInstancePositionBuffer, 0, MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f));
+				RHIUnlockBuffer(InstancePositionBuffer_GPU.VertexBufferRHI);
+
+				/** instance vertex morph */
+				InstanceMorphBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
+					MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f),
+					BUF_Dynamic | BUF_ShaderResource, CreateInfo);
+				void* RawInstanceMorphBuffer = RHILockBuffer(
+					InstanceMorphBuffer_GPU.VertexBufferRHI, 0,
+					InstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
+					RLM_WriteOnly);
+				FMemory::Memset((char*)RawInstanceMorphBuffer, 0, MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f));
+				RHIUnlockBuffer(InstanceMorphBuffer_GPU.VertexBufferRHI);
+
+				// Important: delete the patch data after use to avoid memory leak
 				delete PatchDataRef;
 			});
 	}
 }
 
 
-void FXkLandscapeSceneProxy::GenerateBuffers_Renderthread(FRHICommandListImmediate& RHICmdList, FPatchData* InPatchData)
+void FXkLandscapeSceneProxy::UpdateBuffers(const FSceneView& View)
 {
-	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::GenerateBuffers_Renderthread);
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeSceneProxy::UpdateBuffers);
 
-	check(IsInRenderingThread());
+	int16 FrameTag = View.GetOcclusionFrameCounter() % 65535;
+	FVector Position = GetActorPosition();
 
-	if (!InPatchData->Vertices.Num())
-		return;
-
-	FRHIResourceCreateInfo CreateInfo(TEXT("FXkLandscapeSceneProxy::GenerateBuffers_Renderthread"));
-
-	/** vertex buffer */
-	int32 NumSourceVerts = InPatchData->Vertices.Num();
-	VertexPositionBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
-		NumSourceVerts * sizeof(FVector4f),
-		BUF_Static | BUF_ShaderResource, CreateInfo);
-	void* RawVertexBuffer = RHILockBuffer(
-		VertexPositionBuffer_GPU.VertexBufferRHI, 0,
-		VertexPositionBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawVertexBuffer, &InPatchData->Vertices[0], NumSourceVerts * sizeof(FVector4f));
-	RHIUnlockBuffer(VertexPositionBuffer_GPU.VertexBufferRHI);
-
-	/** index buffer */
-	int32 NumSourceIndices = InPatchData->Indices.Num();
-	IndexBuffer_GPU.IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint32), sizeof(uint32) * NumSourceIndices, BUF_Static, CreateInfo);
-	/** index buffer */
-	void* RawIndexBuffer = RHILockBuffer(
-		IndexBuffer_GPU.IndexBufferRHI,
-		0, NumSourceIndices * sizeof(uint32),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawIndexBuffer, &InPatchData->Indices[0], NumSourceIndices * sizeof(uint32));
-	RHIUnlockBuffer(IndexBuffer_GPU.IndexBufferRHI);
-
-	/** instance position */
-	InstancePositionBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
-		MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f),
-		BUF_Dynamic | BUF_ShaderResource, CreateInfo);
-	void* RawInstancePositionBuffer = RHILockBuffer(
-		InstancePositionBuffer_GPU.VertexBufferRHI, 0,
-		InstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memset((char*)RawInstancePositionBuffer, 0, MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f));
-	RHIUnlockBuffer(InstancePositionBuffer_GPU.VertexBufferRHI);
-
-	/** instance vertex morph */
-	InstanceMorphBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
-		MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f),
-		BUF_Dynamic | BUF_ShaderResource, CreateInfo);
-	void* RawInstanceMorphBuffer = RHILockBuffer(
-		InstanceMorphBuffer_GPU.VertexBufferRHI, 0,
-		InstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memset((char*)RawInstanceMorphBuffer, 0, MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f));
-	RHIUnlockBuffer(InstanceMorphBuffer_GPU.VertexBufferRHI);
-
-	/** outer mesh data */
-	//DynamicVertexData_OutterOcean_GPU.VertexBufferRHI = RHICreateVertexBuffer(
-	//	FARMESH_VERTEX_COUNT * sizeof(FVector4),
-	//	BUF_Dynamic | BUF_ShaderResource, CreateInfo);
-
-	//NumSourceIndices = FARMESH_VERTEX_COUNT * 3;
-
-	//IndexBuffer_OutterOcean_GPU.IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint32), sizeof(uint32) * NumSourceIndices, BUF_Static, CreateInfo);
-
-	///** outer ocean index buffer */
-	//RawIndicies = RHILockIndexBuffer(
-	//	IndexBuffer_OutterOcean_GPU.IndexBufferRHI,
-	//	0, NumSourceIndices * sizeof(uint32),
-	//	RLM_WriteOnly);
-
-	//TArray<uint32> TempOuterOceanIndex;
-	//TempOuterOceanIndex.Add(0);
-	//TempOuterOceanIndex.Add(4);
-	//TempOuterOceanIndex.Add(1);
-
-	//TempOuterOceanIndex.Add(1);
-	//TempOuterOceanIndex.Add(4);
-	//TempOuterOceanIndex.Add(5);
-
-	//TempOuterOceanIndex.Add(1);
-	//TempOuterOceanIndex.Add(5);
-	//TempOuterOceanIndex.Add(2);
-
-	//TempOuterOceanIndex.Add(5);
-	//TempOuterOceanIndex.Add(6);
-	//TempOuterOceanIndex.Add(2);
-
-	//TempOuterOceanIndex.Add(6);
-	//TempOuterOceanIndex.Add(7);
-	//TempOuterOceanIndex.Add(3);
-
-	//TempOuterOceanIndex.Add(6);
-	//TempOuterOceanIndex.Add(3);
-	//TempOuterOceanIndex.Add(2);
-
-	//TempOuterOceanIndex.Add(0);
-	//TempOuterOceanIndex.Add(7);
-	//TempOuterOceanIndex.Add(4);
-
-	//TempOuterOceanIndex.Add(0);
-	//TempOuterOceanIndex.Add(3);
-	//TempOuterOceanIndex.Add(7);
-
-	//FMemory::Memcpy((char*)RawIndicies, (const void*)TempOuterOceanIndex.GetData(), NumSourceIndices * sizeof(uint32));
-
-	//RHIUnlockIndexBuffer(IndexBuffer_OutterOcean_GPU.IndexBufferRHI);
-}
-
-
-void FXkLandscapeSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
-{
-	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::UpdateInstanceBuffer);
-
-	check(IsInRenderingThread());
+	if (!FreezeQuadtreeCulling)
+	{
+		Quadtree.Cull(&View.ViewFrustum, View.ViewLocation, Position, FrameTag);
+	}
 
 	/** instance pos buffer */
-	FRHIResourceCreateInfo CreateInfo(TEXT("FXkLandscapeSceneProxy::UpdateInstanceBuffer"));
 	int iNunInst = Quadtree.GetVisibleNodes().Num();
 	TArray<FVector4f> InstancePositionData;
 	TArray<FVector4f> InstanceMorphData;
 
-	FVector4f v4Zero;
-	v4Zero.X = 0;
-	v4Zero.Y = 0;
-	v4Zero.Z = 0;
-	v4Zero.W = 0;
-
 	FVector3f RootOffset = FVector3f(Quadtree.GetRootOffset());
-	float fMaxX = -99999999;
-	float fMinX = 99999999;;
-	float fMaxY = -99999999;;
-	float fMinY = 99999999;
-
-	for (int i = 0; i < Quadtree.GetVisibleNodes().Num(); i++)
-	{
-		int32 iTreeIndex = Quadtree.GetVisibleNodes()[i];
-		const FQuadtreeNode& QuadtreeNode = Quadtree.GetTreeNodes()[iTreeIndex];
-		fMaxX = fMaxX > QuadtreeNode.GetNodeBox().Max.X ? fMaxX : QuadtreeNode.GetNodeBox().Max.X;
-		fMaxY = fMaxY > QuadtreeNode.GetNodeBox().Max.Y ? fMaxY : QuadtreeNode.GetNodeBox().Max.Y;
-		fMinX = fMinX < QuadtreeNode.GetNodeBox().Min.X ? fMinX : QuadtreeNode.GetNodeBox().Min.X;
-		fMinY = fMinY < QuadtreeNode.GetNodeBox().Min.Y ? fMinY : QuadtreeNode.GetNodeBox().Min.Y;
-	}
 
 	for (int i = 0; i < iNunInst; i++)
 	{
@@ -530,74 +447,25 @@ void FXkLandscapeSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
 		InstanceMorphData.Add(InstanceMorphValue);
 	}
 
-	fMaxX += RootOffset.X;
-	fMaxY += RootOffset.Y;
-	fMinX += RootOffset.X;
-	fMinY += RootOffset.Y;
+	ENQUEUE_RENDER_COMMAND(UpdateBuffers)(
+		[this, InstancePositionData, InstanceMorphData, iNunInst](FRHICommandListImmediate& RHICmdList)
+		{
+			/** instance position data */
+			void* RawInstancePositionData = RHILockBuffer(
+				InstancePositionBuffer_GPU.VertexBufferRHI, 0,
+				InstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
+				RLM_WriteOnly);
+			FMemory::Memcpy((char*)RawInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
+			RHIUnlockBuffer(InstancePositionBuffer_GPU.VertexBufferRHI);
 
-	TArray<FVector4f> Outerocean;
-	float fOceanBorder = 80000 * 100;
-	FVector4f TempPos;
-	TempPos.Z = 0;
-	TempPos.W = 1;
-
-	TempPos.X = -fOceanBorder;
-	TempPos.Y = -fOceanBorder;
-	Outerocean.Add(TempPos);
-
-	TempPos.X = fOceanBorder;
-	TempPos.Y = -fOceanBorder;
-	Outerocean.Add(TempPos);
-
-	TempPos.X = fOceanBorder;
-	TempPos.Y = fOceanBorder;
-	Outerocean.Add(TempPos);
-
-	TempPos.X = -fOceanBorder;
-	TempPos.Y = fOceanBorder;
-	Outerocean.Add(TempPos);
-
-	TempPos.X = fMinX;
-	TempPos.Y = fMinY;
-	Outerocean.Add(TempPos);
-
-	TempPos.X = fMaxX;
-	TempPos.Y = fMinY;
-	Outerocean.Add(TempPos);
-
-	TempPos.X = fMaxX;
-	TempPos.Y = fMaxY;
-	Outerocean.Add(TempPos);
-
-	TempPos.X = fMinX;
-	TempPos.Y = fMaxY;
-	Outerocean.Add(TempPos);
-
-	/** instance position data */
-	void* RawInstancePositionData = RHILockBuffer(
-		InstancePositionBuffer_GPU.VertexBufferRHI, 0,
-		InstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
-	RHIUnlockBuffer(InstancePositionBuffer_GPU.VertexBufferRHI);
-
-	/** instance morph data */
-	void* RawInstanceMorphData = RHILockBuffer(
-		InstanceMorphBuffer_GPU.VertexBufferRHI, 0,
-		InstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstanceMorphData, InstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
-	RHIUnlockBuffer(InstanceMorphBuffer_GPU.VertexBufferRHI);
-
-	/** outer ocean mesh */
-	//void* outtermeshdata = RHILockBuffer(
-	//	DynamicVertexData_OutterOcean_GPU.VertexBufferRHI, 0,
-	//	DynamicVertexData_OutterOcean_GPU.VertexBufferRHI->GetSize(),
-	//	RLM_WriteOnly);
-
-	//FMemory::Memcpy((char*)outtermeshdata, Outerocean.GetData(), Outerocean.Num() * sizeof(FVector4));
-
-	//RHIUnlockBuffer(DynamicVertexData_OutterOcean_GPU.VertexBufferRHI);
+			/** instance morph data */
+			void* RawInstanceMorphData = RHILockBuffer(
+				InstanceMorphBuffer_GPU.VertexBufferRHI, 0,
+				InstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
+				RLM_WriteOnly);
+			FMemory::Memcpy((char*)RawInstanceMorphData, InstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
+			RHIUnlockBuffer(InstanceMorphBuffer_GPU.VertexBufferRHI);
+		});
 }
 
 
@@ -736,6 +604,10 @@ FPrimitiveViewRelevance FXkLandscapeWithWaterSceneProxy::GetViewRelevance(const 
 
 void FXkLandscapeWithWaterSceneProxy::GenerateBuffers()
 {
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeWithWaterSceneProxy::GenerateBuffers);
+
+	FXkLandscapeSceneProxy::GenerateBuffers();
+
 	if (WaterPatchData.Vertices.Num())
 	{
 		check(WaterPatchData.Vertices.Num());
@@ -745,111 +617,77 @@ void FXkLandscapeWithWaterSceneProxy::GenerateBuffers()
 		PatchDataRef->Vertices = WaterPatchData.Vertices;
 		PatchDataRef->Indices = WaterPatchData.Indices;
 
-		FXkLandscapeWithWaterSceneProxy* SceneProxy = this;
-
 		ENQUEUE_RENDER_COMMAND(GenerateBuffers)(
-			[PatchDataRef, SceneProxy](FRHICommandListImmediate& RHICmdList)
+			[this, PatchDataRef](FRHICommandListImmediate& RHICmdList)
 			{
-				SceneProxy->GenerateBuffers_Renderthread(RHICmdList, PatchDataRef);
+				if (!PatchDataRef->Vertices.Num())
+					return;
+
+				FRHIResourceCreateInfo CreateInfo(TEXT("XkLandscapeWithWaterSceneProxy"));
+
+				/** vertex buffer */
+				int32 NumSourceVerts = PatchDataRef->Vertices.Num();
+				WaterVertexPositionBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
+					NumSourceVerts * sizeof(FVector4f),
+					BUF_Static | BUF_ShaderResource, CreateInfo);
+				void* RawVertexBuffer = RHILockBuffer(
+					WaterVertexPositionBuffer_GPU.VertexBufferRHI, 0,
+					WaterVertexPositionBuffer_GPU.VertexBufferRHI->GetSize(),
+					RLM_WriteOnly);
+				FMemory::Memcpy((char*)RawVertexBuffer, &PatchDataRef->Vertices[0], NumSourceVerts * sizeof(FVector4f));
+				RHIUnlockBuffer(WaterVertexPositionBuffer_GPU.VertexBufferRHI);
+
+				/** index buffer */
+				int32 NumSourceIndices = PatchDataRef->Indices.Num();
+				WaterIndexBuffer_GPU.IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint32), sizeof(uint32) * NumSourceIndices, BUF_Static, CreateInfo);
+				/** index buffer */
+				void* RawIndexBuffer = RHILockBuffer(
+					WaterIndexBuffer_GPU.IndexBufferRHI,
+					0, NumSourceIndices * sizeof(uint32),
+					RLM_WriteOnly);
+				FMemory::Memcpy((char*)RawIndexBuffer, &PatchDataRef->Indices[0], NumSourceIndices * sizeof(uint32));
+				RHIUnlockBuffer(WaterIndexBuffer_GPU.IndexBufferRHI);
+
+				/** instance position */
+				WaterInstancePositionBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
+					MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f),
+					BUF_Dynamic | BUF_ShaderResource, CreateInfo);
+				void* RawInstancePositionBuffer = RHILockBuffer(
+					WaterInstancePositionBuffer_GPU.VertexBufferRHI, 0,
+					WaterInstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
+					RLM_WriteOnly);
+				FMemory::Memset((char*)RawInstancePositionBuffer, 0, MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f));
+				RHIUnlockBuffer(WaterInstancePositionBuffer_GPU.VertexBufferRHI);
+
+				/** instance vertex morph */
+				WaterInstanceMorphBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
+					MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f),
+					BUF_Dynamic | BUF_ShaderResource, CreateInfo);
+				void* RawInstanceMorphBuffer = RHILockBuffer(
+					WaterInstanceMorphBuffer_GPU.VertexBufferRHI, 0,
+					WaterInstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
+					RLM_WriteOnly);
+				FMemory::Memset((char*)RawInstanceMorphBuffer, 0, MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f));
+				RHIUnlockBuffer(WaterInstanceMorphBuffer_GPU.VertexBufferRHI);
+
 				delete PatchDataRef;
 			});
 	}
 }
 
 
-void FXkLandscapeWithWaterSceneProxy::GenerateBuffers_Renderthread(FRHICommandListImmediate& RHICmdList, FPatchData* InWaterPatchData)
+void FXkLandscapeWithWaterSceneProxy::UpdateBuffers(const FSceneView& View)
 {
-	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeWithWaterSceneProxy::GenerateWaterBuffers_Renderthread);
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeWithWaterSceneProxy::UpdateBuffers);
 
-	check(IsInRenderingThread());
-
-	if (!InWaterPatchData->Vertices.Num())
-		return;
-
-	FRHIResourceCreateInfo CreateInfo(TEXT("XkLandscapeWithWaterSceneProxy"));
-
-	/** vertex buffer */
-	int32 NumSourceVerts = InWaterPatchData->Vertices.Num();
-	WaterVertexPositionBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
-		NumSourceVerts * sizeof(FVector4f),
-		BUF_Static | BUF_ShaderResource, CreateInfo);
-	void* RawVertexBuffer = RHILockBuffer(
-		WaterVertexPositionBuffer_GPU.VertexBufferRHI, 0,
-		WaterVertexPositionBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawVertexBuffer, &InWaterPatchData->Vertices[0], NumSourceVerts * sizeof(FVector4f));
-	RHIUnlockBuffer(WaterVertexPositionBuffer_GPU.VertexBufferRHI);
-
-	/** index buffer */
-	int32 NumSourceIndices = InWaterPatchData->Indices.Num();
-	WaterIndexBuffer_GPU.IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint32), sizeof(uint32) * NumSourceIndices, BUF_Static, CreateInfo);
-	/** index buffer */
-	void* RawIndexBuffer = RHILockBuffer(
-		WaterIndexBuffer_GPU.IndexBufferRHI,
-		0, NumSourceIndices * sizeof(uint32),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawIndexBuffer, &InWaterPatchData->Indices[0], NumSourceIndices * sizeof(uint32));
-	RHIUnlockBuffer(WaterIndexBuffer_GPU.IndexBufferRHI);
-
-	/** instance position */
-	WaterInstancePositionBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
-		MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f),
-		BUF_Dynamic | BUF_ShaderResource, CreateInfo);
-	void* RawInstancePositionBuffer = RHILockBuffer(
-		WaterInstancePositionBuffer_GPU.VertexBufferRHI, 0,
-		WaterInstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memset((char*)RawInstancePositionBuffer, 0, MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f));
-	RHIUnlockBuffer(WaterInstancePositionBuffer_GPU.VertexBufferRHI);
-
-	/** instance vertex morph */
-	WaterInstanceMorphBuffer_GPU.VertexBufferRHI = RHICreateVertexBuffer(
-		MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f),
-		BUF_Dynamic | BUF_ShaderResource, CreateInfo);
-	void* RawInstanceMorphBuffer = RHILockBuffer(
-		WaterInstanceMorphBuffer_GPU.VertexBufferRHI, 0,
-		WaterInstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memset((char*)RawInstanceMorphBuffer, 0, MAX_VISIBLE_NODE_COUNT * sizeof(FVector4f));
-	RHIUnlockBuffer(WaterInstanceMorphBuffer_GPU.VertexBufferRHI);
-}
-
-
-void FXkLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
-{
-	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeWithWaterSceneProxy::UpdateInstanceBuffer);
-
-	check(IsInRenderingThread());
-
-	FXkLandscapeSceneProxy::UpdateInstanceBuffer(InFrameTag);
+	FXkLandscapeSceneProxy::UpdateBuffers(View);
 
 	/** instance pos buffer */
-	FRHIResourceCreateInfo CreateInfo(TEXT("UpdateInstanceBuffer"));
 	int iNunInst = Quadtree.GetVisibleNodes().Num();
 	TArray<FVector4f> WaterInstancePositionData;
 	TArray<FVector4f> WaterInstanceMorphData;
 
-	FVector4f v4Zero;
-	v4Zero.X = 0;
-	v4Zero.Y = 0;
-	v4Zero.Z = 0;
-	v4Zero.W = 0;
-
 	FVector3f RootOffset = FVector3f(Quadtree.GetRootOffset());
-	float fMaxX = -99999999;
-	float fMinX = 99999999;;
-	float fMaxY = -99999999;;
-	float fMinY = 99999999;
-
-	for (int i = 0; i < Quadtree.GetVisibleNodes().Num(); i++)
-	{
-		int32 iTreeIndex = Quadtree.GetVisibleNodes()[i];
-		const FQuadtreeNode& QuadtreeNode = Quadtree.GetTreeNodes()[iTreeIndex];
-		fMaxX = fMaxX > QuadtreeNode.GetNodeBox().Max.X ? fMaxX : QuadtreeNode.GetNodeBox().Max.X;
-		fMaxY = fMaxY > QuadtreeNode.GetNodeBox().Max.Y ? fMaxY : QuadtreeNode.GetNodeBox().Max.Y;
-		fMinX = fMinX < QuadtreeNode.GetNodeBox().Min.X ? fMinX : QuadtreeNode.GetNodeBox().Min.X;
-		fMinY = fMinY < QuadtreeNode.GetNodeBox().Min.Y ? fMinY : QuadtreeNode.GetNodeBox().Min.Y;
-	}
 
 	for (int i = 0; i < iNunInst; i++)
 	{
@@ -879,21 +717,25 @@ void FXkLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 InFrameTa
 		WaterInstanceMorphData.Add(WaterInstanceMorphValue);
 	}
 
-	/** instance position data */
-	void* RawInstancePositionData = RHILockBuffer(
-		WaterInstancePositionBuffer_GPU.VertexBufferRHI, 0,
-		WaterInstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstancePositionData, WaterInstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
-	RHIUnlockBuffer(WaterInstancePositionBuffer_GPU.VertexBufferRHI);
+	ENQUEUE_RENDER_COMMAND(UpdateBuffers)(
+		[this, WaterInstancePositionData, WaterInstanceMorphData, iNunInst](FRHICommandListImmediate& RHICmdList)
+		{
+			/** instance position data */
+			void* RawInstancePositionData = RHILockBuffer(
+				WaterInstancePositionBuffer_GPU.VertexBufferRHI, 0,
+				WaterInstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
+				RLM_WriteOnly);
+			FMemory::Memcpy((char*)RawInstancePositionData, WaterInstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
+			RHIUnlockBuffer(WaterInstancePositionBuffer_GPU.VertexBufferRHI);
 
-	/** instance morph data */
-	void* RawInstanceMorphData = RHILockBuffer(
-		WaterInstanceMorphBuffer_GPU.VertexBufferRHI, 0,
-		WaterInstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstanceMorphData, WaterInstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
-	RHIUnlockBuffer(WaterInstanceMorphBuffer_GPU.VertexBufferRHI);
+			/** instance morph data */
+			void* RawInstanceMorphData = RHILockBuffer(
+				WaterInstanceMorphBuffer_GPU.VertexBufferRHI, 0,
+				WaterInstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
+				RLM_WriteOnly);
+			FMemory::Memcpy((char*)RawInstanceMorphData, WaterInstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
+			RHIUnlockBuffer(WaterInstanceMorphBuffer_GPU.VertexBufferRHI);
+		});
 }
 
 
@@ -908,74 +750,42 @@ FXkSphericalLandscapeWithWaterSceneProxy::~FXkSphericalLandscapeWithWaterScenePr
 }
 
 
-void FXkSphericalLandscapeWithWaterSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, class FMeshElementCollector& Collector) const
+void FXkSphericalLandscapeWithWaterSceneProxy::UpdateBuffers(const FSceneView& View)
 {
-	TRACE_CPUPROFILER_EVENT_SCOPE(FXkSphericalLandscapeWithWaterSceneProxy::GetDynamicMeshElements);
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkSphericalLandscapeWithWaterSceneProxy::UpdateBuffers);
 
-	check(IsInRenderingThread());
-
-	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
-	{
-		const FSceneView& View = *Views[ViewIndex];
-		int16 FrameTag = View.GetOcclusionFrameCounter() % 65535;
-		FVector Position = GetActorPosition();
-
-		Quadtree.InitProcessFunc([this](FQuadtreeNode& OutNode, const FVector& InCameraPos, const int32 InNodeID)
+	Quadtree.InitProcessFunc([this](FQuadtreeNode& OutNode, const FVector& InCameraPos, const int32 InNodeID)
+		{
+			// "/Plugin/XkGamedevKit/Public/MaterialExpressions.ush" : XkSphericalWorldBending
+			if (OutNode.GetNodeDepth() != 0)
 			{
-				// "/Plugin/XkGamedevKit/Public/MaterialExpressions.ush" : XkSphericalWorldBending
-				if (OutNode.GetNodeDepth() != 0)
-				{
-					const FVector WorldPosition = OutNode.GetNodeBox().GetCenter() + Quadtree.GetRootOffset();
-					float Z = SphericalHeight(InCameraPos, WorldPosition);
-					FVector BoxMin = OutNode.GetNodeBox().Min;
-					BoxMin.Z = Z;
-					FVector BoxMax = OutNode.GetNodeBox().Max;
-					//BoxMax.Z = OutNode.GetNodeBox().GetExtent().X / 4.0 + y;
-					OutNode.GetNodeBoxRaw().Min = BoxMin;
-					OutNode.GetNodeBoxRaw().Max = BoxMax;
-				}
-			});
+				const FVector WorldPosition = OutNode.GetNodeBox().GetCenter() + Quadtree.GetRootOffset();
+				float Z = SphericalHeight(InCameraPos, WorldPosition);
+				FVector BoxMin = OutNode.GetNodeBox().Min;
+				BoxMin.Z = Z;
+				FVector BoxMax = OutNode.GetNodeBox().Max;
+				//BoxMax.Z = OutNode.GetNodeBox().GetExtent().X / 4.0 + y;
+				OutNode.GetNodeBoxRaw().Min = BoxMin;
+				OutNode.GetNodeBoxRaw().Max = BoxMax;
+			}
+		});
+
+	int16 FrameTag = View.GetOcclusionFrameCounter() % 65535;
+	FVector Position = GetActorPosition();
+
+	if (!FreezeQuadtreeCulling)
+	{
+		Quadtree.Cull(&View.ViewFrustum, View.ViewLocation, Position, FrameTag);
 	}
 
-	FXkLandscapeWithWaterSceneProxy::GetDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector);
-}
-
-
-void FXkSphericalLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 InFrameTag)
-{
-	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeWithWaterSceneProxy::UpdateInstanceBuffer);
-
-	check(IsInRenderingThread());
-
 	/** instance pos buffer */
-	FRHIResourceCreateInfo CreateInfo(TEXT("UpdateInstanceBuffer"));
 	int iNunInst = Quadtree.GetVisibleNodes().Num();
 	TArray<FVector4f> InstancePositionData;
 	TArray<FVector4f> InstanceMorphData;
 	TArray<FVector4f> WaterInstancePositionData;
 	TArray<FVector4f> WaterInstanceMorphData;
 
-	FVector4f v4Zero;
-	v4Zero.X = 0;
-	v4Zero.Y = 0;
-	v4Zero.Z = 0;
-	v4Zero.W = 0;
-
 	FVector3f RootOffset = FVector3f(Quadtree.GetRootOffset());
-	float fMaxX = -99999999;
-	float fMinX = 99999999;;
-	float fMaxY = -99999999;;
-	float fMinY = 99999999;
-
-	for (int i = 0; i < Quadtree.GetVisibleNodes().Num(); i++)
-	{
-		int32 iTreeIndex = Quadtree.GetVisibleNodes()[i];
-		const FQuadtreeNode& QuadtreeNode = Quadtree.GetTreeNodes()[iTreeIndex];
-		fMaxX = fMaxX > QuadtreeNode.GetNodeBox().Max.X ? fMaxX : QuadtreeNode.GetNodeBox().Max.X;
-		fMaxY = fMaxY > QuadtreeNode.GetNodeBox().Max.Y ? fMaxY : QuadtreeNode.GetNodeBox().Max.Y;
-		fMinX = fMinX < QuadtreeNode.GetNodeBox().Min.X ? fMinX : QuadtreeNode.GetNodeBox().Min.X;
-		fMinY = fMinY < QuadtreeNode.GetNodeBox().Min.Y ? fMinY : QuadtreeNode.GetNodeBox().Min.Y;
-	}
 
 	for (int i = 0; i < iNunInst; i++)
 	{
@@ -993,6 +803,7 @@ void FXkSphericalLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 
 		InstancePositionValue.Y = QuadtreeNode.GetNodeBox().Min.Y + RootOffset.Y;
 		InstancePositionValue.Z = 0.0;
 		InstancePositionValue.W = vExtent.X * 2.0;
+		WaterInstancePositionValue = InstancePositionValue;
 
 		// LOD Level
 		InstanceMorphValue.X = Quadtree.GetMaxDepth() - QuadtreeNode.GetNodeDepth() - 1;
@@ -1013,35 +824,39 @@ void FXkSphericalLandscapeWithWaterSceneProxy::UpdateInstanceBuffer(const int16 
 		WaterInstanceMorphData.Add(WaterInstanceMorphValue);
 	}
 
-	/** instance position data */
-	void* RawInstancePositionData = RHILockBuffer(
-		InstancePositionBuffer_GPU.VertexBufferRHI, 0,
-		InstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
-	RHIUnlockBuffer(InstancePositionBuffer_GPU.VertexBufferRHI);
+	ENQUEUE_RENDER_COMMAND(UpdateBuffers)(
+		[this, InstancePositionData, InstanceMorphData, WaterInstancePositionData, WaterInstanceMorphData, iNunInst](FRHICommandListImmediate& RHICmdList)
+		{
+			/** instance position data */
+			void* RawInstancePositionData = RHILockBuffer(
+				InstancePositionBuffer_GPU.VertexBufferRHI, 0,
+				InstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
+				RLM_WriteOnly);
+			FMemory::Memcpy((char*)RawInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
+			RHIUnlockBuffer(InstancePositionBuffer_GPU.VertexBufferRHI);
 
-	/** instance morph data */
-	void* RawInstanceMorphData = RHILockBuffer(
-		InstanceMorphBuffer_GPU.VertexBufferRHI, 0,
-		InstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawInstanceMorphData, InstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
-	RHIUnlockBuffer(InstanceMorphBuffer_GPU.VertexBufferRHI);
+			/** instance morph data */
+			void* RawInstanceMorphData = RHILockBuffer(
+				InstanceMorphBuffer_GPU.VertexBufferRHI, 0,
+				InstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
+				RLM_WriteOnly);
+			FMemory::Memcpy((char*)RawInstanceMorphData, InstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
+			RHIUnlockBuffer(InstanceMorphBuffer_GPU.VertexBufferRHI);
 
-	/** instance position data */
-	void* RawWaterInstancePositionData = RHILockBuffer(
-		WaterInstancePositionBuffer_GPU.VertexBufferRHI, 0,
-		WaterInstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawWaterInstancePositionData, InstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
-	RHIUnlockBuffer(WaterInstancePositionBuffer_GPU.VertexBufferRHI);
+			/** instance position data */
+			void* RawWaterInstancePositionData = RHILockBuffer(
+				WaterInstancePositionBuffer_GPU.VertexBufferRHI, 0,
+				WaterInstancePositionBuffer_GPU.VertexBufferRHI->GetSize(),
+				RLM_WriteOnly);
+			FMemory::Memcpy((char*)RawWaterInstancePositionData, WaterInstancePositionData.GetData(), iNunInst * sizeof(FVector4f));
+			RHIUnlockBuffer(WaterInstancePositionBuffer_GPU.VertexBufferRHI);
 
-	/** instance morph data */
-	void* RawWaterInstanceMorphData = RHILockBuffer(
-		WaterInstanceMorphBuffer_GPU.VertexBufferRHI, 0,
-		WaterInstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
-		RLM_WriteOnly);
-	FMemory::Memcpy((char*)RawWaterInstanceMorphData, InstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
-	RHIUnlockBuffer(WaterInstanceMorphBuffer_GPU.VertexBufferRHI);
+			/** instance morph data */
+			void* RawWaterInstanceMorphData = RHILockBuffer(
+				WaterInstanceMorphBuffer_GPU.VertexBufferRHI, 0,
+				WaterInstanceMorphBuffer_GPU.VertexBufferRHI->GetSize(),
+				RLM_WriteOnly);
+			FMemory::Memcpy((char*)RawWaterInstanceMorphData, WaterInstanceMorphData.GetData(), iNunInst * sizeof(FVector4f));
+			RHIUnlockBuffer(WaterInstanceMorphBuffer_GPU.VertexBufferRHI);
+		});
 }
