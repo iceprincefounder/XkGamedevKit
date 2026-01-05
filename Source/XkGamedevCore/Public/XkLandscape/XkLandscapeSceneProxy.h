@@ -37,10 +37,10 @@ public:
 	/**
 	* Constructs render resources for this vertex factory.
 	*/
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-	virtual void InitRHI(FRHICommandListBase& RHICmdList) override;
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	virtual void InitRHI() override;
+#else
+	virtual void InitRHI(FRHICommandListBase& RHICmdList) override;
 #endif
 
 	/**
@@ -105,10 +105,12 @@ public:
 		const FSceneViewFamily& ViewFamily,
 		uint32 VisibilityMap,
 		class FMeshElementCollector& Collector) const override;
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-	virtual void CreateRenderThreadResources(FRHICommandListBase& RHICmdList) override;
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	virtual void CreateRenderThreadResources() override;
+	virtual void DestroyRenderThreadResources() override;
+#else
+	virtual void CreateRenderThreadResources(FRHICommandListBase& RHICmdList) override;
+	virtual void DestroyRenderThreadResources(FRHICommandListBase& RHICmdList) override;
 #endif
 	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override;
 	virtual bool CanBeOccluded() const override { return false; };
@@ -150,10 +152,12 @@ public:
 		const FSceneViewFamily& ViewFamily,
 		uint32 VisibilityMap,
 		class FMeshElementCollector& Collector) const override;
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-	virtual void CreateRenderThreadResources(FRHICommandListBase& RHICmdList) override;
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	virtual void CreateRenderThreadResources() override;
+	virtual void DestroyRenderThreadResources() override;
+#else
+	virtual void CreateRenderThreadResources(FRHICommandListBase& RHICmdList) override;
+	virtual void DestroyRenderThreadResources(FRHICommandListBase& RHICmdList) override;
 #endif
 	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override;
 	//~ End FPrimitiveSceneProxy Interface

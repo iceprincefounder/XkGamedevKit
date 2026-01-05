@@ -2,7 +2,6 @@
 
 
 #include "XkHexagon/XkHexagonComponents.h"
-#include "XkHexagon/XkHexagonSceneProxy.h"
 #include "XkHexagon/XkHexagonActors.h"
 #include "XkGeometry/XkGeometry.h"
 #include "PrimitiveViewRelevance.h"
@@ -413,10 +412,10 @@ public:
 		return Result;
 	}
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-	virtual void CreateRenderThreadResources(FRHICommandListBase& RHICmdList) override
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	virtual void OnTransformChanged() override
+#else
+	virtual void CreateRenderThreadResources(FRHICommandListBase& RHICmdList) override
 #endif
 	{
 		Origin = GetLocalToWorld().GetOrigin();

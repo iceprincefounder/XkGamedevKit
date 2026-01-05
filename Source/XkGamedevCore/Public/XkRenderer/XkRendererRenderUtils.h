@@ -26,10 +26,10 @@ public:
 	/** Destructor. */
 	virtual ~FXkCanvasMapVertexDeclaration() {}
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-	virtual void InitRHI(FRHICommandListBase& RHICmdList) override
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	virtual void InitRHI() override
+#else
+	virtual void InitRHI(FRHICommandListBase& RHICmdList) override
 #endif
 		{
 		FVertexDeclarationElementList Elements;
@@ -53,10 +53,10 @@ extern XKGAMEDEVCORE_API TGlobalResource<FXkCanvasMapVertexDeclaration> GXkVerte
 class XKGAMEDEVCORE_API FXkCanvasInstanceBuffer : public FVertexBufferWithSRV
 {
 public:
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-	virtual void InitRHI(FRHICommandListBase& RHICmdList) override;
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	virtual void InitRHI() override;
+#else
+	virtual void InitRHI(FRHICommandListBase& RHICmdList) override;
 #endif
 
 	int32 GetInstanceNum() const { return Data.Num(); }
@@ -72,10 +72,10 @@ class XKGAMEDEVCORE_API FXkCanvasVertexBuffer : public FVertexBuffer
 {
 public:
 	/** Initialize the RHI for this rendering resource */
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-	void InitRHI(FRHICommandListBase& RHICmdList) override;
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	void InitRHI() override;
+#else
+	void InitRHI(FRHICommandListBase& RHICmdList) override;
 #endif
 	int32 GetVertexNum() const { return Positions.Num(); }
 
@@ -93,10 +93,10 @@ class XKGAMEDEVCORE_API FXkCanvasIndexBuffer : public FIndexBuffer
 {
 public:
 	/** Initialize the RHI for this rendering resource */
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-	void InitRHI(FRHICommandListBase& RHICmdList) override;
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	void InitRHI() override;
+#else
+	void InitRHI(FRHICommandListBase& RHICmdList) override;
 #endif
 
 	int32 GetTriangleNum() const { return Indices.Num() / 3; }

@@ -9,10 +9,10 @@ TGlobalResource<FXkCanvasMapVertexDeclaration> GXkVertexDeclaration;
 TGlobalResource<FXkCanvasVertexBuffer> GXkCanvasVertexBuffer;
 TGlobalResource<FXkCanvasIndexBuffer> GXkCanvasIndexBuffer;
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-void FXkCanvasInstanceBuffer::InitRHI(FRHICommandListBase& RHICmdList)
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 void FXkCanvasInstanceBuffer::InitRHI()
+#else
+void FXkCanvasInstanceBuffer::InitRHI(FRHICommandListBase& RHICmdList)
 #endif
 {
 	if (Data.Num() == 0)
@@ -52,10 +52,10 @@ void FXkCanvasInstanceBuffer::InitRHI()
 }
 
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-void FXkCanvasVertexBuffer::InitRHI(FRHICommandListBase& RHICmdList)
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 void FXkCanvasVertexBuffer::InitRHI()
+#else
+void FXkCanvasVertexBuffer::InitRHI(FRHICommandListBase& RHICmdList)
 #endif
 {
 	check(Positions.Num() == UVs.Num());
@@ -98,10 +98,10 @@ void FXkCanvasVertexBuffer::InitRHI()
 	VertexBufferRHI = RHICreateVertexBuffer(RawData.GetResourceDataSize(), BUF_Static, CreateInfo);
 }
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-void FXkCanvasIndexBuffer::InitRHI(FRHICommandListBase& RHICmdList)
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 void FXkCanvasIndexBuffer::InitRHI()
+#else
+void FXkCanvasIndexBuffer::InitRHI(FRHICommandListBase& RHICmdList)
 #endif
 {
 	TResourceArray<uint32, INDEXBUFFER_ALIGNMENT> RawData;
@@ -222,7 +222,8 @@ void FXkCanvasRenderCS::ModifyCompilationEnvironment(const FGlobalShaderPermutat
 	OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), ThreadGroupSizeY);
 }
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
+#else
 template void XkCanvasComputeDispatch<FXkCanvasRenderHeightCS>(FRDGBuilder&, FXkCanvasRenderCS::FParameters*, const FIntVector3&);
 template void XkCanvasComputeDispatch<FXkCanvasRenderNormalCS>(FRDGBuilder&, FXkCanvasRenderCS::FParameters*, const FIntVector3&);
 template void XkCanvasComputeDispatch<FXkCanvasRenderSdfCS>(FRDGBuilder&, FXkCanvasRenderCS::FParameters*, const FIntVector3&);

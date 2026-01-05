@@ -52,10 +52,10 @@ FXkQuadtreeVertexFactory::FXkQuadtreeVertexFactory(ERHIFeatureLevel::Type InFeat
 }
 
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-void FXkQuadtreeVertexFactory::InitRHI(FRHICommandListBase& RHICmdList)
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 void FXkQuadtreeVertexFactory::InitRHI()
+#else
+void FXkQuadtreeVertexFactory::InitRHI(FRHICommandListBase& RHICmdList)
 #endif
 {
 	FVertexDeclarationElementList Elements;
@@ -116,7 +116,15 @@ IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FXkQuadtreeVertexFactory, SF_Vertex, FXk
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FXkQuadtreeVertexFactory, SF_Compute, FXkQuadtreeVertexFactoryShaderParameters);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FXkQuadtreeVertexFactory, SF_RayHitGroup, FXkQuadtreeVertexFactoryShaderParameters);
 #endif // RHI_RAYTRACING
-IMPLEMENT_VERTEX_FACTORY_TYPE(FXkQuadtreeVertexFactory, "/Plugin/XkGamedevKit/Private/XkVertexFactory.ush",
+
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
+#define SHADER_PATH "/Plugin/XkGamedevKit/Private/XkVertexFactory_5_2.ush"
+#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 4
+#define SHADER_PATH "/Plugin/XkGamedevKit/Private/XkVertexFactory_5_4.ush"
+#else
+#define SHADER_PATH "/Plugin/XkGamedevKit/Private/XkVertexFactory.ush"
+#endif
+IMPLEMENT_VERTEX_FACTORY_TYPE(FXkQuadtreeVertexFactory, SHADER_PATH,
 	EVertexFactoryFlags::UsedWithMaterials
 	| EVertexFactoryFlags::SupportsDynamicLighting
 	| EVertexFactoryFlags::SupportsPrecisePrevWorldPos
@@ -183,9 +191,6 @@ FXkQuadtreeSceneProxy::FXkQuadtreeSceneProxy(const UXkQuadtreeComponent* InCompo
 
 FXkQuadtreeSceneProxy::~FXkQuadtreeSceneProxy()
 {
-	check(IsInRenderingThread());
-
-	VertexFactory->ReleaseResource();
 	OwnerComponent = nullptr;
 	VertexFactory = nullptr;
 }
@@ -199,23 +204,11 @@ FXkLandscapeSceneProxy::FXkLandscapeSceneProxy(const UXkLandscapeComponent* InCo
 {
 	PatchSize = 33;
 	BuildPatch(PatchData.Vertices, PatchData.Indices, PatchSize);
-
-	// Enqueue initialization of render resource
-	BeginInitResource(&VertexPositionBuffer_GPU);
-	BeginInitResource(&InstancePositionBuffer_GPU);
-	BeginInitResource(&InstanceMorphBuffer_GPU);
-	BeginInitResource(&IndexBuffer_GPU);
-
-	GenerateBuffers();
 }
 
 
 FXkLandscapeSceneProxy::~FXkLandscapeSceneProxy()
 {
-	VertexPositionBuffer_GPU.ReleaseResource();
-	InstancePositionBuffer_GPU.ReleaseResource();
-	InstanceMorphBuffer_GPU.ReleaseResource();
-	IndexBuffer_GPU.ReleaseResource();
 }
 
 
@@ -294,17 +287,43 @@ void FXkLandscapeSceneProxy::GetDynamicMeshElements(const TArray<const FSceneVie
 }
 
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-void FXkLandscapeSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 void FXkLandscapeSceneProxy::CreateRenderThreadResources()
+#else
+void FXkLandscapeSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
 #endif
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeSceneProxy::CreateRenderThreadResources);
 	check(IsInRenderingThread());
 
+	// Enqueue initialization of render resource
+	BeginInitResource(&VertexPositionBuffer_GPU);
+	BeginInitResource(&InstancePositionBuffer_GPU);
+	BeginInitResource(&InstanceMorphBuffer_GPU);
+	BeginInitResource(&IndexBuffer_GPU);
+
+	GenerateBuffers();
+
 	VertexFactory->SetVertexStreams(&VertexPositionBuffer_GPU, &InstancePositionBuffer_GPU, &InstanceMorphBuffer_GPU);
 	VertexFactory->InitResource();
+}
+
+
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
+void FXkLandscapeSceneProxy::DestroyRenderThreadResources()
+#else
+void FXkLandscapeSceneProxy::DestroyRenderThreadResources(FRHICommandListBase& RHICmdList)
+#endif
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeSceneProxy::DestroyRenderThreadResources);
+	check(IsInRenderingThread());
+
+	VertexPositionBuffer_GPU.ReleaseResource();
+	InstancePositionBuffer_GPU.ReleaseResource();
+	InstanceMorphBuffer_GPU.ReleaseResource();
+	IndexBuffer_GPU.ReleaseResource();
+
+	VertexFactory->ReleaseResource();
 }
 
 
@@ -479,27 +498,11 @@ FXkLandscapeWithWaterSceneProxy::FXkLandscapeWithWaterSceneProxy(const UXkLandsc
 
 	WaterPatchSize = 33;
 	BuildPatch(WaterPatchData.Vertices, WaterPatchData.Indices, WaterPatchSize);
-
-	// Enqueue initialization of render resource
-	BeginInitResource(&WaterVertexPositionBuffer_GPU);
-	BeginInitResource(&WaterInstancePositionBuffer_GPU);
-	BeginInitResource(&WaterInstanceMorphBuffer_GPU);
-	BeginInitResource(&WaterIndexBuffer_GPU);
-
-	GenerateBuffers();
 }
 
 
 FXkLandscapeWithWaterSceneProxy::~FXkLandscapeWithWaterSceneProxy()
 {
-	check(IsInRenderingThread());
-
-	WaterVertexFactory->ReleaseResource();
-
-	WaterVertexPositionBuffer_GPU.ReleaseResource();
-	WaterInstancePositionBuffer_GPU.ReleaseResource();
-	WaterInstanceMorphBuffer_GPU.ReleaseResource();
-	WaterIndexBuffer_GPU.ReleaseResource();
 }
 
 
@@ -564,22 +567,53 @@ void FXkLandscapeWithWaterSceneProxy::GetDynamicMeshElements(const TArray<const 
 	}
 }
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-void FXkLandscapeWithWaterSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 void FXkLandscapeWithWaterSceneProxy::CreateRenderThreadResources()
+#else
+void FXkLandscapeWithWaterSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
 #endif
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::CreateRenderThreadResources);
 	check(IsInRenderingThread());
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 3
-	FXkLandscapeSceneProxy::CreateRenderThreadResources(RHICmdList);
-#else
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	FXkLandscapeSceneProxy::CreateRenderThreadResources();
+#else
+	FXkLandscapeSceneProxy::CreateRenderThreadResources(RHICmdList);
 #endif
+	// Enqueue initialization of render resource
+	BeginInitResource(&WaterVertexPositionBuffer_GPU);
+	BeginInitResource(&WaterInstancePositionBuffer_GPU);
+	BeginInitResource(&WaterInstanceMorphBuffer_GPU);
+	BeginInitResource(&WaterIndexBuffer_GPU);
+
+	GenerateBuffers();
+
 	WaterVertexFactory->SetVertexStreams(&WaterVertexPositionBuffer_GPU, &WaterInstancePositionBuffer_GPU, &WaterInstanceMorphBuffer_GPU);
 	WaterVertexFactory->InitResource();
+}
+
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
+void FXkLandscapeWithWaterSceneProxy::DestroyRenderThreadResources()
+#else
+void FXkLandscapeWithWaterSceneProxy::DestroyRenderThreadResources(FRHICommandListBase& RHICmdList)
+#endif
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::DestroyRenderThreadResources);
+	check(IsInRenderingThread());
+
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
+	FXkLandscapeSceneProxy::DestroyRenderThreadResources();
+#else
+	FXkLandscapeSceneProxy::DestroyRenderThreadResources(RHICmdList);
+#endif
+
+	WaterVertexPositionBuffer_GPU.ReleaseResource();
+	WaterInstancePositionBuffer_GPU.ReleaseResource();
+	WaterInstanceMorphBuffer_GPU.ReleaseResource();
+	WaterIndexBuffer_GPU.ReleaseResource();
+
+	WaterVertexFactory->ReleaseResource();
 }
 
 
