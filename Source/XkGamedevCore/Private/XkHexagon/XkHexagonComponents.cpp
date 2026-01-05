@@ -217,7 +217,9 @@ void BuildXkHexagonCylinderVerts(const FVector& Base, const FVector& XAxis, cons
 }
 
 
-/** Represents a UXkHexagonArrowComponent to the scene manager. */
+/** Represents a UXkHexagonArrowComponent to the scene manager. 
+* @see FArrowSceneProxy
+*/
 class FXkHexagonArrowSceneProxy final : public FPrimitiveSceneProxy
 {
 public:
@@ -374,10 +376,20 @@ public:
 					Mesh.VertexFactory = &VertexFactory;
 					Mesh.MaterialRenderProxy = (i == 0) ? ArrowXMaterialRenderProxy : ((i == 1) ? ArrowYMaterialRenderProxy : ArrowZMaterialRenderProxy);
 
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
+					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+					DynamicPrimitiveUniformBuffer.Set(FScaleMatrix(ViewScale) * EffectiveLocalToWorld, FScaleMatrix(ViewScale) * EffectiveLocalToWorld, GetBounds(), GetLocalBounds(), true, false, AlwaysHasVelocity());
+					BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
+#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 3
 					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
 					DynamicPrimitiveUniformBuffer.Set(FScaleMatrix(ViewScale) * EffectiveLocalToWorld, FScaleMatrix(ViewScale) * EffectiveLocalToWorld, GetBounds(), GetLocalBounds(), true, false, AlwaysHasVelocity());
 					BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
 
+#else
+					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+					DynamicPrimitiveUniformBuffer.Set(Collector.GetRHICommandList(), FScaleMatrix(ViewScale) * EffectiveLocalToWorld, FScaleMatrix(ViewScale) * EffectiveLocalToWorld, GetBounds(), GetLocalBounds(), true, false, AlwaysHasVelocity());
+					BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
+#endif
 					BatchElement.FirstIndex = 0;
 					BatchElement.NumPrimitives = IndexBuffer.Indices.Num() / 3;
 					BatchElement.MinVertexIndex = 0;
@@ -387,6 +399,28 @@ public:
 					Mesh.DepthPriorityGroup = SDPG_World;
 					Mesh.bCanApplyViewModeOverrides = false;
 					Collector.AddMesh(ViewIndex, Mesh);
+
+					// Draw the mesh.
+					//FMeshBatch& Mesh = Collector.AllocateMesh();
+					//FMeshBatchElement& BatchElement = Mesh.Elements[0];
+					//BatchElement.IndexBuffer = &IndexBuffer;
+					//Mesh.bWireframe = false;
+					//Mesh.VertexFactory = &VertexFactory;
+					//Mesh.MaterialRenderProxy = (i == 0) ? ArrowXMaterialRenderProxy : ((i == 1) ? ArrowYMaterialRenderProxy : ArrowZMaterialRenderProxy);
+
+					//FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+					//DynamicPrimitiveUniformBuffer.Set(Collector.GetRHICommandList(), FScaleMatrix(ViewScale) * EffectiveLocalToWorld, FScaleMatrix(ViewScale) * EffectiveLocalToWorld, GetBounds(), GetLocalBounds(), true, false, AlwaysHasVelocity());
+					//BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
+
+					//BatchElement.FirstIndex = 0;
+					//BatchElement.NumPrimitives = IndexBuffer.Indices.Num() / 3;
+					//BatchElement.MinVertexIndex = 0;
+					//BatchElement.MaxVertexIndex = VertexBuffers.PositionVertexBuffer.GetNumVertices() - 1;
+					//Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
+					//Mesh.Type = PT_TriangleList;
+					//Mesh.DepthPriorityGroup = SDPG_World;
+					//Mesh.bCanApplyViewModeOverrides = false;
+					//Collector.AddMesh(ViewIndex, Mesh);
 				}
 			}
 		}
@@ -412,15 +446,17 @@ public:
 		return Result;
 	}
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 3
 	virtual void OnTransformChanged() override
-#else
-	virtual void CreateRenderThreadResources(FRHICommandListBase& RHICmdList) override
-#endif
 	{
 		Origin = GetLocalToWorld().GetOrigin();
 	}
-
+#else
+	virtual void OnTransformChanged(FRHICommandListBase& RHICmdList) override
+	{
+		Origin = GetLocalToWorld().GetOrigin();
+	}
+#endif
 	virtual uint32 GetMemoryFootprint(void) const override { return(sizeof(*this) + GetAllocatedSize()); }
 	uint32 GetAllocatedSize(void) const { return(FPrimitiveSceneProxy::GetAllocatedSize()); }
 

@@ -229,8 +229,6 @@ void FXkLandscapeSceneProxy::GetDynamicMeshElements(const TArray<const FSceneVie
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::GetDynamicMeshElements);
 
-	check(IsInRenderingThread());
-
 	// Set up wire frame material (if needed)
 	const bool bWireframe = AllowDebugViewmodes() && (ViewFamily.EngineShowFlags.Wireframe);
 	FColoredMaterialRenderProxy* WireframeMaterialInstance = nullptr;
@@ -309,11 +307,7 @@ void FXkLandscapeSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RH
 }
 
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 void FXkLandscapeSceneProxy::DestroyRenderThreadResources()
-#else
-void FXkLandscapeSceneProxy::DestroyRenderThreadResources(FRHICommandListBase& RHICmdList)
-#endif
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeSceneProxy::DestroyRenderThreadResources);
 	check(IsInRenderingThread());
@@ -510,8 +504,6 @@ void FXkLandscapeWithWaterSceneProxy::GetDynamicMeshElements(const TArray<const 
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeWithWaterSceneProxy::GetDynamicMeshElements);
 
-	check(IsInRenderingThread());
-
 	FXkLandscapeSceneProxy::GetDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector);
 
 	if (bDisableWaterBody)
@@ -593,20 +585,13 @@ void FXkLandscapeWithWaterSceneProxy::CreateRenderThreadResources(FRHICommandLis
 	WaterVertexFactory->InitResource();
 }
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
+
 void FXkLandscapeWithWaterSceneProxy::DestroyRenderThreadResources()
-#else
-void FXkLandscapeWithWaterSceneProxy::DestroyRenderThreadResources(FRHICommandListBase& RHICmdList)
-#endif
 {
-	TRACE_CPUPROFILER_EVENT_SCOPE(FXkQuadtreeSceneProxy::DestroyRenderThreadResources);
+	TRACE_CPUPROFILER_EVENT_SCOPE(FXkLandscapeWithWaterSceneProxy::DestroyRenderThreadResources);
 	check(IsInRenderingThread());
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	FXkLandscapeSceneProxy::DestroyRenderThreadResources();
-#else
-	FXkLandscapeSceneProxy::DestroyRenderThreadResources(RHICmdList);
-#endif
 
 	WaterVertexPositionBuffer_GPU.ReleaseResource();
 	WaterInstancePositionBuffer_GPU.ReleaseResource();
@@ -859,8 +844,19 @@ void FXkSphericalLandscapeWithWaterSceneProxy::UpdateBuffers(const FSceneView& V
 	}
 
 	ENQUEUE_RENDER_COMMAND(UpdateBuffers)(
-		[this, InstancePositionData, InstanceMorphData, WaterInstancePositionData, WaterInstanceMorphData, iNunInst](FRHICommandListImmediate& RHICmdList)
+		[this, InstancePositionData, InstanceMorphData, WaterInstancePositionData, WaterInstanceMorphData, iNunInst](FRHICommandList& RHICmdList)
 		{
+			if (iNunInst == 0)
+				return;
+
+			if (InstancePositionBuffer_GPU.VertexBufferRHI == nullptr ||
+				InstanceMorphBuffer_GPU.VertexBufferRHI == nullptr ||
+				WaterInstancePositionBuffer_GPU.VertexBufferRHI == nullptr ||
+				WaterInstanceMorphBuffer_GPU.VertexBufferRHI == nullptr)
+			{
+				return;
+			}
+
 			/** instance position data */
 			void* RawInstancePositionData = RHILockBuffer(
 				InstancePositionBuffer_GPU.VertexBufferRHI, 0,
