@@ -380,11 +380,6 @@ public:
 					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
 					DynamicPrimitiveUniformBuffer.Set(FScaleMatrix(ViewScale) * EffectiveLocalToWorld, FScaleMatrix(ViewScale) * EffectiveLocalToWorld, GetBounds(), GetLocalBounds(), true, false, AlwaysHasVelocity());
 					BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
-#elif ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 3
-					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
-					DynamicPrimitiveUniformBuffer.Set(FScaleMatrix(ViewScale) * EffectiveLocalToWorld, FScaleMatrix(ViewScale) * EffectiveLocalToWorld, GetBounds(), GetLocalBounds(), true, false, AlwaysHasVelocity());
-					BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
-
 #else
 					FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
 					DynamicPrimitiveUniformBuffer.Set(Collector.GetRHICommandList(), FScaleMatrix(ViewScale) * EffectiveLocalToWorld, FScaleMatrix(ViewScale) * EffectiveLocalToWorld, GetBounds(), GetLocalBounds(), true, false, AlwaysHasVelocity());
@@ -399,28 +394,6 @@ public:
 					Mesh.DepthPriorityGroup = SDPG_World;
 					Mesh.bCanApplyViewModeOverrides = false;
 					Collector.AddMesh(ViewIndex, Mesh);
-
-					// Draw the mesh.
-					//FMeshBatch& Mesh = Collector.AllocateMesh();
-					//FMeshBatchElement& BatchElement = Mesh.Elements[0];
-					//BatchElement.IndexBuffer = &IndexBuffer;
-					//Mesh.bWireframe = false;
-					//Mesh.VertexFactory = &VertexFactory;
-					//Mesh.MaterialRenderProxy = (i == 0) ? ArrowXMaterialRenderProxy : ((i == 1) ? ArrowYMaterialRenderProxy : ArrowZMaterialRenderProxy);
-
-					//FDynamicPrimitiveUniformBuffer& DynamicPrimitiveUniformBuffer = Collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
-					//DynamicPrimitiveUniformBuffer.Set(Collector.GetRHICommandList(), FScaleMatrix(ViewScale) * EffectiveLocalToWorld, FScaleMatrix(ViewScale) * EffectiveLocalToWorld, GetBounds(), GetLocalBounds(), true, false, AlwaysHasVelocity());
-					//BatchElement.PrimitiveUniformBufferResource = &DynamicPrimitiveUniformBuffer.UniformBuffer;
-
-					//BatchElement.FirstIndex = 0;
-					//BatchElement.NumPrimitives = IndexBuffer.Indices.Num() / 3;
-					//BatchElement.MinVertexIndex = 0;
-					//BatchElement.MaxVertexIndex = VertexBuffers.PositionVertexBuffer.GetNumVertices() - 1;
-					//Mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
-					//Mesh.Type = PT_TriangleList;
-					//Mesh.DepthPriorityGroup = SDPG_World;
-					//Mesh.bCanApplyViewModeOverrides = false;
-					//Collector.AddMesh(ViewIndex, Mesh);
 				}
 			}
 		}
@@ -446,7 +419,7 @@ public:
 		return Result;
 	}
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 3
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	virtual void OnTransformChanged() override
 	{
 		Origin = GetLocalToWorld().GetOrigin();
