@@ -17,15 +17,13 @@ void FXkCanvasInstanceBuffer::InitRHI(FRHICommandListBase& RHICmdList)
 {
 	if (Data.Num() == 0)
 	{
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 		// Create the texture RHI.  		
 		FRHIResourceCreateInfo CreateInfo(TEXT("WhiteVertexBuffer"));
-
 		VertexBufferRHI = RHICreateVertexBuffer(sizeof(FVector4f), BUF_Static | BUF_ShaderResource, CreateInfo);
-
 		FVector4f* BufferData = (FVector4f*)RHILockBuffer(VertexBufferRHI, 0, sizeof(FVector4f), RLM_WriteOnly);
 		*BufferData = FVector4f(1.0f, 1.0f, 1.0f, 1.0f);
 		RHIUnlockBuffer(VertexBufferRHI);
-
 		// Create a view of the buffer
 		ShaderResourceViewRHI = RHICreateShaderResourceView(VertexBufferRHI, sizeof(FVector4f), PF_A32B32G32R32F);
 	}
@@ -37,18 +35,43 @@ void FXkCanvasInstanceBuffer::InitRHI(FRHICommandListBase& RHICmdList)
 		{
 			RawData[i] = Data[i];
 		}
-
 		// Create the texture RHI.  		
 		FRHIResourceCreateInfo CreateInfo(TEXT("FXkCanvasInstanceBuffer"), &RawData);
 		VertexBufferRHI = RHICreateVertexBuffer(Data.Num() * sizeof(FVector4f), BUF_ShaderResource | BUF_Dynamic, CreateInfo);
-
 		void* RawBufferData = RHILockBuffer(VertexBufferRHI, 0, RawData.GetResourceDataSize(), RLM_WriteOnly);
 		FMemory::Memcpy((char*)RawBufferData, &Data[0], Data.Num() * sizeof(FVector4f));
 		RHIUnlockBuffer(VertexBufferRHI);
-
 		// Create a view of the buffer
 		ShaderResourceViewRHI = RHICreateShaderResourceView(VertexBufferRHI, sizeof(FVector4f), PF_A32B32G32R32F);
 	}
+#else
+		// Create the texture RHI.  		
+		FRHIResourceCreateInfo CreateInfo(TEXT("WhiteVertexBuffer"));
+		VertexBufferRHI = RHICmdList.CreateVertexBuffer(sizeof(FVector4f), BUF_Static | BUF_ShaderResource, CreateInfo);
+		FVector4f* BufferData = (FVector4f*)RHICmdList.LockBuffer(VertexBufferRHI, 0, sizeof(FVector4f), RLM_WriteOnly);
+		*BufferData = FVector4f(1.0f, 1.0f, 1.0f, 1.0f);
+		RHICmdList.UnlockBuffer(VertexBufferRHI);
+		// Create a view of the buffer
+		ShaderResourceViewRHI = RHICmdList.CreateShaderResourceView(VertexBufferRHI, sizeof(FVector4f), PF_A32B32G32R32F);
+}
+	else
+	{
+		TResourceArray<FVector4f, VERTEXBUFFER_ALIGNMENT> RawData;
+		RawData.SetNumUninitialized(Data.Num());
+		for (int32 i = 0; i < Data.Num(); i++)
+		{
+			RawData[i] = Data[i];
+		}
+		// Create the texture RHI.  		
+		FRHIResourceCreateInfo CreateInfo(TEXT("FXkCanvasInstanceBuffer"), &RawData);
+		VertexBufferRHI = RHICmdList.CreateVertexBuffer(Data.Num() * sizeof(FVector4f), BUF_ShaderResource | BUF_Dynamic, CreateInfo);
+		void* RawBufferData = RHICmdList.LockBuffer(VertexBufferRHI, 0, RawData.GetResourceDataSize(), RLM_WriteOnly);
+		FMemory::Memcpy((char*)RawBufferData, &Data[0], Data.Num() * sizeof(FVector4f));
+		RHICmdList.UnlockBuffer(VertexBufferRHI);
+		// Create a view of the buffer
+		ShaderResourceViewRHI = RHICmdList.CreateShaderResourceView(VertexBufferRHI, sizeof(FVector4f), PF_A32B32G32R32F);
+	}
+#endif
 }
 
 
@@ -95,7 +118,11 @@ void FXkCanvasVertexBuffer::InitRHI(FRHICommandListBase& RHICmdList)
 
 	// Create vertex buffer. Fill buffer with initial data upon creation
 	FRHIResourceCreateInfo CreateInfo(TEXT("FXkCanvasVertexBuffer"), &RawData);
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	VertexBufferRHI = RHICreateVertexBuffer(RawData.GetResourceDataSize(), BUF_Static, CreateInfo);
+#else
+	VertexBufferRHI = RHICmdList.CreateVertexBuffer(RawData.GetResourceDataSize(), BUF_Static, CreateInfo);
+#endif
 }
 
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
@@ -120,7 +147,11 @@ void FXkCanvasIndexBuffer::InitRHI(FRHICommandListBase& RHICmdList)
 
 	// Create index buffer. Fill buffer with initial data upon creation
 	FRHIResourceCreateInfo CreateInfo(TEXT("FXkCanvasIndexBuffer"), &RawData);
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 	IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint32), RawData.GetResourceDataSize(), BUF_Static, CreateInfo);
+#else
+	IndexBufferRHI = RHICmdList.CreateIndexBuffer(sizeof(uint32), RawData.GetResourceDataSize(), BUF_Static, CreateInfo);
+#endif
 }
 
 

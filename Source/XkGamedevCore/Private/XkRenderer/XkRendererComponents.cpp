@@ -154,6 +154,7 @@ void UXkCanvasRendererComponent::UpdateBuffers(const TArray<FVector4f> Positions
 	(FRHICommandListImmediate& RHICmdList)
 		{
 			TRACE_CPUPROFILER_EVENT_SCOPE(UXkCanvasRendererComponent_UpdateBuffers);
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 			/** instance position data */
 			void* RawInstancePositionData = RHILockBuffer(
 				InstancePositionBuffer.VertexBufferRHI, 0,
@@ -169,6 +170,23 @@ void UXkCanvasRendererComponent::UpdateBuffers(const TArray<FVector4f> Positions
 				RLM_WriteOnly);
 			FMemory::Memcpy((char*)RawInstanceWeightData, Weights.GetData(), Weights.Num() * sizeof(FVector4f));
 			RHIUnlockBuffer(InstanceWeightBuffer.VertexBufferRHI);
+#else
+			/** instance position data */
+			void* RawInstancePositionData = RHICmdList.LockBuffer(
+				InstancePositionBuffer.VertexBufferRHI, 0,
+				InstancePositionBuffer.VertexBufferRHI->GetSize(),
+				RLM_WriteOnly);
+			FMemory::Memcpy((char*)RawInstancePositionData, Positions.GetData(), Positions.Num() * sizeof(FVector4f));
+			RHICmdList.UnlockBuffer(InstancePositionBuffer.VertexBufferRHI);
+
+			/** instance weight data */
+			void* RawInstanceWeightData = RHICmdList.LockBuffer(
+				InstanceWeightBuffer.VertexBufferRHI, 0,
+				InstanceWeightBuffer.VertexBufferRHI->GetSize(),
+				RLM_WriteOnly);
+			FMemory::Memcpy((char*)RawInstanceWeightData, Weights.GetData(), Weights.Num() * sizeof(FVector4f));
+			RHICmdList.UnlockBuffer(InstanceWeightBuffer.VertexBufferRHI);
+#endif
 		});
 }
 

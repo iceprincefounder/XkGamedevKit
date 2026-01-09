@@ -117,6 +117,7 @@ void FXkGerstnerWaterWaveViewExtension::SetupViewFamily(FSceneViewFamily& InView
 			(
 				[WaveGPUData = WaveGPUData, WaterIndirectionBuffer, WaterDataBuffer](FRHICommandListImmediate& RHICmdList) mutable
 				{
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION == 2
 					FRHIResourceCreateInfo CreateInfoData(TEXT("WaterDataBuffer"), &WaterDataBuffer);
 					WaveGPUData->DataBuffer = RHICreateBuffer(WaterDataBuffer.GetResourceDataSize(), BUF_VertexBuffer | BUF_ShaderResource | BUF_Static, sizeof(FVector4f), ERHIAccess::SRVMask, CreateInfoData);
 					WaveGPUData->DataSRV = RHICreateShaderResourceView(WaveGPUData->DataBuffer, sizeof(FVector4f), PF_A32B32G32R32F);
@@ -124,6 +125,15 @@ void FXkGerstnerWaterWaveViewExtension::SetupViewFamily(FSceneViewFamily& InView
 					FRHIResourceCreateInfo CreateInfoIndirection(TEXT("WaterIndirectionBuffer"), &WaterIndirectionBuffer);
 					WaveGPUData->IndirectionBuffer = RHICreateBuffer(WaterIndirectionBuffer.GetResourceDataSize(), BUF_VertexBuffer | BUF_ShaderResource | BUF_Static, sizeof(FVector4f), ERHIAccess::SRVMask, CreateInfoIndirection);
 					WaveGPUData->IndirectionSRV = RHICreateShaderResourceView(WaveGPUData->IndirectionBuffer, sizeof(FVector4f), PF_A32B32G32R32F);
+#else
+					FRHIResourceCreateInfo CreateInfoData(TEXT("WaterDataBuffer"), &WaterDataBuffer);
+					WaveGPUData->DataBuffer = RHICmdList.CreateBuffer(WaterDataBuffer.GetResourceDataSize(), BUF_VertexBuffer | BUF_ShaderResource | BUF_Static, sizeof(FVector4f), ERHIAccess::SRVMask, CreateInfoData);
+					WaveGPUData->DataSRV = RHICmdList.CreateShaderResourceView(WaveGPUData->DataBuffer, sizeof(FVector4f), PF_A32B32G32R32F);
+
+					FRHIResourceCreateInfo CreateInfoIndirection(TEXT("WaterIndirectionBuffer"), &WaterIndirectionBuffer);
+					WaveGPUData->IndirectionBuffer = RHICmdList.CreateBuffer(WaterIndirectionBuffer.GetResourceDataSize(), BUF_VertexBuffer | BUF_ShaderResource | BUF_Static, sizeof(FVector4f), ERHIAccess::SRVMask, CreateInfoIndirection);
+					WaveGPUData->IndirectionSRV = RHICmdList.CreateShaderResourceView(WaveGPUData->IndirectionBuffer, sizeof(FVector4f), PF_A32B32G32R32F);
+#endif
 				}
 				);
 
