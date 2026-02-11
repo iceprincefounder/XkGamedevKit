@@ -171,6 +171,7 @@ public:
 	virtual void AddCameraZoom(const float InputValue, const float Speed);
 	virtual void ResetCameraZoom();
 	virtual void AddMoveTarget(const FVector& InTarget);
+	virtual void AddMoveTarget(const FVector& InTarget, const float InStayDuration);
 	virtual FRotator GetForwardRotator() const;
 	virtual bool IsTravelingMode() const { return bTravelingMode; }
 	virtual float GetTravelingSpeed() const { return TravelingSpeed; }
@@ -179,16 +180,10 @@ public:
 	virtual FConvexVolume GetCameraViewFrustum() const;
 	//~ End AXkTopDownCamera Interface
 private:
-	UPROPERTY()
 	bool bMoveToTarget;
-
-	UPROPERTY()
-	FVector MovementTarget;
-
-	UPROPERTY()
+	TPair<FVector, float> MovementTarget;
+	TArray<TPair<FVector, float>> MovementTargets;
 	FVector Velocity;
-
-	UPROPERTY()
 	FVector Acceleration;
 };
 

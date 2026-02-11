@@ -84,7 +84,7 @@ public:
 	virtual void OnInputModeGameAndUI(class UUserWidget* InWidgetToFocus);
 
 	UFUNCTION(BlueprintCallable, Category = "Navigation [KEVINTSUIXUGAMEDEV]")
-	void OnInitFocusWidget(class UWidget* InWidgetToFocus, const bool bForceToFocus = false);
+	virtual void OnInitFocusWidget(class UWidget* InWidgetToFocus, const bool bForceToFocus = false);
 
 protected:
 	/* This not true button index but a controller input index*/

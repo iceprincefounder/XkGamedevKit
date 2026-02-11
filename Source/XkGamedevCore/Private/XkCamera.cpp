@@ -239,13 +239,23 @@ void AXkTopDownCamera::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	GetCameraViewFrustum();
+
+	if (MovementTargets.Num() > 0 && !bMoveToTarget)
+	{
+		MovementTarget = MovementTargets[0];
+		MovementTargets.RemoveAt(0);
+		bMoveToTarget = true;
+	}
+
 	if (bMoveToTarget)
 	{
 		FVector Location = GetActorLocation();
-		if (FVector::Dist2D(Location, MovementTarget) > 0.1f)
+		FVector TargetLocation = MovementTarget.Key;
+		float StayDuration = MovementTarget.Value;
+		if (FVector::Dist2D(Location, TargetLocation) > 0.1f)
 		{
 			FVector StartVector = Location;
-			FVector TargetVector = FVector(MovementTarget.X, MovementTarget.Y, Location.Z);
+			FVector TargetVector = FVector(TargetLocation.X, TargetLocation.Y, Location.Z);
 			FVector MovingDir = (TargetVector - StartVector);
 			MovingDir.Normalize();
 			float CurrentVelocity = Velocity.Size();
@@ -255,6 +265,12 @@ void AXkTopDownCamera::Tick(float DeltaSeconds)
 			Velocity = (NewLocation - Location) / DeltaSeconds;
 			Acceleration = MovingDir * CurrentAcceleration;
 			SetActorLocation(NewLocation);
+		}
+		else if (StayDuration > 0.0f)
+		{
+			MovementTarget.Value -= DeltaSeconds;
+			Velocity = FVector::ZeroVector;
+			Acceleration = FVector::ZeroVector;
 		}
 		else
 		{
@@ -440,9 +456,19 @@ void AXkTopDownCamera::AddMoveTarget(const FVector& InTarget)
 	SCOPED_NAMED_EVENT(AXkTopDownCamera_AddMoveTarget, FColor::Red);
 	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkTopDownCamera_AddMoveTarget);
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkTopDownCamera_AddMoveTarget);
-
-	MovementTarget = InTarget;
+	MovementTargets.Empty();
+	MovementTarget = TPair<FVector, float>(InTarget, 0.0f);
 	bMoveToTarget = true;
+}
+
+
+void AXkTopDownCamera::AddMoveTarget(const FVector& InTarget, const float InStayDuration)
+{
+	SCOPED_NAMED_EVENT(AXkTopDownCamera_AddMoveTarget, FColor::Red);
+	QUICK_SCOPE_CYCLE_COUNTER(STAT_AXkTopDownCamera_AddMoveTarget);
+	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(STAT_AXkTopDownCamera_AddMoveTarget);
+
+	MovementTargets.Add(TPair<FVector, float>(InTarget, InStayDuration));
 }
 
 
