@@ -50,7 +50,7 @@ public:
 	FORCEINLINE virtual bool IsJumping() const { return bIsJumping; };
 	FORCEINLINE virtual bool IsFlying() const { return bIsFlying; };
 	FORCEINLINE virtual bool IsSliding() const { return bIsSliding; };
-	FORCEINLINE virtual bool IsFalling() const { return bIsJumping || bIsFalling; };
+	FORCEINLINE virtual bool IsFalling() const { return bIsJumping ||bIsFalling; };
 	FORCEINLINE virtual AActor* GetMovementActor() const;
 
 	static bool CheckRotationSafely(const FRotator& A, const FRotator& B, const float Tolerance = THRESH_TARGET_ARE_NEAR)
@@ -90,6 +90,8 @@ protected:
 	bool bIsFlying;
 	/** Is on sliding, work during tick.*/
 	bool bIsSliding;
+	/** Is on slide falling, work during tick.*/
+	bool bIsSlideFalling;
 	/** Is on falling, work during tick.*/
 	bool bIsFalling;
 
@@ -296,6 +298,4 @@ public:
 
 	FORCEINLINE UXkTargetMovementComponent* GetXkTargetMovement() const { return TargetMovement; }
 	FORCEINLINE UXkBuoyancyComponent* GetXkBuoyancyComponent() const { return BuoyancyComponent; }
-	virtual void EnableCharacterMovement();
-	virtual void DisableCharacterMovement();
 };

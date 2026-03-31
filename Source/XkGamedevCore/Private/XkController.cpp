@@ -700,7 +700,6 @@ void AXkController::OnSetCharacterMoveTriggered(const FInputActionValue& Value)
 			const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 
 			// add movement 
-			ControlledCharacter->EnableCharacterMovement();
 			ControlledCharacter->AddMovementInput(ForwardDirection, MovementVector.Y);
 			ControlledCharacter->AddMovementInput(RightDirection, MovementVector.X);
 			TopDownCamera->AddMoveTarget(ControlledCharacter->GetActorLocation());

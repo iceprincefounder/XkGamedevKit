@@ -306,7 +306,6 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 	BaseColor = FLinearColor(1.0, 1.0, 1.0, 0.0);
 	EdgeColor = FLinearColor(1.0, 1.0, 1.0, 0.0);
 	MaxManhattanDistance = 32;
-	HorizonHeight = 100.0;
 
 	PathfindingMaxStep = 9999;
 	BacktrackingMaxStep = 9999;

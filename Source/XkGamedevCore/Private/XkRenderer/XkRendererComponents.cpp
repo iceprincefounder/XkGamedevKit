@@ -41,7 +41,7 @@ UXkCanvasRendererComponent::UXkCanvasRendererComponent(const FObjectInitializer&
 	CanvasCenter = FVector4f::Zero();
 	CanvasCenter.W = 200.0f; // CanvasCenter.W for land height range, to calculate ocean SDF
 	CanvasExtent = FVector4f(204800.0/*WorldSize.X*/, 204800.0/*WorldSize.Y*/, -2048.0/*HeightRange MinZ*/, 2048.0/*HeightRange MaxZ*/);
-	HorizonHeight = 100.0f;
+	HorizonHeight = 100.0;
 
 	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> ObjectFinder(TEXT("/XkGamedevKit/RenderTargets/RT_SphericalLandscapeHeight"));
 	CanvasRT0 = ObjectFinder.Object;

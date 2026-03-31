@@ -88,7 +88,7 @@ void AXkSphericalWorldWithOceanActor::OnConstruction(const FTransform& Transform
 		}
 	}
 #endif
-	CanvasRendererComponent->HorizonHeight = HorizonHeight;
+	CanvasRendererComponent->HorizonHeight = HORIZION_HEIGHT;
 }
 
 void AXkSphericalWorldWithOceanActor::GenerateHexagons()
@@ -166,14 +166,14 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 		if (Node && ManhattanDistanceToCenter < GroundManhattanDistance)
 		{
 			Node->Type = (uint8)EXkHexagonType::Ground;
-			Node->Position.Z = HorizonHeight;
+			Node->Position.Z = HORIZION_HEIGHT;
 			Node->Weights = FVector4f(1.0f, 0.0f, 0.0f, 0.0f);
 		}
 		else if (Node && ManhattanDistanceToCenter < (GroundManhattanDistance + ShorelineManhattanDistance))
 		{
 			Node->Type = (uint8)EXkHexagonType::Beach;
 			int32 ShorelineStep = ManhattanDistanceToCenter - GroundManhattanDistance;
-			Node->Position.Z = HorizonHeight - ShorelineStep * ShorelineEachStepHeight;
+			Node->Position.Z = HORIZION_HEIGHT - ShorelineStep * ShorelineEachStepHeight;
 			Node->Weights = FVector4f(0.0f, 0.0f, 0.0f, 1.0f);
 		}
 	}

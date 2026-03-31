@@ -292,8 +292,12 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 					{
 						NewLocation = TargetVector;
 					}
+					Velocity = (NewLocation - Location) / DeltaTime;
+					Acceleration = MaxAcceleration * (TargetVector - StartVector).GetSafeNormal();
 					LastLocation = GetMovementActor()->GetActorLocation();
 					GetMovementActor()->SetActorLocation(NewLocation);
+					// Slide vertically is another type of falling
+					bIsFalling = true;
 				}
 				// Horizontal slide to target
 				else
@@ -367,7 +371,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 		}
 	}
 
-	if (bFailToGround && PendingTargets.IsEmpty())
+	if (bFailToGround && PendingTargets.IsEmpty() && !bIsSliding && !bIsJumping && !bIsFlying)
 	{
 		// Snap to ground
 		FVector ActorLocation = GetMovementActor()->GetActorLocation();
@@ -617,6 +621,9 @@ AXkCharacter::AXkCharacter(const FObjectInitializer& ObjectInitializer)
 	GetCharacterMovement()->MaxWalkSpeed = 500.f;
 	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
+	GetCharacterMovement()->SetActive(false);
+	GetCharacterMovement()->SetAutoActivate(false);
+
 	// disable receives decals by default
 	GetMesh()->SetReceivesDecals(false);
 	// Spawn and enable AI auto search path
@@ -627,6 +634,8 @@ AXkCharacter::AXkCharacter(const FObjectInitializer& ObjectInitializer)
 	TargetMovement->bFailToGround = true;
 	TargetMovement->CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
 	TargetMovement->CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	TargetMovement->SetActive(true);
+	TargetMovement->SetAutoActivate(true);
 
 	// Configure buoyancy component
 	BuoyancyComponent = CreateDefaultSubobject<UXkBuoyancyComponent>(TEXT("Buoyancy Component"));
@@ -697,22 +706,6 @@ FVector AXkCharacter::GetCharacterAcceleration() const
 		return GetXkTargetMovement()->Acceleration;
 	}
 	return FVector::ZeroVector;
-}
-
-
-void AXkCharacter::EnableCharacterMovement()
-{
-	GetCharacterMovement()->SetActive(true);
-	GetXkTargetMovement()->SetActive(false);
-	GetXkTargetMovement()->SetAutoActivate(false);
-}
-
-
-void AXkCharacter::DisableCharacterMovement()
-{
-	GetCharacterMovement()->SetActive(false);
-	GetXkTargetMovement()->SetActive(true);
-	GetXkTargetMovement()->SetAutoActivate(true);
 }
 
 UE_ENABLE_OPTIMIZATION

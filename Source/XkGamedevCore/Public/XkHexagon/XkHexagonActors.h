@@ -12,6 +12,7 @@
 #define PIVOT_SECTION_INDEX 0
 #define HEXAGON_RADIUS 100.0f
 #define HEXAGON_HEIGHT 10.0f
+#define HORIZION_HEIGHT 100.0f
 #define HEXAGON_GAP_WIDTH 0.0f
 #define HEXAGON_BASE_INNER_GAP 0.0f
 #define HEXAGON_BASE_OUTER_GAP 0.0f
@@ -142,9 +143,6 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
 	int32 MaxManhattanDistance;
-
-	UPROPERTY(VisibleAnywhere, Category = "HexagonalWorld [KEVINTSUIXUGAMEDEV]")
-	float HorizonHeight;
 
 	friend class AXkHexagonActor;
 
