@@ -90,8 +90,6 @@ protected:
 	bool bIsFlying;
 	/** Is on sliding, work during tick.*/
 	bool bIsSliding;
-	/** Is on slide falling, work during tick.*/
-	bool bIsSlideFalling;
 	/** Is on falling, work during tick.*/
 	bool bIsFalling;
 
