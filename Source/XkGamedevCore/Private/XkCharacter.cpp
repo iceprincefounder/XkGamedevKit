@@ -29,7 +29,6 @@ UXkMovement::UXkMovement(const FObjectInitializer& ObjectInitializer)
 	RotationRate = FRotator(0.0, 500.0, 0.0);
 }
 
-
 AActor* UXkMovement::GetMovementActor() const
 {
 	AActor* Actor = GetOwner();
@@ -100,7 +99,6 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 	}
 }
 
-
 void UXkTargetMovementComponent::OnAction()
 {
 	if (AActor* MovingActor = GetMovementActor())
@@ -132,7 +130,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 			{
 				// Closed enough, stop moving
 				bIsMoving = false;
-				LastTarget = TargetLocation;
+				LastTarget = Location;
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
@@ -146,7 +144,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 			}
 			/////////////////////////////////////////////////////////////
 			// If not closed to target, move
-			else
+			else if (bIsMoving)
 			{
 				FVector TargetVector = FVector(TargetLocation.X, TargetLocation.Y, Location.Z);
 				FVector StartVector = Location;
@@ -199,6 +197,8 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 			{
 				FRotator StartRotator = GetMovementActor()->GetActorRotation();
 				FRotator TargetRotator = TargetRotation;
+				// Only interpolate Yaw, keep Pitch and Roll unchanged
+				TargetRotator.Pitch = StartRotator.Pitch; TargetRotator.Roll = StartRotator.Roll;
 				FRotator NewRotator = bBlinkMode ? FMath::RInterpTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw) :
 					FMath::RInterpConstantTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw);
 				GetMovementActor()->SetActorRotation(NewRotator);
@@ -425,10 +425,10 @@ float UXkTargetMovementComponent::GetMovementActorHeight() const
 }
 
 
-FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderFoots)
+FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderInput)
 {
 	FHitResult HitResult;
-	FVector Start = bTraceUnderFoots ? Input + FVector(0.0, 0.0, MaxStepHeight) : Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
+	FVector Start = bTraceUnderInput ? Input + FVector(0.0, 0.0, MaxStepHeight) : Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
 	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
@@ -442,11 +442,11 @@ FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, c
 }
 
 
-AActor* UXkTargetMovementComponent::GetLineTraceActor(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderFoots)
+AActor* UXkTargetMovementComponent::GetLineTraceActor(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderInput)
 {
 	FHitResult HitResult;
 	FVector Center = GetMovementActorCenter();
-	FVector Start = bTraceUnderFoots ? Center : Center + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
+	FVector Start = bTraceUnderInput ? Center : Center + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
 	FVector End = Center + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
@@ -480,7 +480,7 @@ void UXkTargetMovementComponent::ValidateOnGround()
 	if (bFailToGround)
 	{
 		FVector ActorLocation = GetMovementActor()->GetActorLocation();
-		FVector TargetLocation = GetLineTraceLocation(ActorLocation, ECollisionChannel::ECC_Pawn, false /*Not bTraceUnderFoots*/);
+		FVector TargetLocation = GetLineTraceLocation(ActorLocation, ECollisionChannel::ECC_Pawn, false /*Not bTraceUnderInput*/);
 		GetMovementActor()->SetActorLocation(TargetLocation);
 	}
 }
