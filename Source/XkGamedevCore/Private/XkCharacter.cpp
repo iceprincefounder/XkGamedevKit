@@ -134,7 +134,12 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
-			else if (!bIsMoving && ActionPoint >= MoveCostPoint)
+			else if (!bIsMoving && ActionPoint < MoveCostPoint)
+			{
+				// Skip this target if no enough AP
+				PendingTargets.Pop(true /* Shrink*/);
+			}
+			else if (!bIsMoving)
 			{
 				bIsMoving = true;
 				// decrease MovementPoint count
@@ -188,12 +193,17 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 				PendingTargets.Pop(true /* Shrink*/);
 			}
-			else if (!bIsRotating && ActionPoint >= RotateCostPoint)
+			else if (!bIsRotating && ActionPoint < RotateCostPoint)
+			{
+				// Skip this target if no enough AP
+				PendingTargets.Pop(true /* Shrink*/);
+			}
+			else if (!bIsRotating)
 			{
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 				bIsRotating = true;
 			}
-			else
+			else if (bIsRotating)
 			{
 				FRotator StartRotator = GetMovementActor()->GetActorRotation();
 				FRotator TargetRotator = TargetRotation;
@@ -219,14 +229,19 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
-			else if (!bIsJumping && ActionPoint >= JumpCostPoint)
+			else if (!bIsJumping && ActionPoint < JumpCostPoint)
+			{
+				// Skip this target if no enough AP
+				PendingTargets.Pop(true /* Shrink*/);
+			}
+			else if (!bIsJumping)
 			{
 				bIsJumping = true;
 				// decrease ActionPoint count
 				ActionPoint -= JumpCostPoint;
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
-			else
+			else if (bIsJumping)
 			{
 				FVector TargetVector = FVector(TargetLocation.X, TargetLocation.Y, Location.Z);
 				FVector StartVector = Location;
@@ -270,16 +285,19 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
-			else if (!bIsSliding && ActionPoint >= SlideCostPoint)
+			else if (!bIsSliding && ActionPoint < SlideCostPoint)
+			{
+				// Skip this target if no enough AP
+				PendingTargets.Pop(true /* Shrink*/);
+			}
+			else if (!bIsSliding)
 			{
 				bIsSliding = true;
 				// decrease ActionPoint count
 				ActionPoint -= SlideCostPoint;
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
-			/////////////////////////////////////////////////////////////
-			// If not closed to target, move
-			else
+			else if (bIsSliding)
 			{
 				FVector TargetVector = TargetLocation;
 				FVector StartVector = Location;
@@ -329,14 +347,19 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
-			else if (!bIsFlying && ActionPoint >= FlyCostPoint)
+			else if (!bIsFlying && ActionPoint < FlyCostPoint)
+			{
+				// Skip this target if no enough AP
+				PendingTargets.Pop(true /* Shrink*/);
+			}
+			else if (!bIsFlying)
 			{
 				bIsFlying = true;
 				// decrease ActionPoint count
 				ActionPoint -= FlyCostPoint;
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
-			else
+			else if (bIsFlying)
 			{
 				FVector TargetVector = FVector(TargetLocation.X, TargetLocation.Y, Location.Z);
 				FVector StartVector = Location;
