@@ -668,6 +668,13 @@ AXkCharacter::AXkCharacter(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bStartWithTickEnabled = true;
 }
 
+void AXkCharacter::OnConstruction(const FTransform& Transform)
+{
+	TargetMovement->CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
+	TargetMovement->CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+
+	Super::OnConstruction(Transform);
+}
 
 void AXkCharacter::TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction)
 {

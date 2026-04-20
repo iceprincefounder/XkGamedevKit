@@ -274,6 +274,7 @@ public:
 	AXkCharacter(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	// Called every frame.
+	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
 
 	UFUNCTION(Category = "Character [KEVINTSUIXUGAMEDEV]", BlueprintCallable, meta = (BlueprintThreadSafe))
