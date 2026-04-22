@@ -357,6 +357,8 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				bIsFlying = true;
 				// decrease ActionPoint count
 				ActionPoint -= FlyCostPoint;
+				Velocity = (TargetLocation - Location).GetSafeNormal() * MaxVelocity;
+				Acceleration = FVector(MaxAcceleration);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
 			else if (bIsFlying)
