@@ -86,6 +86,12 @@ public:
 	UXkHexagonBasedFortressComponent(const FObjectInitializer& ObjectInitializer);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	UMaterialInterface* PalisadeWallMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	UMaterialInterface* PalisadeWallTopMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* TrapezoidWallMaterial;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
@@ -98,16 +104,17 @@ public:
 	UMaterialInterface* TrapezoidGateTopMaterial;
 
 	UPROPERTY(Transient)
-	TArray<FVector> TrapezoidBaseAnchors;
+	TArray<FVector> FortressBaseAnchors;
 
 	UPROPERTY(Transient)
 	TArray<FVector> NeighborHexagonCenters;
 
 	//~ Begin UXkHexagonBasedFortressComponent interface
-	virtual void UpdateHexagonBasedFortressBase();
-	virtual void UpdateHexagonBasedFortressWall();
-	virtual void UpdateHexagonBasedFortressTower();
-	virtual void UpdateHexagonBasedFortressGate();
+	virtual void UpdateHexagonBasedPalisadeWall();
+	virtual void UpdateHexagonBasedTrapezoidBase();
+	virtual void UpdateHexagonBasedTrapezoidWall();
+	virtual void UpdateHexagonBasedTrapezoidTower();
+	virtual void UpdateHexagonBasedTrapezoidGate();
 	virtual void UpdateHexagonBasedFortressPhysics();
 	//~ End UXkHexagonBasedFortressComponent interface
 
