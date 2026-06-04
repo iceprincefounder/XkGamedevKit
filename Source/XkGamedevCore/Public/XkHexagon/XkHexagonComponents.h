@@ -119,6 +119,7 @@ public:
 	//~ End UXkHexagonBasedFortressComponent interface
 
 private:
+	TArray<FXkGeomEdge> GetPalisadeBaseCenterLines() const;
 	TArray<FXkGeomEdge> GetTrapezoidBaseBoundaryEdges() const;
 	void UpdateDynamicMeshInternal(const FDynamicMesh3& InDynamicMesh, const bool bForceUpdate = false);
 	FVector CalcDynamicMeshCenterPivotInternal(const FDynamicMesh3& InDynamicMesh, const FTransformSRT3d& InTransform = FTransformSRT3d::Identity()) const;
@@ -128,6 +129,7 @@ private:
 		const FTransformSRT3d& TransformA = FTransformSRT3d::Identity(),
 		const FTransformSRT3d& TransformB = FTransformSRT3d::Identity());
 private:
+	TArray<TPair<FVector, FVector>> PalisadeBaseLines;
 	TArray<TPair<FVector, FVector>> TrapezoidBaseEdges;
 	TArray<TArray<FVector>> TrapezoidBaseContours;
 	TArray<FVector> TrapezoidBaseIntersectionPoints;

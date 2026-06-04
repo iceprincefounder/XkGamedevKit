@@ -513,6 +513,128 @@ UXkHexagonBasedFortressComponent::UXkHexagonBasedFortressComponent(const FObject
 	bCastStaticShadow = true;
 }
 
+void MakeTrapezoidCylinder(
+	FDynamicMesh3& Mesh,
+	const FVector& Center,
+	const FVector& PointTo,
+	const float TopRadius,
+	const float BtmRadius,
+	const float Height,
+	const int32 Slices,
+	const int32 GroupId0,
+	const int32 GroupId1
+)
+{
+	using namespace UE::Geometry;
+
+	if (!Mesh.HasAttributes())
+	{
+		Mesh.EnableAttributes();
+	}
+	if (!Mesh.HasTriangleGroups())
+	{
+		Mesh.EnableTriangleGroups();
+	}
+	if (!Mesh.Attributes()->HasMaterialID())
+	{
+		Mesh.Attributes()->EnableMaterialID();
+	}
+	FDynamicMeshMaterialAttribute* MaterialIDs = Mesh.Attributes()->GetMaterialID();
+
+	const int32 RadialSlices = FMath::Max(3, Slices);
+	FVector Target = (PointTo - Center).GetSafeNormal();
+	FVector RightY = FVector::RightVector;
+	FQuat Quat = FQuat::FindBetweenNormals(RightY, Target);
+	FTransform Transform = FTransform(Quat, Center);
+
+	TArray<FVector> SideVertices;
+	TMap<int32, int32> SideVerticesMap;
+	TArray<FVector> TopVertices;
+	TMap<int32, int32> TopVerticesMap;
+	TArray<FVector> BtmVertices;
+	TMap<int32, int32> BtmVerticesMap;
+	float BtmWidth = BtmRadius / 2.0f;
+	float TopWidth = TopRadius / 2.0f;
+
+	// Generate vertices for top and bottom circles
+	for (int32 i = 0; i < RadialSlices; i++)
+	{
+		float Angle = (float)i / RadialSlices * UE_PI * 2.0f;
+		FVector TopVert = FVector(TopWidth * FMath::Cos(Angle), TopWidth * FMath::Sin(Angle), Height);
+		FVector BtmVert = FVector(BtmWidth * FMath::Cos(Angle), BtmWidth * FMath::Sin(Angle), 0.0f);
+
+		TopVert = Transform.TransformPosition(TopVert);
+		BtmVert = Transform.TransformPosition(BtmVert);
+
+		SideVertices.Add(TopVert);
+		SideVerticesMap.Add(SideVertices.Num() - 1, Mesh.AppendVertex((FVector3d)TopVert));
+		TopVertices.Add(TopVert);
+		TopVerticesMap.Add(TopVertices.Num() - 1, Mesh.AppendVertex((FVector3d)TopVert));
+		SideVertices.Add(BtmVert);
+		SideVerticesMap.Add(SideVertices.Num() - 1, Mesh.AppendVertex((FVector3d)BtmVert));
+		BtmVertices.Add(BtmVert);
+		BtmVerticesMap.Add(BtmVertices.Num() - 1, Mesh.AppendVertex((FVector3d)BtmVert));
+	}
+
+	// Center vertices for top and bottom caps
+	FVector CenterTop = Transform.TransformPosition(FVector(0.0f, 0.0f, Height));
+	FVector CenterBtm = Transform.TransformPosition(FVector(0.0f, 0.0f, 0.0f));
+	TopVertices.Add(CenterTop);
+	int32 c0 = Mesh.AppendVertex((FVector3d)CenterTop);
+	TopVerticesMap.Add(TopVertices.Num() - 1, c0);
+	BtmVertices.Add(CenterBtm);
+	int32 c1 = Mesh.AppendVertex((FVector3d)CenterBtm);
+	BtmVerticesMap.Add(BtmVertices.Num() - 1, c1);
+
+	// Generate side triangles
+	for (int32 i = 0; i < RadialSlices; i++)
+	{
+		int32 NextIndex = (i + 1) % RadialSlices;
+		int32 TopA = i * 2;
+		int32 TopB = NextIndex * 2;
+		int32 BtmA = i * 2 + 1;
+		int32 BtmB = NextIndex * 2 + 1;
+
+		int32 i0 = SideVerticesMap[TopA];
+		int32 i1 = SideVerticesMap[TopB];
+		int32 i2 = SideVerticesMap[BtmA];
+		int Tri0 = Mesh.AppendTriangle(i0, i1, i2);
+		Mesh.SetTriangleGroup(Tri0, GroupId0);
+		MaterialIDs->SetValue(Tri0, GroupId0);
+
+		int32 i3 = SideVerticesMap[BtmA];
+		int32 i4 = SideVerticesMap[TopB];
+		int32 i5 = SideVerticesMap[BtmB];
+		int Tri1 = Mesh.AppendTriangle(i3, i4, i5);
+		Mesh.SetTriangleGroup(Tri1, GroupId0);
+		MaterialIDs->SetValue(Tri1, GroupId0);
+	}
+
+	// Generate top cap triangles (fan)
+	for (int32 i = 0; i < RadialSlices; i++)
+	{
+		int32 NextIndex = (i + 1) % RadialSlices;
+		int32 TopA = TopVerticesMap[i];
+		int32 TopB = TopVerticesMap[NextIndex];
+		int32 CenterTopIndex = TopVerticesMap[TopVertices.Num() - 1];
+		int Trid = Mesh.AppendTriangle(TopA, CenterTopIndex, TopB);
+		Mesh.SetTriangleGroup(Trid, GroupId1);
+		MaterialIDs->SetValue(Trid, GroupId1);
+	}
+
+	// Generate bottom cap triangles (fan)
+	for (int32 i = 0; i < RadialSlices; i++)
+	{
+		int32 NextIndex = (i + 1) % RadialSlices;
+		int32 BtmA = BtmVerticesMap[i];
+		int32 BtmB = BtmVerticesMap[NextIndex];
+		int32 CenterBtmIndex = BtmVerticesMap[BtmVertices.Num() - 1];
+		int Trid = Mesh.AppendTriangle(BtmA, BtmB, CenterBtmIndex);
+		Mesh.SetTriangleGroup(Trid, GroupId1);
+		MaterialIDs->SetValue(Trid, GroupId1);
+	}
+}
+
 void MakeTrapezoidHexagon(
 	FDynamicMesh3& Mesh,
 	TArray<TPair<FVector, FVector>>& Edges,
@@ -1028,7 +1150,77 @@ void MakeTrapezoidBoxAlongLine(
 
 void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall()
 {
-	//UpdateHexagonBasedTrapezoidBase();
+	//好吧，现在我把问题重新组织一下：
+	//	现在有一个圆柱体放在中心，它的边缘放置了（顺时针从0度开始，每60度放置一个）6个圆柱体组成正六边形Hexagon，Hexagon半径是100，要求外围圆柱体和Hexagon的外边相切，求出圆柱体半径，并生成
+	using namespace UE::Geometry;
+	FVector Origin = GetComponentLocation();
+	PalisadeBaseLines.Empty();
+	for (const FVector& Anchor : FortressBaseAnchors)
+	{
+		FVector MidPoint = (Origin + Anchor) * 0.5f;
+		PalisadeBaseLines.Add(TPair<FVector, FVector>(Origin, MidPoint));
+	}
+
+	// Generate a center cylinder surrounded by 6 cylinders whose centers form a regular hexagon
+	// MakeTrapezoidCylinder treats the passed value as diameter, so actual radius = CylRadius / 2
+	// HexSpacing = CylRadius (center-to-center distance, tightly packed: actual radius * 2)
+	// Hexagon circumradius (center to vertex) = HexagonRadius = 100
+	// Surrounding cylinder centers are at distance HexSpacing = CylRadius from origin (tightly packed with center cylinder)
+	// Tangent condition: surrounding cylinder is tangent to the nearest hexagon edge
+	//   Hexagon edge from vertex (R,0) to (R/2, R*sqrt(3)/2), edge equation: sqrt(3)*x + y = sqrt(3)*R
+	//   Distance from cylinder center (D, 0) to this edge = sqrt(3)*(R - D) / 2
+	//   Set equal to actual radius: CylRadius/2 = sqrt(3)*(R - CylRadius) / 2
+	//   => CylRadius = sqrt(3)*(R - CylRadius)
+	//   => CylRadius*(1 + sqrt(3)) = sqrt(3)*R
+	//   => CylRadius = R*sqrt(3)/(1+sqrt(3)) = R*(3-sqrt(3))/2  ~63.4, actual radius ~31.7
+	// Angle starts at 0 degrees, one cylinder every 60 degrees
+	FDynamicMesh3 ShapeMesh = FDynamicMesh3();
+	const float HexagonRadius = 100.0f;
+	const float CylRadius = HexagonRadius * (3.0f - FMath::Sqrt(3.0f)) / 2.0f; // ~63.4, actual radius ~31.7
+	const float CylHeight = 200.0f;
+	const int32 CylSlices = 16;
+	const float HexSpacing = CylRadius; // Center-to-center distance = CylRadius (tightly packed)
+	// Center cylinder
+	MakeTrapezoidCylinder(
+		ShapeMesh,
+		Origin,
+		Origin + FVector::ForwardVector,
+		CylRadius,
+		CylRadius,
+		CylHeight,
+		CylSlices,
+		0, 1);
+	// 6 surrounding cylinders, centers at hexagon vertices, starting at 30 degrees
+	for (int32 i = 0; i < 6; i++)
+	{
+		float Angle = (float)i / 6.0f * UE_PI * 2.0f; // start at 0 degrees, every 60 degrees
+		FVector Offset = FVector(HexSpacing * FMath::Cos(Angle), HexSpacing * FMath::Sin(Angle), 0.0f);
+		FVector CylCenter = Origin + Offset;
+		MakeTrapezoidCylinder(
+			ShapeMesh,
+			CylCenter,
+			CylCenter + FVector::ForwardVector,
+			CylRadius,
+			CylRadius,
+			CylHeight,
+			CylSlices,
+			0, 1);
+	}
+	UpdateDynamicMeshInternal(ShapeMesh);
+	SetMaterial(0, PalisadeWallMaterial);
+	SetMaterial(1, PalisadeWallTopMaterial);
+
+#if WITH_EDITOR
+	if (bExplicitShowWireframe)
+	{
+		TArray<FXkGeomEdge> Edges = GetPalisadeBaseCenterLines();
+        for (int32 Index = 0; Index < Edges.Num(); Index++)
+        {
+            FLinearColor Color = FLinearColor::MakeFromHSV8((Index * 37) % 255, 255, 255);
+            Edges[Index].DrawDebugEdge(GetWorld(), Color.ToFColor(false), false, -1.0f, SDPG_World, 3.0f);
+		}
+	}
+#endif
 }
 
 void UXkHexagonBasedFortressComponent::UpdateHexagonBasedTrapezoidBase()
@@ -1284,6 +1476,16 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressPhysics()
 		BodySetup->bMeshCollideAll = true;
 	}
 	UpdateCollision();
+}
+
+TArray<FXkGeomEdge> UXkHexagonBasedFortressComponent::GetPalisadeBaseCenterLines() const
+{
+	TArray<FXkGeomEdge> Lines;
+	for (const TPair<FVector, FVector>& Line : PalisadeBaseLines)
+	{
+		Lines.Add(FXkGeomEdge(Line));
+	}
+	return Lines;
 }
 
 TArray<FXkGeomEdge> UXkHexagonBasedFortressComponent::GetTrapezoidBaseBoundaryEdges() const
