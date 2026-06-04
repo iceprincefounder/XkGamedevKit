@@ -52,7 +52,6 @@ AXkSphericalWorldWithOceanActor::AXkSphericalWorldWithOceanActor(const FObjectIn
 	PrimaryActorTick.bStartWithTickEnabled = true;
 }
 
-
 void AXkSphericalWorldWithOceanActor::TickActor(float DeltaTime, ELevelTick TickType, FActorTickFunction& ThisTickFunction)
 {
 	Super::TickActor(DeltaTime, TickType, ThisTickFunction);
@@ -71,7 +70,6 @@ void AXkSphericalWorldWithOceanActor::TickActor(float DeltaTime, ELevelTick Tick
 		}
 	}
 }
-
 
 void AXkSphericalWorldWithOceanActor::OnConstruction(const FTransform& Transform)
 {
@@ -145,7 +143,6 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagons()
 	}
 }
 
-
 void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld);
@@ -178,7 +175,6 @@ void AXkSphericalWorldWithOceanActor::GenerateHexagonalWorld()
 		}
 	}
 }
-
 
 void AXkSphericalWorldWithOceanActor::GenerateCanvas()
 {
@@ -215,7 +211,6 @@ void AXkSphericalWorldWithOceanActor::GenerateCanvas()
 	CanvasRendererComponent->CreateBuffers(OutVertices, OutIndices, InstancePositionData, InstanceWeightData);
 	CanvasRendererComponent->DrawHeightWeightCanvas_MultiFrame();
 }
-
 
 void AXkSphericalWorldWithOceanActor::RegenerateWorld()
 {
