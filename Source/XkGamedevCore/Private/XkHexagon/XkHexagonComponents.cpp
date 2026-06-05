@@ -17,6 +17,7 @@
 #include "Engine/CollisionProfile.h"
 #include "SceneInterface.h"
 #include "SceneManagement.h"
+#include "DrawDebugHelpers.h"
 
 #include "StaticMeshResources.h"
 #include "StaticMeshAttributes.h"
@@ -498,6 +499,9 @@ UXkSkydomeComponent::UXkSkydomeComponent(const FObjectInitializer& ObjectInitial
 UXkHexagonBasedFortressComponent::UXkHexagonBasedFortressComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
+	WavePatternBaseHeight = 15.0f;
+	WavePatternToothHeight = 25.0f;
+	PalisadeWallRings = 4;
 	TrapezoidWallMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
 	TrapezoidWallTopMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
 	TrapezoidTowerTopMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
@@ -520,6 +524,7 @@ void MakeTrapezoidCylinder(
 	const float TopRadius,
 	const float BtmRadius,
 	const float Height,
+	const float ConeHeight,
 	const int32 Slices,
 	const int32 GroupId0,
 	const int32 GroupId1
@@ -577,7 +582,13 @@ void MakeTrapezoidCylinder(
 	}
 
 	// Center vertices for top and bottom caps
-	FVector CenterTop = Transform.TransformPosition(FVector(0.0f, 0.0f, Height));
+	// ConeHeight > 0 时，顶面中心点上移，使顶面形成圆锥形
+	//  _______           /\
+	// |       |         /  \
+	// |       |        /    \
+	// |_______|       /______\
+	
+	FVector CenterTop = Transform.TransformPosition(FVector(0.0f, 0.0f, Height + ConeHeight));
 	FVector CenterBtm = Transform.TransformPosition(FVector(0.0f, 0.0f, 0.0f));
 	TopVertices.Add(CenterTop);
 	int32 c0 = Mesh.AppendVertex((FVector3d)CenterTop);
@@ -1148,65 +1159,173 @@ void MakeTrapezoidBoxAlongLine(
 		false, false);
 }
 
-void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall()
+void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall(const int32 Num)
 {
-	//好吧，现在我把问题重新组织一下：
-	//	现在有一个圆柱体放在中心，它的边缘放置了（顺时针从0度开始，每60度放置一个）6个圆柱体组成正六边形Hexagon，Hexagon半径是100，要求外围圆柱体和Hexagon的外边相切，求出圆柱体半径，并生成
 	using namespace UE::Geometry;
 	FVector Origin = GetComponentLocation();
+	const float CylHeight = 200.0f;
+	const float OuterCylHeight = CylHeight;
+
 	PalisadeBaseLines.Empty();
 	for (const FVector& Anchor : FortressBaseAnchors)
 	{
 		FVector MidPoint = (Origin + Anchor) * 0.5f;
-		PalisadeBaseLines.Add(TPair<FVector, FVector>(Origin, MidPoint));
+		const FVector TopOffset = FVector(0.0f, 0.0f, OuterCylHeight);
+		PalisadeBaseLines.Add(TPair<FVector, FVector>(Origin + TopOffset, MidPoint + TopOffset));
 	}
 
-	// Generate a center cylinder surrounded by 6 cylinders whose centers form a regular hexagon
-	// MakeTrapezoidCylinder treats the passed value as diameter, so actual radius = CylRadius / 2
-	// HexSpacing = CylRadius (center-to-center distance, tightly packed: actual radius * 2)
-	// Hexagon circumradius (center to vertex) = HexagonRadius = 100
-	// Surrounding cylinder centers are at distance HexSpacing = CylRadius from origin (tightly packed with center cylinder)
-	// Tangent condition: surrounding cylinder is tangent to the nearest hexagon edge
-	//   Hexagon edge from vertex (R,0) to (R/2, R*sqrt(3)/2), edge equation: sqrt(3)*x + y = sqrt(3)*R
-	//   Distance from cylinder center (D, 0) to this edge = sqrt(3)*(R - D) / 2
-	//   Set equal to actual radius: CylRadius/2 = sqrt(3)*(R - CylRadius) / 2
-	//   => CylRadius = sqrt(3)*(R - CylRadius)
-	//   => CylRadius*(1 + sqrt(3)) = sqrt(3)*R
-	//   => CylRadius = R*sqrt(3)/(1+sqrt(3)) = R*(3-sqrt(3))/2  ~63.4, actual radius ~31.7
-	// Angle starts at 0 degrees, one cylinder every 60 degrees
-	FDynamicMesh3 ShapeMesh = FDynamicMesh3();
+	const int32 Rings = FMath::Max(1, PalisadeWallRings);
 	const float HexagonRadius = 100.0f;
-	const float CylRadius = HexagonRadius * (3.0f - FMath::Sqrt(3.0f)) / 2.0f; // ~63.4, actual radius ~31.7
-	const float CylHeight = 200.0f;
+	const float HexInRadius = HexagonRadius * FMath::Sqrt(3.0f) / 2.0f;
+	const float CylRadius = HexInRadius / (Rings * FMath::Sqrt(3.0f) + 1.0f);
+	const float CylDiameter = CylRadius * 2.0f;
 	const int32 CylSlices = 16;
-	const float HexSpacing = CylRadius; // Center-to-center distance = CylRadius (tightly packed)
-	// Center cylinder
+
+	FDynamicMesh3 ShapeMesh = FDynamicMesh3();
+
+	// 中心圆柱
 	MakeTrapezoidCylinder(
 		ShapeMesh,
 		Origin,
 		Origin + FVector::ForwardVector,
-		CylRadius,
-		CylRadius,
+		CylDiameter,
+		CylDiameter,
 		CylHeight,
+		0.0f,
 		CylSlices,
 		0, 1);
-	// 6 surrounding cylinders, centers at hexagon vertices, starting at 30 degrees
-	for (int32 i = 0; i < 6; i++)
+
+	// 预计算每条 PalisadeBaseLine 是否有左侧临边（夹角约60度且叉积<0）
+	// 有左侧临边的 Line 对应的 Corner 边，其 Step==0 的圆柱标记为 Inner
+	const float Cos60Min = FMath::Cos(FMath::DegreesToRadians(75.0f)); // 0.259
+	const float Cos60Max = FMath::Cos(FMath::DegreesToRadians(45.0f)); // 0.707
+	TArray<bool> bLineHasLeftNeighbor;
+	bLineHasLeftNeighbor.SetNumZeroed(PalisadeBaseLines.Num());
+	for (int32 i = 0; i < PalisadeBaseLines.Num(); i++)
 	{
-		float Angle = (float)i / 6.0f * UE_PI * 2.0f; // start at 0 degrees, every 60 degrees
-		FVector Offset = FVector(HexSpacing * FMath::Cos(Angle), HexSpacing * FMath::Sin(Angle), 0.0f);
-		FVector CylCenter = Origin + Offset;
-		MakeTrapezoidCylinder(
-			ShapeMesh,
-			CylCenter,
-			CylCenter + FVector::ForwardVector,
-			CylRadius,
-			CylRadius,
-			CylHeight,
-			CylSlices,
-			0, 1);
+		FVector2D DirI = FVector2D(PalisadeBaseLines[i].Value - PalisadeBaseLines[i].Key).GetSafeNormal();
+		for (int32 j = 0; j < PalisadeBaseLines.Num(); j++)
+		{
+			if (j == i) continue;
+			FVector2D DirJ = FVector2D(PalisadeBaseLines[j].Value - PalisadeBaseLines[j].Key).GetSafeNormal();
+			const float Dot = FVector2D::DotProduct(DirI, DirJ);
+			if (Dot >= Cos60Min && Dot <= Cos60Max)
+			{
+				// UE左手坐标系下，叉积 < 0 表示 DirJ 在 DirI 的左侧
+				const float Cross = DirI.X * DirJ.Y - DirI.Y * DirJ.X;
+				if (Cross < 0.0f)
+				{
+					bLineHasLeftNeighbor[i] = true;
+				}
+			}
+		}
 	}
-	UpdateDynamicMeshInternal(ShapeMesh);
+
+	// 将 PalisadeBaseLine 映射到对应的 Corner 边索引
+	// Corner i 对应边的法向量方向角度 = (i + 0.5) * 60°
+	const float AngleThreshold = FMath::Cos(FMath::DegreesToRadians(20.0f));
+	TArray<bool> bEdgeHasNeighbor;
+	bEdgeHasNeighbor.SetNumZeroed(6);
+	TArray<bool> bEdgeHasLeftNeighbor;
+	bEdgeHasLeftNeighbor.SetNumZeroed(6);
+	for (int32 i = 0; i < PalisadeBaseLines.Num(); i++)
+	{
+		FVector2D LineDir2D = FVector2D(PalisadeBaseLines[i].Value - PalisadeBaseLines[i].Key).GetSafeNormal();
+		for (int32 Edge = 0; Edge < 6; Edge++)
+		{
+			float EdgeNormalAngle = ((float)Edge + 0.5f) * UE_PI / 3.0f;
+			FVector2D EdgeNormal = FVector2D(FMath::Cos(EdgeNormalAngle), FMath::Sin(EdgeNormalAngle));
+			if (FVector2D::DotProduct(LineDir2D, EdgeNormal) > AngleThreshold)
+			{
+				bEdgeHasNeighbor[Edge] = true;
+				if (bLineHasLeftNeighbor[i])
+				{
+					bEdgeHasLeftNeighbor[Edge] = true;
+				}
+			}
+		}
+	}
+
+	// 逐圈生成圆柱
+	for (int32 Ring = 1; Ring <= Rings; Ring++)
+	{
+		for (int32 Corner = 0; Corner < 6; Corner++)
+		{
+			float AngleA = (float)Corner * UE_PI / 3.0f;
+			float AngleB = (float)(Corner + 1) * UE_PI / 3.0f;
+
+			FVector2D DirA = FVector2D(FMath::Cos(AngleA), FMath::Sin(AngleA));
+			FVector2D DirB = FVector2D(FMath::Cos(AngleB), FMath::Sin(AngleB));
+
+			FVector2D VertexA = DirA * (Ring * CylDiameter);
+			FVector2D VertexB = DirB * (Ring * CylDiameter);
+
+			for (int32 Step = 0; Step < Ring; Step++)
+			{
+				// 最外圈且该边有相邻 PalisadeWall 时：
+				//   - 有左侧临边：Step==0 标记为 Inner（左侧临边的第0个圆柱归左侧边管）
+				//   - 无左侧临边：Step==0 标记为 Outer，其余 Inner
+				// 最外圈且该边无相邻 PalisadeWall 时，全部是 Outer
+				// 非最外圈，全部是 Inner
+				bool bIsOuterRing = false;
+				if (Ring == Rings)
+				{
+					if (bEdgeHasNeighbor[Corner])
+					{
+						if (bEdgeHasLeftNeighbor[Corner])
+						{
+							// 有左侧临边，Step==0 归左侧边，标记为 Inner
+							bIsOuterRing = false;
+						}
+						else
+						{
+							bIsOuterRing = (Step == 0);
+						}
+					}
+					else
+					{
+						bIsOuterRing = true;
+					}
+				}
+				const float ThisCylHeight = bIsOuterRing ? OuterCylHeight : CylHeight;
+				const float ThisConeHeight = bIsOuterRing ? WavePatternToothHeight : 0.0f;
+
+				float t = (float)Step / (float)Ring;
+				FVector2D Pos2D = FMath::Lerp(VertexA, VertexB, t);
+				FVector CylCenter = Origin + FVector(Pos2D.X, Pos2D.Y, 0.0f);
+
+#if WITH_EDITOR
+				if (Ring == Rings && bIsOuterRing)
+				{
+					const FVector TopPos = CylCenter + FVector(0.0f, 0.0f, ThisCylHeight + ThisConeHeight);
+					if (Step == 0)
+					{
+						// 第一个外围圆柱顶部：红色小球
+						DrawDebugSphere(GetWorld(), TopPos, 10.0f, 8, FColor::Red, false, -1.0f, SDPG_World);
+					}
+					else if (Step == Ring - 1)
+					{
+						// 最后一个外围圆柱顶部：蓝色小球
+						DrawDebugSphere(GetWorld(), TopPos, 10.0f, 8, FColor::Blue, false, -1.0f, SDPG_World);
+					}
+				}
+#endif
+
+				MakeTrapezoidCylinder(
+					ShapeMesh,
+					CylCenter,
+					CylCenter + FVector::ForwardVector,
+					CylDiameter,
+					CylDiameter,
+					ThisCylHeight,
+					ThisConeHeight,
+					CylSlices,
+					0, 1);
+			}
+		}
+	}
+
+	UpdateDynamicMeshInternal(ShapeMesh, true);
 	SetMaterial(0, PalisadeWallMaterial);
 	SetMaterial(1, PalisadeWallTopMaterial);
 
@@ -1214,10 +1333,11 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall()
 	if (bExplicitShowWireframe)
 	{
 		TArray<FXkGeomEdge> Edges = GetPalisadeBaseCenterLines();
-        for (int32 Index = 0; Index < Edges.Num(); Index++)
-        {
-            FLinearColor Color = FLinearColor::MakeFromHSV8((Index * 37) % 255, 255, 255);
-            Edges[Index].DrawDebugEdge(GetWorld(), Color.ToFColor(false), false, -1.0f, SDPG_World, 3.0f);
+		for (FXkGeomEdge& Edge : Edges)
+		{
+			int32 Index = &Edge - Edges.GetData();
+			FLinearColor Color = FLinearColor::MakeFromHSV8((Index * 37) % 255, 255, 255);
+			Edge.DrawDebugEdge(GetWorld(), Color.ToFColor(false), false, -1.0f, SDPG_World, 3.0f);
 		}
 	}
 #endif

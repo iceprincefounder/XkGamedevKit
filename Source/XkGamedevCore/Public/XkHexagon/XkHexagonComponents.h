@@ -85,6 +85,17 @@ class XKGAMEDEVCORE_API UXkHexagonBasedFortressComponent : public UDynamicMeshCo
 public:
 	UXkHexagonBasedFortressComponent(const FObjectInitializer& ObjectInitializer);
 
+	/** 最外圈圆柱比内部圆柱额外增加的高度 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	float WavePatternBaseHeight;
+
+	/** 最外圈间隔圆柱顶面中心点上移高度，形成波浪锥顶效果 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	float WavePatternToothHeight;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	int32 PalisadeWallRings;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* PalisadeWallMaterial;
 
@@ -110,7 +121,7 @@ public:
 	TArray<FVector> NeighborHexagonCenters;
 
 	//~ Begin UXkHexagonBasedFortressComponent interface
-	virtual void UpdateHexagonBasedPalisadeWall();
+	virtual void UpdateHexagonBasedPalisadeWall(const int32 Num = 2); // Num = 圈数
 	virtual void UpdateHexagonBasedTrapezoidBase();
 	virtual void UpdateHexagonBasedTrapezoidWall();
 	virtual void UpdateHexagonBasedTrapezoidTower();
