@@ -458,7 +458,8 @@ FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, c
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
 	CollisionParams.bTraceComplex = bTraceComplex;
-	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, Channel, CollisionParams))
+	float TraceRadius = CapsuleRadius * 0.25f;
+	if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
 	{
 		float HeightZ = HitResult.ImpactPoint.Z + CapsuleHalfHeight;
 		return FVector(Input.X, Input.Y, HeightZ);
@@ -476,7 +477,8 @@ AActor* UXkTargetMovementComponent::GetLineTraceActor(const FVector& Input, cons
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
 	CollisionParams.bTraceComplex = bTraceComplex;
-	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, Channel, CollisionParams))
+	float TraceRadius = CapsuleRadius * 0.25f;
+	if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
 	{
 		return HitResult.GetActor();
 	}
@@ -493,7 +495,8 @@ FVector UXkTargetMovementComponent::GetSphereTraceLocation(const FVector& Input,
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
 	CollisionParams.bTraceComplex = bTraceComplex;
-	if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(CapsuleRadius)))
+	float TraceRadius = CapsuleRadius * 0.25f;
+    if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
 	{
 		return HitResult.ImpactPoint + FVector(0.0, 0.0, CapsuleHalfHeight);
 	}

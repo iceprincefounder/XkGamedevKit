@@ -85,38 +85,67 @@ class XKGAMEDEVCORE_API UXkHexagonBasedFortressComponent : public UDynamicMeshCo
 public:
 	UXkHexagonBasedFortressComponent(const FObjectInitializer& ObjectInitializer);
 
-	/** 最外圈圆柱比内部圆柱额外增加的高度 */
+	/** 要塞底座的高度 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
-	float WavePatternBaseHeight;
+	float FortressBaseHeight;
 
-	/** 最外圈间隔圆柱顶面中心点上移高度，形成波浪锥顶效果 */
+	/** 栅栏圆柱体墙最外圈圆柱比内部圆柱额外增加的高度 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
-	float WavePatternToothHeight;
+	float PalisadeWaveBaseHeight;
 
+	/** 栅栏圆柱体墙最外圈间隔圆柱顶面中心点上移高度，形成波浪锥顶效果 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	float PalisadeWaveToothHeight;
+
+	/** 栅栏圆柱体墙的圈数（圆柱排列层数） */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	int32 PalisadeWallRings;
 
+	/** 栅栏圆柱体墙圆柱侧面材质 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* PalisadeWallMaterial;
 
+	/** 栅栏圆柱体墙圆柱顶面材质 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* PalisadeWallTopMaterial;
 
+	/** 六边正梯形顶部波浪锯齿的基础额外高度 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	float TrapezoidWaveBaseHeight;
+
+	/** 六边正梯形顶部波浪锯齿的齿峰高度 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	float TrapezoidWaveToothHeight;
+
+	/** 六边正梯形顶部宽度 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	int32 TrapezoidTopWidth;
+
+	/** 六边正梯形底部宽度 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	int32 TrapezoidBottomWidth;
+
+	/** 六边正梯形墙侧面材质 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* TrapezoidWallMaterial;
 
+	/** 六边正梯形墙顶面材质 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* TrapezoidWallTopMaterial;
 
+	/** 六边正梯形塔楼顶面材质 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* TrapezoidTowerTopMaterial;
 
+	/** 六边正梯形城门顶面材质 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* TrapezoidGateTopMaterial;
 
+	/** 要塞底座的锚点列表（运行时生成，不序列化） */
 	UPROPERTY(Transient)
 	TArray<FVector> FortressBaseAnchors;
 
+	/** 相邻六边形的中心点列表（运行时生成，不序列化） */
 	UPROPERTY(Transient)
 	TArray<FVector> NeighborHexagonCenters;
 

@@ -499,9 +499,14 @@ UXkSkydomeComponent::UXkSkydomeComponent(const FObjectInitializer& ObjectInitial
 UXkHexagonBasedFortressComponent::UXkHexagonBasedFortressComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	WavePatternBaseHeight = 15.0f;
-	WavePatternToothHeight = 25.0f;
+	FortressBaseHeight = 200.0f;
+	PalisadeWaveBaseHeight = 15.0f;
+	PalisadeWaveToothHeight = 25.0f;
 	PalisadeWallRings = 4;
+	TrapezoidWaveBaseHeight = 20.0f;
+	TrapezoidWaveToothHeight = 10.0f;
+	TrapezoidTopWidth = 85.0f;
+	TrapezoidBottomWidth = 100.0f;
 	TrapezoidWallMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
 	TrapezoidWallTopMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
 	TrapezoidTowerTopMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
@@ -1163,7 +1168,7 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall(const int3
 {
 	using namespace UE::Geometry;
 	FVector Origin = GetComponentLocation();
-	const float CylHeight = 200.0f;
+	const float CylHeight = FortressBaseHeight;
 	const float OuterCylHeight = CylHeight;
 
 	PalisadeBaseLines.Empty();
@@ -1246,6 +1251,57 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall(const int3
 		}
 	}
 
+	// 根据圆柱2D中心位置，在所有 PalisadeBaseLines 上找最近点，取该点的 Z 值作为基础圆柱高度
+	// PalisadeBaseLine 的 Z 值已包含高度信息（不含 WavePattern 部分）
+	auto CalcCylHeightFromBaseLines = [&](const FVector2D& CylPos2D) -> float
+	{
+		if (PalisadeBaseLines.IsEmpty())
+		{
+			return OuterCylHeight;
+		}
+		float MinDistSq = TNumericLimits<float>::Max();
+		// 收集所有最近距离相等的线段的 Z 值，最终取平均
+		TArray<float> CandidateZ;
+		const float DistEqualTolerance = 1.0f; // 距离差在此范围内视为相等
+		for (const TPair<FVector, FVector>& Line : PalisadeBaseLines)
+		{
+			FVector2D A = FVector2D(Line.Key.X, Line.Key.Y);
+			FVector2D B = FVector2D(Line.Value.X, Line.Value.Y);
+			FVector2D AB = B - A;
+			float LenSq = AB.SizeSquared();
+			float t = 0.0f;
+			if (LenSq > KINDA_SMALL_NUMBER)
+			{
+				t = FMath::Clamp(FVector2D::DotProduct(CylPos2D - A, AB) / LenSq, 0.0f, 1.0f);
+			}
+			FVector2D ClosestPt2D = A + AB * t;
+			float DistSq = FVector2D::DistSquared(CylPos2D, ClosestPt2D);
+			float LocalZ = FMath::Lerp(Line.Key.Z, Line.Value.Z, t) - Origin.Z;
+
+			if (DistSq < MinDistSq - DistEqualTolerance)
+			{
+				// 找到更近的线段，清空候选列表
+				MinDistSq = DistSq;
+				CandidateZ.Reset();
+				CandidateZ.Add(LocalZ);
+			}
+			else if (DistSq <= MinDistSq + DistEqualTolerance)
+			{
+				// 距离相等，加入候选列表
+				MinDistSq = FMath::Min(MinDistSq, DistSq);
+				CandidateZ.Add(LocalZ);
+			}
+		}
+		if (CandidateZ.IsEmpty())
+		{
+			return OuterCylHeight;
+		}
+		// 取所有等距线段的 Z 值平均
+		float SumZ = 0.0f;
+		for (float Z : CandidateZ) { SumZ += Z; }
+		return SumZ / CandidateZ.Num();
+	};
+
 	// 逐圈生成圆柱
 	for (int32 Ring = 1; Ring <= Rings; Ring++)
 	{
@@ -1262,6 +1318,13 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall(const int3
 
 			for (int32 Step = 0; Step < Ring; Step++)
 			{
+				float t = (float)Step / (float)Ring;
+				FVector2D Pos2D = FMath::Lerp(VertexA, VertexB, t);
+				FVector CylCenter = Origin + FVector(Pos2D.X, Pos2D.Y, 0.0f);
+
+				// 在 2D 平面上找距离所有 PalisadeBaseLines 最近的点，取其 Z 值作为基础圆柱高度
+				const float BaseCylHeight = CalcCylHeightFromBaseLines(FVector2D(CylCenter.X, CylCenter.Y));
+
 				// 最外圈且该边有相邻 PalisadeWall 时：
 				//   - 有左侧临边：Step==0 标记为 Inner（左侧临边的第0个圆柱归左侧边管）
 				//   - 无左侧临边：Step==0 标记为 Outer，其余 Inner
@@ -1287,29 +1350,10 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall(const int3
 						bIsOuterRing = true;
 					}
 				}
-				const float ThisCylHeight = bIsOuterRing ? OuterCylHeight : CylHeight;
-				const float ThisConeHeight = bIsOuterRing ? WavePatternToothHeight : 0.0f;
-
-				float t = (float)Step / (float)Ring;
-				FVector2D Pos2D = FMath::Lerp(VertexA, VertexB, t);
-				FVector CylCenter = Origin + FVector(Pos2D.X, Pos2D.Y, 0.0f);
-
-#if WITH_EDITOR
-				if (Ring == Rings && bIsOuterRing)
-				{
-					const FVector TopPos = CylCenter + FVector(0.0f, 0.0f, ThisCylHeight + ThisConeHeight);
-					if (Step == 0)
-					{
-						// 第一个外围圆柱顶部：红色小球
-						DrawDebugSphere(GetWorld(), TopPos, 10.0f, 8, FColor::Red, false, -1.0f, SDPG_World);
-					}
-					else if (Step == Ring - 1)
-					{
-						// 最后一个外围圆柱顶部：蓝色小球
-						DrawDebugSphere(GetWorld(), TopPos, 10.0f, 8, FColor::Blue, false, -1.0f, SDPG_World);
-					}
-				}
-#endif
+				// 基础高度来自最近 PalisadeBaseLine 上的插值 Z 值（不含 WavePattern）
+				// PalisadeWaveBaseHeight 和 PalisadeWaveToothHeight 额外叠加，不受影响
+				const float ThisCylHeight = bIsOuterRing ? (BaseCylHeight + PalisadeWaveBaseHeight) : BaseCylHeight;
+				const float ThisConeHeight = bIsOuterRing ? PalisadeWaveToothHeight : 0.0f;
 
 				MakeTrapezoidCylinder(
 					ShapeMesh,
@@ -1366,9 +1410,9 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedTrapezoidBase()
 			Contours,
 			Origin,
 			Target,
-			65.0f,
-			100.0f,
-			200.0f, 
+			TrapezoidTopWidth,
+			TrapezoidBottomWidth,
+			FortressBaseHeight,
 			0,
 			1,
 			true, false);
@@ -1388,9 +1432,9 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedTrapezoidBase()
 			EdgesToBlend,
 			Origin,
 			Target,
-			65.0f,
-			100.0f,
-			200.0f,
+			TrapezoidTopWidth,
+			TrapezoidBottomWidth,
+			FortressBaseHeight,
 			0,
 			1,
 			true,
@@ -1538,14 +1582,14 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedTrapezoidGate()
 			Origin,
 			50.0,
 			20.0,
-			200.0,
+			FortressBaseHeight,
 			0, 2);
 		TArray<TPair<FVector, FVector>> TopEdges;
 		MakeTrapezoidBoxAlongLine(
 			GateTowerMesh,
 			TopEdges,
-			Origin + FVector(0.0f, 0.0f, 200.0f) - FVector::XAxisVector * 50.0f,
-			Origin + FVector(0.0f, 0.0f, 200.0f) + FVector::XAxisVector * 50.0f,
+			Origin + FVector(0.0f, 0.0f, FortressBaseHeight) - FVector::XAxisVector * 50.0f,
+			Origin + FVector(0.0f, 0.0f, FortressBaseHeight) + FVector::XAxisVector * 50.0f,
 			100.0f,
 			100.0f,
 			50.0f,
@@ -1780,7 +1824,7 @@ FDynamicMesh3 UXkHexagonBasedFortressComponent::CalcWavePatternByBoundaryEdgesIn
 			Edge.GetEnd(),
 			10.0f,
 			10.0f,
-			20.0f,
+			TrapezoidWaveBaseHeight,
 			0, 0
 			);
 		float EdgeLength = FVector::Dist(Edge.GetStart(), Edge.GetEnd());
@@ -1800,7 +1844,7 @@ FDynamicMesh3 UXkHexagonBasedFortressComponent::CalcWavePatternByBoundaryEdgesIn
 					EndPoint + FVector(0.0f, 0.0f, 20.0f),
 					7.5f,
 					10.0f,
-					10.0f,
+					TrapezoidWaveToothHeight,
 					0, 0);
 			}
 			CurrentLength += WaveLength;
