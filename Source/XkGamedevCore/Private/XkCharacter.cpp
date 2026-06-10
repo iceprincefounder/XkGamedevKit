@@ -39,7 +39,6 @@ AActor* UXkMovement::GetMovementActor() const
 	return nullptr;
 }
 
-
 UXkTargetMovementComponent::UXkTargetMovementComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -53,7 +52,6 @@ UXkTargetMovementComponent::UXkTargetMovementComponent(const FObjectInitializer&
 	FlyArc = -0.1;
 	CapsuleRadius = 55.0f;
 	CapsuleHalfHeight = 96.0f;
-	MaxStepHeight = 45.0f;
 
 	// Set default values
 	ActionPoint = 0;
@@ -67,7 +65,6 @@ UXkTargetMovementComponent::UXkTargetMovementComponent(const FObjectInitializer&
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.bStartWithTickEnabled = true;
 }
-
 
 void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
@@ -109,7 +106,6 @@ void UXkTargetMovementComponent::OnAction()
 		OnMovementBeginEvent.Broadcast();
 	}
 }
-
 
 void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 {
@@ -429,7 +425,6 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 	}
 }
 
-
 FVector UXkTargetMovementComponent::GetMovementActorCenter() const
 {
 	if (AActor* Actor = GetMovementActor(); IsValid(Actor))
@@ -438,7 +433,6 @@ FVector UXkTargetMovementComponent::GetMovementActorCenter() const
 	}
 	return FVector::ZeroVector;
 }
-
 
 float UXkTargetMovementComponent::GetMovementActorHeight() const
 {
@@ -449,11 +443,14 @@ float UXkTargetMovementComponent::GetMovementActorHeight() const
 	return 0.0f;
 }
 
-
 FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderInput)
 {
 	FHitResult HitResult;
-	FVector Start = bTraceUnderInput ? Input + FVector(0.0, 0.0, MaxStepHeight) : Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
+	FVector Start = Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
+	if (bTraceUnderInput)
+	{
+		Start = Input;
+	}
 	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
@@ -466,7 +463,6 @@ FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, c
 	}
 	return Input;
 }
-
 
 AActor* UXkTargetMovementComponent::GetLineTraceActor(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderInput)
 {
@@ -483,24 +479,6 @@ AActor* UXkTargetMovementComponent::GetLineTraceActor(const FVector& Input, cons
 		return HitResult.GetActor();
 	}
 	return nullptr;
-}
-
-
-FVector UXkTargetMovementComponent::GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex)
-{
-	FHitResult HitResult;
-	FVector Center = GetMovementActorCenter();
-	FVector Start = Center + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
-	FVector End = Center + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
-	FCollisionQueryParams CollisionParams;
-	CollisionParams.AddIgnoredActor(GetMovementActor());
-	CollisionParams.bTraceComplex = bTraceComplex;
-	float TraceRadius = CapsuleRadius * 0.25f;
-    if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
-	{
-		return HitResult.ImpactPoint + FVector(0.0, 0.0, CapsuleHalfHeight);
-	}
-	return Input;
 }
 
 void UXkTargetMovementComponent::ValidateOnGround()
@@ -535,7 +513,6 @@ FVector UXkTargetMovementComponent::CalcParaCurve(const FVector& Start, const FV
 	return FVector(vx, vy, vz);
 }
 
-
 TArray<FVector> UXkTargetMovementComponent::CalcParaCurvePoints(const FVector& Start, const FVector& End, const float CurveArc, const int32 SegmentNum)
 {
 	TArray<FVector> Points;
@@ -549,7 +526,6 @@ TArray<FVector> UXkTargetMovementComponent::CalcParaCurvePoints(const FVector& S
 	return Points;
 }
 
-
 UXkSplineMovementComponent::UXkSplineMovementComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -559,7 +535,6 @@ UXkSplineMovementComponent::UXkSplineMovementComponent(const FObjectInitializer&
 
 	CurrentLength = 0.0;
 }
-
 
 void UXkSplineMovementComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
@@ -613,7 +588,6 @@ void UXkSplineMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 	}
 }
 
-
 bool UXkSplineMovementComponent::IsOnSpline() const
 {
 	if (TargetSpline.IsValid() && CurrentLength <= TargetSpline->GetSplineLength())
@@ -623,12 +597,10 @@ bool UXkSplineMovementComponent::IsOnSpline() const
 	return false;
 }
 
-
 void UXkSplineMovementComponent::SetTargetSpline(USplineComponent* Input)
 {
 	TargetSpline = MakeWeakObjectPtr<USplineComponent>(Input);
 }
-
 
 AXkCharacter::AXkCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -686,7 +658,6 @@ void AXkCharacter::TickActor(float DeltaTime, enum ELevelTick TickType, FActorTi
     Super::TickActor(DeltaTime, TickType, ThisTickFunction);
 }
 
-
 bool AXkCharacter::IsCharacterFalling() const
 {
 	if (GetCharacterMovement()->IsActive())
@@ -699,7 +670,6 @@ bool AXkCharacter::IsCharacterFalling() const
 	}
 	return false;
 }
-
 
 bool AXkCharacter::IsCharacterMoving() const
 {
@@ -715,7 +685,6 @@ bool AXkCharacter::IsCharacterMoving() const
 	return false;
 }
 
-
 FVector AXkCharacter::GetCharacterVelocity() const
 {
 	if (GetCharacterMovement()->IsActive())
@@ -728,7 +697,6 @@ FVector AXkCharacter::GetCharacterVelocity() const
 	}
 	return FVector::ZeroVector;
 }
-
 
 FVector AXkCharacter::GetCharacterAcceleration() const
 {

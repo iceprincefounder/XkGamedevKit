@@ -167,9 +167,6 @@ public:
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float CapsuleHalfHeight;
 
-	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	float MaxStepHeight;
-
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
 	FOnMovementReachTargetEvent OnMovementReachTargetEvent;
 
@@ -218,7 +215,6 @@ public:
 	virtual float GetMovementActorHeight() const;
 	virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false, const bool bTraceUnderInput = true);
 	virtual AActor* GetLineTraceActor(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false, const bool bTraceUnderInput = true);
-	virtual FVector GetSphereTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false);
 	virtual void ValidateOnGround();
 	//~ End UXkTargetMovementComponent Interface
 

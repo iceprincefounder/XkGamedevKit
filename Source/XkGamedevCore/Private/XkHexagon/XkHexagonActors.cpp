@@ -60,14 +60,14 @@ AXkHexagonActor::AXkHexagonActor(const FObjectInitializer& ObjectInitializer)
 #if WITH_EDITORONLY_DATA
 	ProcMeshBase = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProcMeshBase"));
 	ProcMeshBase->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	ProcMeshBase->SetCollisionProfileName(FName(TEXT("NoCollision")));
+	ProcMeshBase->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
 	ProcMeshBase->SetVisibility(false);
 	ProcMeshBase->SetCastShadow(false);
 	ProcMeshBase->SetupAttachment(RootComponent);
 
 	ProcMeshEdge = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProcMeshEdge"));
 	ProcMeshEdge->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	ProcMeshEdge->SetCollisionProfileName(FName(TEXT("NoCollision")));
+	ProcMeshEdge->SetCollisionProfileName(UCollisionProfile::NoCollision_ProfileName);
 	ProcMeshEdge->SetVisibility(false);
 	ProcMeshEdge->SetCastShadow(false);
 	ProcMeshEdge->SetupAttachment(RootComponent);
