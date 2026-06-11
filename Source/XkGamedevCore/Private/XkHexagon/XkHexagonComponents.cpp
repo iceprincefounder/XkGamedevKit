@@ -484,7 +484,7 @@ FBoxSphereBounds UXkHexagonArrowComponent::CalcBounds(const FTransform& LocalToW
 UXkInstancedHexagonComponent::UXkInstancedHexagonComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_StandardHexagonWithUV"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_StandardHexagonCollision"));
 	SetStaticMesh(ObjectFinder.Object);
 }
 

@@ -55,7 +55,13 @@ AXkHexagonActor::AXkHexagonActor(const FObjectInitializer& ObjectInitializer)
 		StaticMeshPivot->SetStaticMesh(StaticMeshObject);
 		InitStaticMeshComponent(StaticMeshPivot);
 	}
-
+	{
+		StaticMeshSide = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMeshSide"));
+		static ConstructorHelpers::FObjectFinder<UStaticMesh> ObjectFinder(TEXT("/XkGamedevKit/Meshes/SM_HexagonSide.SM_HexagonSide"));
+		UStaticMesh* StaticMeshObject = ObjectFinder.Object;
+		StaticMeshSide->SetStaticMesh(StaticMeshObject);
+		InitStaticMeshComponent(StaticMeshSide);
+	}
 
 #if WITH_EDITORONLY_DATA
 	ProcMeshBase = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProcMeshBase"));
@@ -78,7 +84,6 @@ AXkHexagonActor::AXkHexagonActor(const FObjectInitializer& ObjectInitializer)
 	PivotMaterial = StaticMeshPivot->GetMaterial(PIVOT_SECTION_INDEX);
 }
 
-
 void AXkHexagonActor::ConstructionScripts()
 {
 	UpdateMaterial();
@@ -87,14 +92,12 @@ void AXkHexagonActor::ConstructionScripts()
 #endif
 }
 
-
 void AXkHexagonActor::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
 	ConstructionScripts();
 }
-
 
 #if WITH_EDITOR
 void AXkHexagonActor::PostEditMove(bool bFinished)
@@ -116,12 +119,10 @@ void AXkHexagonActor::PostEditMove(bool bFinished)
 }
 #endif
 
-
 void AXkHexagonActor::SetHexagonWorld(class AXkHexagonalWorldActor* Input)
 {
 	ParentHexagonalWorld = MakeWeakObjectPtr<AXkHexagonalWorldActor>(Input);
 }
-
 
 void AXkHexagonActor::OnBaseHighlight(const FLinearColor& InColor)
 {
@@ -138,7 +139,6 @@ void AXkHexagonActor::OnBaseHighlight(const FLinearColor& InColor)
 	}
 }
 
-
 void AXkHexagonActor::OnEdgeHighlight(const FLinearColor& InColor)
 {
 	if (InColor == FLinearColor::Transparent)
@@ -153,7 +153,6 @@ void AXkHexagonActor::OnEdgeHighlight(const FLinearColor& InColor)
 		EdgeMID->SetVectorParameterValue(FName("Color"), InColor);
 	}
 }
-
 
 void AXkHexagonActor::OnPivotHighlight(const FLinearColor& InColor)
 {
@@ -172,6 +171,22 @@ void AXkHexagonActor::OnPivotHighlight(const FLinearColor& InColor)
 	}
 }
 
+void AXkHexagonActor::OnSideHighlight(const FLinearColor& InColor)
+{
+	if (InColor == FLinearColor::Transparent)
+	{
+		StaticMeshSide->SetVisibility(false);
+		StaticMeshSide->MarkRenderStateDirty();
+		return;
+	}
+	StaticMeshSide->SetVisibility(true);
+	if (IsValid(SideMID))
+	{
+		SideMID->SetVectorParameterValue(FName("Color"), InColor);
+		StaticMeshSide->SetMaterial(SIDE_SECTION_INDEX, SideMID);
+		StaticMeshSide->MarkRenderStateDirty();
+	}
+}
 
 void AXkHexagonActor::UpdateMaterial()
 {
@@ -189,6 +204,11 @@ void AXkHexagonActor::UpdateMaterial()
 	{
 		PivotMID = UMaterialInstanceDynamic::Create(PivotMaterial, this);
 		StaticMeshPivot->SetMaterial(PIVOT_SECTION_INDEX, PivotMID);
+	}
+	if (!SideMID && SideMaterial)
+	{
+		SideMID = UMaterialInstanceDynamic::Create(SideMaterial, this);
+		StaticMeshSide->SetMaterial(SIDE_SECTION_INDEX, SideMID);
 	}
 }
 
@@ -233,7 +253,6 @@ void AXkHexagonActor::UpdateProcMesh()
 }
 #endif
 
-
 void AXkHexagonActor::InitHexagon(const FIntVector& InCoord)
 {
 	Coord = InCoord;
@@ -255,7 +274,6 @@ void AXkHexagonActor::InitHexagon(const FIntVector& InCoord)
 	StaticMeshPivot->MarkRenderStateDirty();
 }
 
-
 void AXkHexagonActor::FreeHexagon()
 {
 	StaticMeshBase->SetVisibility(false);
@@ -271,15 +289,26 @@ void AXkHexagonActor::FreeHexagon()
 	StaticMeshEdge->SetRelativeScale3D(FVector::OneVector);
 	StaticMeshPivot->SetRelativeLocation(FVector::ZeroVector);
 	StaticMeshPivot->SetRelativeScale3D(FVector::OneVector);
+	StaticMeshSide->SetRelativeLocation(FVector::ZeroVector);
+	StaticMeshSide->SetRelativeScale3D(FVector::OneVector);
 	// Clear hight light colors
-	if (BaseMID && IsValid(BaseMID) && EdgeMID && IsValid(EdgeMID) && PivotMID && IsValid(PivotMID))
+	if (BaseMID && IsValid(BaseMID))
 	{
 		BaseMID->SetVectorParameterValue(FName("Color"), FLinearColor::Transparent);
+	}
+	if (EdgeMID && IsValid(EdgeMID))
+	{
 		EdgeMID->SetVectorParameterValue(FName("Color"), FLinearColor::Transparent);
+	}
+	if (PivotMID && IsValid(PivotMID))
+	{
 		PivotMID->SetVectorParameterValue(FName("Color"), FLinearColor::Transparent);
 	}
+	if (SideMID && IsValid(SideMID))
+	{
+		SideMID->SetVectorParameterValue(FName("Color"), FLinearColor::Transparent);
+	}
 }
-
 
 AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -310,7 +339,6 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 	PathfindingMaxStep = 9999;
 	BacktrackingMaxStep = 9999;
 }
-
 
 void AXkHexagonalWorldActor::DebugPathfinding()
 {
@@ -383,7 +411,6 @@ void AXkHexagonalWorldActor::DebugPathfinding()
 #endif
 }
 
-
 void AXkHexagonalWorldActor::BeginPlay()
 {
 	HexagonAStarPathfinding.Init(&HexagonalWorldTable);
@@ -412,12 +439,10 @@ void AXkHexagonalWorldActor::OnConstruction(const FTransform& Transform)
 	Super::OnConstruction(Transform);
 }
 
-
 FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNode(const FIntVector& InCoord) const
 {
 	return HexagonalWorldTable.Nodes.Find(InCoord);
 }
-
 
 FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNode(const FVector& InPosition) const
 {
@@ -431,7 +456,6 @@ FXkHexagonNode* AXkHexagonalWorldActor::GetHexagonNode(const FVector& InPosition
 
 	return HexagonNode;
 }
-
 
 TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeNeighbors(const FIntVector& InCoord) const
 {
@@ -448,7 +472,6 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeNeighbors(const FI
 	return HexagonNodeNeighbors;
 }
 
-
 TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeSurrounders(const TArray<FIntVector>& InCoords) const
 {
 	TArray<FXkHexagonNode*> HexagonNodeSurrounders;
@@ -463,7 +486,6 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeSurrounders(const 
 	}
 	return HexagonNodeSurrounders;
 }
-
 
 TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeCoverages(const FIntVector& InCoord, const int32 InRange) const
 {
@@ -481,7 +503,6 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeCoverages(const FI
 	}
 	return Results;
 }
-
 
 TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodesPath(const FIntVector& StartCoord, const FIntVector& EndCoord)
 {
@@ -505,7 +526,6 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodesPath(const FIntVe
 	}
 	return FindingNodes;
 }
-
 
 TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodesPathfinding(const FIntVector& StartCoord, const FIntVector& EndCoord, const TArray<FIntVector>& BlockList)
 {
@@ -533,7 +553,6 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodesPathfinding(const
 	return FindingNodes;
 }
 
-
 TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonalWorldNodes(const EXkHexagonType HexagonType) const
 {
 	TArray<FXkHexagonNode*> Results;
@@ -552,7 +571,6 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonalWorldNodes(const EXk
 	return Results;
 }
 
-
 int32 AXkHexagonalWorldActor::GetHexagonManhattanDistance(const FVector& A, const FVector& B) const
 {
 	FXkHexagonNode* HexagonA = GetHexagonNode(A);
@@ -564,7 +582,6 @@ int32 AXkHexagonalWorldActor::GetHexagonManhattanDistance(const FVector& A, cons
 	return -1;
 }
 
-
 FVector2D AXkHexagonalWorldActor::GetHexagonalWorldExtent() const
 {
 	float Distance = HEXAGON_RADIUS + HEXAGON_GAP_WIDTH;
@@ -573,7 +590,6 @@ FVector2D AXkHexagonalWorldActor::GetHexagonalWorldExtent() const
 	return FVector2D(X, Y);
 }
 
-
 FVector2D AXkHexagonalWorldActor::GetFullUnscaledWorldSize(const FVector2D& UnscaledPatchCoverage, const FVector2D& Resolution) const
 {
 	// UnscaledPatchCoverage is meant to represent the distance between the centers of the extremal pixels.
@@ -581,7 +597,6 @@ FVector2D AXkHexagonalWorldActor::GetFullUnscaledWorldSize(const FVector2D& Unsc
 	FVector2D TargetPixelSize(UnscaledPatchCoverage / FVector2D::Max(Resolution - 1, FVector2D(1, 1)));
 	return TargetPixelSize * Resolution;
 }
-
 
 void AXkHexagonalWorldActor::BuildHexagonData(TArray<FVector4f>& OutVertices, TArray<uint32>& OutIndices)
 {

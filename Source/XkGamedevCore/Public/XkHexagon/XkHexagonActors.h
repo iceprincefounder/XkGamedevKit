@@ -10,6 +10,7 @@
 #define BASE_SECTION_INDEX 0
 #define EDGE_SECTION_INDEX 0
 #define PIVOT_SECTION_INDEX 0
+#define SIDE_SECTION_INDEX 0
 #define HEXAGON_RADIUS 100.0f
 #define HEXAGON_HEIGHT 10.0f
 #define HORIZION_HEIGHT 100.0f
@@ -46,6 +47,9 @@ class XKGAMEDEVCORE_API AXkHexagonActor : public AActor
 	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	class UStaticMeshComponent* StaticMeshPivot;
 
+	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
+	class UStaticMeshComponent* StaticMeshSide;
+
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	FIntVector Coord;
 
@@ -58,6 +62,9 @@ class XKGAMEDEVCORE_API AXkHexagonActor : public AActor
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	class UMaterialInterface* PivotMaterial;
 
+	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
+	class UMaterialInterface* SideMaterial;
+
 	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	class UMaterialInstanceDynamic* BaseMID;
 
@@ -66,6 +73,10 @@ class XKGAMEDEVCORE_API AXkHexagonActor : public AActor
 
 	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	class UMaterialInstanceDynamic* PivotMID;
+
+	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
+	class UMaterialInstanceDynamic* SideMID;
+
 public:
 	AXkHexagonActor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
@@ -85,9 +96,11 @@ public:
 	virtual void OnBaseHighlight(const FLinearColor& InColor = FLinearColor::White);
 	virtual void OnEdgeHighlight(const FLinearColor& InColor = FLinearColor::White);
 	virtual void OnPivotHighlight(const FLinearColor& InColor = FLinearColor::White);
+	virtual void OnSideHighlight(const FLinearColor& InColor = FLinearColor::White);
 	virtual UStaticMeshComponent* GetStaticMeshBase() const { return StaticMeshBase; };
 	virtual UStaticMeshComponent* GetStaticMeshEdge() const { return StaticMeshEdge; };
 	virtual UStaticMeshComponent* GetStaticMeshPivot() const { return StaticMeshPivot; };
+	virtual UStaticMeshComponent* GetStaticMeshSide() const { return StaticMeshSide; };
 	//~ End AXkHexagonActor Interface
 
 protected:
