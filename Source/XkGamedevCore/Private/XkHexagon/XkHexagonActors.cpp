@@ -78,15 +78,10 @@ AXkHexagonActor::AXkHexagonActor(const FObjectInitializer& ObjectInitializer)
 	ProcMeshEdge->SetCastShadow(false);
 	ProcMeshEdge->SetupAttachment(RootComponent);
 #endif
-
-	BaseMaterial = StaticMeshBase->GetMaterial(BASE_SECTION_INDEX);
-	EdgeMaterial = StaticMeshEdge->GetMaterial(EDGE_SECTION_INDEX);
-	PivotMaterial = StaticMeshPivot->GetMaterial(PIVOT_SECTION_INDEX);
 }
 
 void AXkHexagonActor::ConstructionScripts()
 {
-	UpdateMaterial();
 #if WITH_EDITOR
 	UpdateProcMesh();
 #endif
@@ -133,10 +128,8 @@ void AXkHexagonActor::OnBaseHighlight(const FLinearColor& InColor)
 		return;
 	}
 	StaticMeshBase->SetVisibility(true);
-	if (IsValid(BaseMID))
-	{
-		BaseMID->SetVectorParameterValue(FName("Color"), InColor);
-	}
+	StaticMeshBase->SetDefaultCustomPrimitiveDataVector4(0, FVector4(InColor.R, InColor.G, InColor.B, InColor.A));
+	StaticMeshBase->MarkRenderStateDirty();
 }
 
 void AXkHexagonActor::OnEdgeHighlight(const FLinearColor& InColor)
@@ -148,10 +141,8 @@ void AXkHexagonActor::OnEdgeHighlight(const FLinearColor& InColor)
 		return;
 	}
 	StaticMeshEdge->SetVisibility(true);
-	if (IsValid(EdgeMID))
-	{
-		EdgeMID->SetVectorParameterValue(FName("Color"), InColor);
-	}
+	StaticMeshEdge->SetDefaultCustomPrimitiveDataVector4(0, FVector4(InColor.R, InColor.G, InColor.B, InColor.A));
+	StaticMeshEdge->MarkRenderStateDirty();
 }
 
 void AXkHexagonActor::OnPivotHighlight(const FLinearColor& InColor)
@@ -163,12 +154,8 @@ void AXkHexagonActor::OnPivotHighlight(const FLinearColor& InColor)
 		return;
 	}
 	StaticMeshPivot->SetVisibility(true);
-	if (IsValid(PivotMID))
-	{
-		PivotMID->SetVectorParameterValue(FName("Color"), InColor);
-		StaticMeshPivot->SetMaterial(PIVOT_SECTION_INDEX, PivotMID);
-		StaticMeshPivot->MarkRenderStateDirty();
-	}
+	StaticMeshPivot->SetDefaultCustomPrimitiveDataVector4(0, FVector4(InColor.R, InColor.G, InColor.B, InColor.A));
+	StaticMeshPivot->MarkRenderStateDirty();
 }
 
 void AXkHexagonActor::OnSideHighlight(const FLinearColor& InColor)
@@ -180,36 +167,8 @@ void AXkHexagonActor::OnSideHighlight(const FLinearColor& InColor)
 		return;
 	}
 	StaticMeshSide->SetVisibility(true);
-	if (IsValid(SideMID))
-	{
-		SideMID->SetVectorParameterValue(FName("Color"), InColor);
-		StaticMeshSide->SetMaterial(SIDE_SECTION_INDEX, SideMID);
-		StaticMeshSide->MarkRenderStateDirty();
-	}
-}
-
-void AXkHexagonActor::UpdateMaterial()
-{
-	if (!BaseMID && BaseMaterial)
-	{
-		BaseMID = UMaterialInstanceDynamic::Create(BaseMaterial, this);
-		StaticMeshBase->SetMaterial(BASE_SECTION_INDEX, BaseMID);
-	}
-	if (!EdgeMID && EdgeMaterial)
-	{
-		EdgeMID = UMaterialInstanceDynamic::Create(EdgeMaterial, this);
-		StaticMeshEdge->SetMaterial(EDGE_SECTION_INDEX, EdgeMID);
-	}
-	if (!PivotMID && PivotMaterial)
-	{
-		PivotMID = UMaterialInstanceDynamic::Create(PivotMaterial, this);
-		StaticMeshPivot->SetMaterial(PIVOT_SECTION_INDEX, PivotMID);
-	}
-	if (!SideMID && SideMaterial)
-	{
-		SideMID = UMaterialInstanceDynamic::Create(SideMaterial, this);
-		StaticMeshSide->SetMaterial(SIDE_SECTION_INDEX, SideMID);
-	}
+	StaticMeshSide->SetDefaultCustomPrimitiveDataVector4(0, FVector4(InColor.R, InColor.G, InColor.B, InColor.A));
+	StaticMeshSide->MarkRenderStateDirty();
 }
 
 #if WITH_EDITOR
@@ -243,13 +202,11 @@ void AXkHexagonActor::UpdateProcMesh()
 			return UV0s;
 		};
 	TArray<FVector2D> BaseUV0s = GenerateUV(BaseVertices, HEXAGON_RADIUS);
-	ProcMeshBase->CreateMeshSection(BASE_SECTION_INDEX, BaseVertices, BaseIndices, TArray<FVector>(), BaseUV0s, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
-	ProcMeshBase->SetMaterial(BASE_SECTION_INDEX, BaseMID);
+	ProcMeshBase->CreateMeshSection(0, BaseVertices, BaseIndices, TArray<FVector>(), BaseUV0s, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
 	ProcMeshBase->Bounds = FBoxSphereBounds(FBox(BaseVertices));
 
 	TArray<FVector2D> EdgeUV0s = GenerateUV(EdgeVertices, HEXAGON_RADIUS);
-	ProcMeshEdge->CreateMeshSection(EDGE_SECTION_INDEX, EdgeVertices, EdgeIndices, TArray<FVector>(), EdgeUV0s, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
-	ProcMeshEdge->SetMaterial(EDGE_SECTION_INDEX, EdgeMID);
+	ProcMeshEdge->CreateMeshSection(1, EdgeVertices, EdgeIndices, TArray<FVector>(), EdgeUV0s, TArray<FColor>(), TArray<FProcMeshTangent>(), true);
 }
 #endif
 
@@ -282,6 +239,8 @@ void AXkHexagonActor::FreeHexagon()
 	StaticMeshEdge->MarkRenderStateDirty();
 	StaticMeshPivot->SetVisibility(false);
 	StaticMeshPivot->MarkRenderStateDirty();
+	StaticMeshSide->SetVisibility(false);
+	StaticMeshSide->MarkRenderStateDirty();
 	SetActorLocation(FVector(0.0, 0.0, -HALF_WORLD_MAX));
 	StaticMeshBase->SetRelativeLocation(FVector::ZeroVector);
 	StaticMeshEdge->SetRelativeLocation(FVector::ZeroVector);
@@ -291,23 +250,6 @@ void AXkHexagonActor::FreeHexagon()
 	StaticMeshPivot->SetRelativeScale3D(FVector::OneVector);
 	StaticMeshSide->SetRelativeLocation(FVector::ZeroVector);
 	StaticMeshSide->SetRelativeScale3D(FVector::OneVector);
-	// Clear hight light colors
-	if (BaseMID && IsValid(BaseMID))
-	{
-		BaseMID->SetVectorParameterValue(FName("Color"), FLinearColor::Transparent);
-	}
-	if (EdgeMID && IsValid(EdgeMID))
-	{
-		EdgeMID->SetVectorParameterValue(FName("Color"), FLinearColor::Transparent);
-	}
-	if (PivotMID && IsValid(PivotMID))
-	{
-		PivotMID->SetVectorParameterValue(FName("Color"), FLinearColor::Transparent);
-	}
-	if (SideMID && IsValid(SideMID))
-	{
-		SideMID->SetVectorParameterValue(FName("Color"), FLinearColor::Transparent);
-	}
 }
 
 AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectInitializer)

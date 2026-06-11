@@ -7,10 +7,6 @@
 #include "XkHexagonPathfinding.h"
 #include "XkHexagonActors.generated.h"
 
-#define BASE_SECTION_INDEX 0
-#define EDGE_SECTION_INDEX 0
-#define PIVOT_SECTION_INDEX 0
-#define SIDE_SECTION_INDEX 0
 #define HEXAGON_RADIUS 100.0f
 #define HEXAGON_HEIGHT 10.0f
 #define HORIZION_HEIGHT 100.0f
@@ -52,31 +48,6 @@ class XKGAMEDEVCORE_API AXkHexagonActor : public AActor
 
 	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
 	FIntVector Coord;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
-	class UMaterialInterface* BaseMaterial;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
-	class UMaterialInterface* EdgeMaterial;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
-	class UMaterialInterface* PivotMaterial;
-
-	UPROPERTY(EditAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
-	class UMaterialInterface* SideMaterial;
-
-	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
-	class UMaterialInstanceDynamic* BaseMID;
-
-	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
-	class UMaterialInstanceDynamic* EdgeMID;
-
-	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
-	class UMaterialInstanceDynamic* PivotMID;
-
-	UPROPERTY(VisibleAnywhere, Category = "HexagonActor [KEVINTSUIXUGAMEDEV]")
-	class UMaterialInstanceDynamic* SideMID;
-
 public:
 	AXkHexagonActor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
@@ -104,8 +75,6 @@ public:
 	//~ End AXkHexagonActor Interface
 
 protected:
-
-	virtual void UpdateMaterial();
 #if WITH_EDITOR
 	virtual void UpdateProcMesh();
 #endif
