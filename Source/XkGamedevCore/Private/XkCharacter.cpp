@@ -425,24 +425,6 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 	}
 }
 
-FVector UXkTargetMovementComponent::GetMovementActorCenter() const
-{
-	if (AActor* Actor = GetMovementActor(); IsValid(Actor))
-	{
-		return Actor->GetComponentsBoundingBox().GetCenter();
-	}
-	return FVector::ZeroVector;
-}
-
-float UXkTargetMovementComponent::GetMovementActorHeight() const
-{
-	if (AActor* Actor = GetMovementActor(); IsValid(Actor))
-	{
-		return Actor->GetComponentsBoundingBox().GetSize().Z;
-	}
-	return 0.0f;
-}
-
 FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderInput)
 {
 	FHitResult HitResult;
@@ -461,15 +443,29 @@ FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, c
 		float HeightZ = HitResult.ImpactPoint.Z + CapsuleHalfHeight;
 		return FVector(Input.X, Input.Y, HeightZ);
 	}
+	int32 LoopIndex = 1;
+	while (LoopIndex <= 10)
+	{
+		Start = Input + FVector(0.0, 0.0, 25.0 * LoopIndex);
+		if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
+		{
+			float HeightZ = HitResult.ImpactPoint.Z + CapsuleHalfHeight;
+			return FVector(Input.X, Input.Y, HeightZ);
+		}
+		LoopIndex++;
+	}
 	return Input;
 }
 
 AActor* UXkTargetMovementComponent::GetLineTraceActor(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderInput)
 {
 	FHitResult HitResult;
-	FVector Center = GetMovementActorCenter();
-	FVector Start = bTraceUnderInput ? Center : Center + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
-	FVector End = Center + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
+	FVector Start = Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
+	if (bTraceUnderInput)
+	{
+		Start = Input + FVector(0.0, 0.0, 25.0f); // Offset
+	}
+	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
 	CollisionParams.bTraceComplex = bTraceComplex;

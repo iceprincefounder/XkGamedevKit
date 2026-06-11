@@ -211,8 +211,6 @@ public:
 	FORCEINLINE virtual void SetSlideCost(const int32 Cost) { SlideCostPoint = Cost; };
 	FORCEINLINE virtual void SetSlideAcceler(const float Acceler) { SlideAcceler = Acceler; };
 
-	virtual FVector GetMovementActorCenter() const;
-	virtual float GetMovementActorHeight() const;
 	virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false, const bool bTraceUnderInput = true);
 	virtual AActor* GetLineTraceActor(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false, const bool bTraceUnderInput = true);
 	virtual void ValidateOnGround();
