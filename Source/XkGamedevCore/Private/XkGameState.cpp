@@ -150,7 +150,7 @@ void AXkGameState::OnNavigationToTheBottom()
 		int32 RowNum = FMath::FloorToInt32((float)WidthSize / (float)TileViewWidget->GetEntryWidth());
 		int32 CurrentIndex = TileViewWidget->GetIndexForItem(TileViewWidget->GetSelectedItem());
 		int32 Num = TileViewWidget->GetNumItems();
-		if (Num > 0)
+		if (Num > 0 && RowNum > 0)
 		{
 			int32 TotalRawNum = FMath::CeilToInt32((float)Num / (float)RowNum) * RowNum;
 			CurrentIndex = (CurrentIndex + RowNum) % TotalRawNum;
