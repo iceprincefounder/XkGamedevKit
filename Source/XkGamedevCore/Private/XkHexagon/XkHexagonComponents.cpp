@@ -503,6 +503,7 @@ UXkHexagonBasedFortressComponent::UXkHexagonBasedFortressComponent(const FObject
 	PalisadeWaveBaseHeight = 15.0f;
 	PalisadeWaveToothHeight = 25.0f;
 	PalisadeWallRings = 4;
+	PalisadeWallGaps = 1;
 	TrapezoidWaveBaseHeight = 20.0f;
 	TrapezoidWaveToothHeight = 10.0f;
 	TrapezoidTopWidth = 85.0f;
@@ -1164,7 +1165,7 @@ void MakeTrapezoidBoxAlongLine(
 		false, false);
 }
 
-void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall(const int32 Num)
+void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall()
 {
 	using namespace UE::Geometry;
 	FVector Origin = GetComponentLocation();
@@ -1180,6 +1181,10 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall(const int3
 	}
 
 	const int32 Rings = FMath::Max(1, PalisadeWallRings);
+	// PalisadeWallGaps 表示最外围留作间隙不生成圆柱的环数
+	// 圆柱大小仍按 Rings 计算，实际生成的最外圈是 OuterRing = Rings - Gaps
+	const int32 Gaps = FMath::Clamp(PalisadeWallGaps, 0, Rings - 1);
+	const int32 OuterRing = Rings - Gaps;
 	const float HexagonRadius = 100.0f;
 	const float HexInRadius = HexagonRadius * FMath::Sqrt(3.0f) / 2.0f;
 	const float CylRadius = HexInRadius / (Rings * FMath::Sqrt(3.0f) + 1.0f);
@@ -1302,8 +1307,8 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall(const int3
 		return SumZ / CandidateZ.Num();
 	};
 
-	// 逐圈生成圆柱
-	for (int32 Ring = 1; Ring <= Rings; Ring++)
+	// 逐圈生成圆柱（所有边统一应用 PalisadeWallGaps：最外围 Gaps 层不生成，留作间隙）
+	for (int32 Ring = 1; Ring <= OuterRing; Ring++)
 	{
 		for (int32 Corner = 0; Corner < 6; Corner++)
 		{
@@ -1325,13 +1330,13 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall(const int3
 				// 在 2D 平面上找距离所有 PalisadeBaseLines 最近的点，取其 Z 值作为基础圆柱高度
 				const float BaseCylHeight = CalcCylHeightFromBaseLines(FVector2D(CylCenter.X, CylCenter.Y));
 
-				// 最外圈且该边有相邻 PalisadeWall 时：
+				// 最外圈（Ring == OuterRing）且该边有相邻 PalisadeWall 时：
 				//   - 有左侧临边：Step==0 标记为 Inner（左侧临边的第0个圆柱归左侧边管）
 				//   - 无左侧临边：Step==0 标记为 Outer，其余 Inner
 				// 最外圈且该边无相邻 PalisadeWall 时，全部是 Outer
 				// 非最外圈，全部是 Inner
 				bool bIsOuterRing = false;
-				if (Ring == Rings)
+				if (Ring == OuterRing)
 				{
 					if (bEdgeHasNeighbor[Corner])
 					{
@@ -1365,6 +1370,89 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedPalisadeWall(const int3
 					ThisConeHeight,
 					CylSlices,
 					0, 1);
+			}
+		}
+	}
+
+	// 补丁循环：对有相邻 PalisadeWall 的边（共享边），补上被 Gaps 跳过的最外层圆柱
+	// 这样两块相邻 PalisadeWall 的共享边不会因 Gaps 而出现缺口
+	//
+	// 几何说明：Corner k 边的 Step 0..Ring-1 落在 [VertexA, VertexB) 上（不含 VertexB），
+	// VertexB 位置的圆柱由下一条边 Corner (k+1) 的 Step==0 生成。
+	// 完整最外圈（Rings=4 默认）时每条边可视为 5 个圆柱：自身 4 个 + 下一条边的第 0 个。
+	// 但补丁循环只对共享边生效，当右邻边（Corner+1）不是共享边时，它不会生成 Step==0，
+	// 导致当前共享边最外圈少一根收尾柱，因此需在此情况下额外补上 Step==Ring 位置的圆柱。
+	if (Gaps > 0)
+	{
+		for (int32 Corner = 0; Corner < 6; Corner++)
+		{
+			if (!bEdgeHasNeighbor[Corner])
+			{
+				continue;
+			}
+
+			// 右邻边（Corner+1）是否为共享边；若不是，则本边需要在 VertexB 位置补一根收尾柱
+			const bool bRightNeighborIsShared = bEdgeHasNeighbor[(Corner + 1) % 6];
+			const int32 ExtraCap = bRightNeighborIsShared ? 0 : 1;
+
+			float AngleA = (float)Corner * UE_PI / 3.0f;
+			float AngleB = (float)(Corner + 1) * UE_PI / 3.0f;
+
+			FVector2D DirA = FVector2D(FMath::Cos(AngleA), FMath::Sin(AngleA));
+			FVector2D DirB = FVector2D(FMath::Cos(AngleB), FMath::Sin(AngleB));
+
+			for (int32 Ring = OuterRing + 1; Ring <= Rings; Ring++)
+			{
+				FVector2D VertexA = DirA * (Ring * CylDiameter);
+				FVector2D VertexB = DirB * (Ring * CylDiameter);
+
+				// Step 上限：正常 [0, Ring)；若右邻边不是共享边则扩展至 [0, Ring]，
+				// 使 Step==Ring 落在 VertexB 位置，补上缺失的收尾柱。
+				const int32 StepEnd = Ring + ExtraCap;
+
+				for (int32 Step = 0; Step < StepEnd; Step++)
+				{
+					float t = (float)Step / (float)Ring;
+					FVector2D Pos2D = FMath::Lerp(VertexA, VertexB, t);
+					FVector CylCenter = Origin + FVector(Pos2D.X, Pos2D.Y, 0.0f);
+
+					const float BaseCylHeight = CalcCylHeightFromBaseLines(FVector2D(CylCenter.X, CylCenter.Y));
+
+					// WavePattern 归属规则（仅补丁段的最外圈 Ring == Rings 生效）：
+					//   - 补丁段生成的柱子多数位于共享边中段（内墙对接），不做波峰装饰
+					//   - 边的两个端点 Vertex 若与"非共享边（外墙）"相接，则该端点柱子做波峰收头
+					//     · Step==0（VertexA 位置）：仅当左邻边非共享时做波峰；
+					//       若左邻边是共享，则 Step==0 归左邻边管，此处不做波峰
+					//     · Step==Ring（VertexB 位置）：只有在右邻边非共享时才会补出此柱（ExtraCap==1），
+					//       因此一旦生成必然位于外墙过渡角，必然做波峰
+					bool bIsOuterRing = false;
+					if (Ring == Rings)
+					{
+						if (Step == 0)
+						{
+							bIsOuterRing = !bEdgeHasLeftNeighbor[Corner];
+						}
+						else if (Step == Ring)
+						{
+							// 只有在右邻边非共享时才生成 Step==Ring，此处必然做波峰
+							bIsOuterRing = true;
+						}
+					}
+
+					const float ThisCylHeight = bIsOuterRing ? (BaseCylHeight + PalisadeWaveBaseHeight) : BaseCylHeight;
+					const float ThisConeHeight = bIsOuterRing ? PalisadeWaveToothHeight : 0.0f;
+
+					MakeTrapezoidCylinder(
+						ShapeMesh,
+						CylCenter,
+						CylCenter + FVector::ForwardVector,
+						CylDiameter,
+						CylDiameter,
+						ThisCylHeight,
+						ThisConeHeight,
+						CylSlices,
+						0, 1);
+				}
 			}
 		}
 	}

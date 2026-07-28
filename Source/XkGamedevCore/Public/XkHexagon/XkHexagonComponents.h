@@ -101,6 +101,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	int32 PalisadeWallRings;
 
+	/** 栅栏圆柱体墙和正六边形之间的间隔的层数 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
+	int32 PalisadeWallGaps;
+
 	/** 栅栏圆柱体墙圆柱侧面材质 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HexagonBasedFortress [KEVINTSUIXUGAMEDEV]")
 	UMaterialInterface* PalisadeWallMaterial;
@@ -150,7 +154,7 @@ public:
 	TArray<FVector> NeighborHexagonCenters;
 
 	//~ Begin UXkHexagonBasedFortressComponent interface
-	virtual void UpdateHexagonBasedPalisadeWall(const int32 Num = 2); // Num = 圈数
+	virtual void UpdateHexagonBasedPalisadeWall();
 	virtual void UpdateHexagonBasedTrapezoidBase();
 	virtual void UpdateHexagonBasedTrapezoidWall();
 	virtual void UpdateHexagonBasedTrapezoidTower();
