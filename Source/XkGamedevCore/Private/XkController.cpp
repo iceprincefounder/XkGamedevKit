@@ -312,7 +312,7 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	DefaultMouseCursor = EMouseCursor::Default;
 	ShortPressThreshold = 0.1;
 	ScreenBorderThreshold = 0.01;
-	MaxHoveringThreshold = 0.25;
+	MaxHoveringThreshold = 0.35;
 	CameraScrollingSpeed = 1000.0;
 	CameraDraggingSpeed = 1500;
 	CameraRotatingSpeed = 120.0;
