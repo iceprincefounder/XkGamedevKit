@@ -122,11 +122,13 @@ class XKGAMEDEVCORE_API AXkTopDownCamera : public AXkCamera
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera [KEVINTSUIXUGAMEDEV]", meta = (AllowPrivateAccess = "true"))
 	FVector2D CameraZoomArmRange;
 
+	/** Max velocity used ONLY by AddMoveTarget()-driven movement (see Tick()). Does NOT affect AddMovement(). */
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
-	float MaxVelocity;
+	float MoveToTargetMaxVelocity;
 
+	/** Max acceleration used ONLY by AddMoveTarget()-driven movement (see Tick()). Does NOT affect AddMovement(). */
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
-	float MaxAcceleration;
+	float MoveToTargetMaxAcceleration;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	bool bTravelingMode;

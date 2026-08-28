@@ -212,8 +212,8 @@ AXkTopDownCamera::AXkTopDownCamera(const FObjectInitializer& ObjectInitializer)
 	CameraRotationLock = FVector2D(-75.0, -55.0);
 	CameraZoomArmLength = 1200.0;
 	CameraZoomArmRange = FVector2D(800.0, 2000.0);
-	MaxVelocity = 10.0;
-	MaxAcceleration = 100.0;
+	MoveToTargetMaxVelocity = 5.0;
+	MoveToTargetMaxAcceleration = 50.0;
 	bTravelingMode = false;
 	TravelingView = FRotator(-25.f, 0.f, 0.f);
 	TravelingZoom = 2500.0;
@@ -259,8 +259,8 @@ void AXkTopDownCamera::Tick(float DeltaSeconds)
 			FVector MovingDir = (TargetVector - StartVector);
 			MovingDir.Normalize();
 			float CurrentVelocity = Velocity.Size();
-			float CurrentAcceleration = MaxAcceleration * DeltaSeconds;
-			CurrentVelocity = FMath::Clamp(CurrentVelocity + CurrentAcceleration, 0.0, MaxVelocity);
+			float CurrentAcceleration = MoveToTargetMaxAcceleration * DeltaSeconds;
+			CurrentVelocity = FMath::Clamp(CurrentVelocity + CurrentAcceleration, 0.0, MoveToTargetMaxVelocity);
 			FVector NewLocation = FMath::VInterpTo(StartVector, TargetVector, DeltaSeconds, CurrentVelocity);
 			Velocity = (NewLocation - Location) / DeltaSeconds;
 			Acceleration = MovingDir * CurrentAcceleration;

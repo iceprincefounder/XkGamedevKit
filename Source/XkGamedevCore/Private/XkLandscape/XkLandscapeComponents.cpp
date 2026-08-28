@@ -22,16 +22,20 @@ UXkLandscapeComponent::UXkLandscapeComponent(const FObjectInitializer& ObjectIni
 	SetComponentTickEnabled(true);
 	bTickInEditor = true;
 	
-	// Enable shadow casting
+	// Enable shadow casting.
+	// NOTE: This component uses a world-sized bounds (WORLD_MAX) in CalcBounds,
+	// so per-object projected shadow paths must be disabled. Otherwise
+	// FProjectedShadowInfo::SetupPerObjectProjection produces a degenerate
+	// matrix and triggers an ensure in TMatrix::InverseFast().
 	CastShadow = true;
 	bCastDynamicShadow = true;
 	bCastStaticShadow = true;
-	bCastVolumetricTranslucentShadow = true;
-	bCastContactShadow = true;
-	bCastHiddenShadow = true;
-	bCastFarShadow = true;
-	bCastShadowAsTwoSided = true;
-	bCastInsetShadow = true;
+	bCastVolumetricTranslucentShadow = false;
+	bCastContactShadow = false;
+	bCastHiddenShadow = false;
+	bCastFarShadow = false;
+	bCastShadowAsTwoSided = false;
+	bCastInsetShadow = false; // Must be false: avoids per-object shadow path.
 
 	Material = CastChecked<UMaterialInterface>(
 		StaticLoadObject(UMaterialInterface::StaticClass(), NULL, TEXT("/Engine/EngineMaterials/WorldGridMaterial")));
