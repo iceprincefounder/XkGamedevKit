@@ -15,6 +15,13 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Materials/Material.h"
 #include "Engine/World.h"
+#include "Engine/Engine.h"
+
+static TAutoConsoleVariable<bool> CVarXkMovementDebugInfo(
+	TEXT("r.xk.Movement.DebugInfo"),
+	false,
+	TEXT("Print Velocity and pending action stack of UXkTargetMovementComponent every tick."),
+	ECVF_Default);
 
 UE_DISABLE_OPTIMIZATION
 
@@ -43,6 +50,8 @@ UXkTargetMovementComponent::UXkTargetMovementComponent(const FObjectInitializer&
 	: Super(ObjectInitializer)
 {
 	bBlinkMode = false;
+	bHeavyMove = false;
+	OrientTolerance = 5.0f;
 	bFailToGround = false;
 	MoveAcceler = 1.0f;
 	JumpAcceler = 1.0f;
@@ -84,6 +93,35 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 
 	DoActionTick(DeltaTime);
 
+	// Debug info
+	if (CVarXkMovementDebugInfo.GetValueOnGameThread())
+	{
+		static const TCHAR* ActionNames[] = { TEXT("none"), TEXT("move"), TEXT("rotate"), TEXT("jump"), TEXT("fly"), TEXT("slide"), TEXT("fall") };
+		TArray<FString> Items;
+		for (const FString& Item : DebugFinishedActions)
+		{
+			Items.Add(Item + TEXT("(finish)"));
+		}
+		for (int32 Index = PendingTargets.Num() - 1; Index >= 0; --Index)
+		{
+			FString Item = ActionNames[static_cast<int32>(PendingTargets[Index].Key)];
+			if (Index == PendingTargets.Num() - 1)
+			{
+				Item += TEXT("(current)");
+			}
+			Items.Add(Item);
+		}
+		const FString Stack = Items.Num() > 0 ? FString::Join(Items, TEXT("->")) : FString(TEXT("empty"));
+		UE_LOG(LogTemp, Display, TEXT("[XkMovement] %s Velocity=(%.1f, %.1f, %.1f) Speed=%.1f Stack: %s"),
+			*GetNameSafe(GetMovementActor()), Velocity.X, Velocity.Y, Velocity.Z, Velocity.Size(), *Stack);
+		if (GEngine)
+		{
+			FString DebugMessage = FString::Printf(TEXT("[XkMovement] %s Velocity=(%.1f, %.1f, %.1f) Speed=%.1f Stack: %s"),
+				*GetNameSafe(GetMovementActor()), Velocity.X, Velocity.Y, Velocity.Z, Velocity.Size(), *Stack);
+			GEngine->AddOnScreenDebugMessage(/*Key*/ static_cast<uint64>(GetUniqueID()), /*Time*/ 5.0f, FColor::Green, DebugMessage);
+		}
+	}
+
 	// Whether every action finished?
 	if (IsActionFinished())
 	{
@@ -101,6 +139,7 @@ void UXkTargetMovementComponent::OnAction()
 	if (AActor* MovingActor = GetMovementActor())
 	{
 		bShouldDoAction = true;
+		DebugFinishedActions.Reset();
 		LastTarget = MovingActor->GetActorLocation();
 		bIsMoving = bIsRotating = bIsJumping = bIsSliding = bIsFalling = bIsFlying = false;
 		OnMovementBeginEvent.Broadcast();
@@ -127,6 +166,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				// Closed enough, stop moving
 				bIsMoving = false;
 				LastTarget = Location;
+				DebugFinishedActions.Add(TEXT("move"));
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
@@ -151,6 +191,31 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				FVector StartVector = Location;
 				FVector MovingDir = (TargetVector - StartVector);
 				MovingDir.Normalize();
+
+				const FVector X = TargetVector - StartVector;
+				FRotator StartRotator = GetMovementActor()->GetActorRotation();
+				FRotator TargetRotator = FRotationMatrix::MakeFromX(X).Rotator();
+
+				// Orient toward move direction before translating.
+				if (bHeavyMove && !CheckRotationSafely(StartRotator, TargetRotator, OrientTolerance))
+				{
+					bIsRotating = true;
+					FRotator OnlyYawTarget = TargetRotator;
+					OnlyYawTarget.Pitch = StartRotator.Pitch;
+					OnlyYawTarget.Roll = StartRotator.Roll;
+					FRotator NewRotator = bBlinkMode ? FMath::RInterpTo(StartRotator, OnlyYawTarget, DeltaTime, RotationRate.Yaw) :
+						FMath::RInterpConstantTo(StartRotator, OnlyYawTarget, DeltaTime, RotationRate.Yaw);
+					GetMovementActor()->SetActorRotation(NewRotator);
+					float CurrentVelocity = Velocity.Size();
+					CurrentVelocity += MaxAcceleration * DeltaTime;
+					CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity);
+					Velocity = OnlyYawTarget.Vector() * CurrentVelocity;
+					Acceleration = OnlyYawTarget.Vector() * MaxAcceleration;
+					LastLocation = GetMovementActor()->GetActorLocation();
+					return;
+				}
+				bIsRotating = false;
+
 				float CurrentVelocity = Velocity.Size();
 				float CurrentAcceleration = MaxAcceleration * MoveAcceler;
 				CurrentVelocity += CurrentAcceleration * DeltaTime;
@@ -170,9 +235,6 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				LastLocation = GetMovementActor()->GetActorLocation();
 				GetMovementActor()->SetActorLocation(NewLocation);
 
-				const FVector X = TargetVector - StartVector;
-				FRotator StartRotator = GetMovementActor()->GetActorRotation();
-				FRotator TargetRotator = FRotationMatrix::MakeFromX(X).Rotator();
 				FRotator NewRotator = bBlinkMode ? FMath::RInterpTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw) :
 					FMath::RInterpConstantTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw);
 				GetMovementActor()->SetActorRotation(NewRotator);
@@ -187,6 +249,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				Velocity = FVector::ZeroVector;
 				Acceleration = FVector::ZeroVector;
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
+				DebugFinishedActions.Add(TEXT("rotate"));
 				PendingTargets.Pop(true /* Shrink*/);
 			}
 			else if (!bIsRotating && ActionPoint < RotateCostPoint)
@@ -209,8 +272,11 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 					FMath::RInterpConstantTo(StartRotator, TargetRotator, DeltaTime, RotationRate.Yaw);
 				GetMovementActor()->SetActorRotation(NewRotator);
 
-				Acceleration += TargetRotator.Vector() * MaxAcceleration * DeltaTime;
-				Velocity += (TargetRotator.Vector() * MaxVelocity * DeltaTime);
+				float CurrentVelocity = Velocity.Size();
+				CurrentVelocity += MaxAcceleration * DeltaTime;
+				CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity);
+				Velocity = TargetRotator.Vector() * CurrentVelocity;
+				Acceleration = TargetRotator.Vector() * MaxAcceleration;
 			}
 		}
 		else if (CurrentTarget.Key == EActionType::Jump)
@@ -222,6 +288,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				LastTarget = TargetLocation;
 				Velocity = FVector::ZeroVector;
 				Acceleration = FVector::ZeroVector;
+				DebugFinishedActions.Add(TEXT("jump"));
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
@@ -278,6 +345,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				LastTarget = TargetLocation;
 				Velocity = FVector::ZeroVector;
 				Acceleration = FVector::ZeroVector;
+				DebugFinishedActions.Add(TEXT("slide"));
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}
@@ -340,6 +408,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				LastTarget = TargetLocation;
 				Velocity = FVector::ZeroVector;
 				Acceleration = FVector::ZeroVector;
+				DebugFinishedActions.Add(TEXT("fly"));
 				PendingTargets.Pop(true /* Shrink*/);
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
 			}

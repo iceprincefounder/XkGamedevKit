@@ -34,6 +34,10 @@ class XKGAMEDEVCORE_API UXkMovement : public UActorComponent
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	FRotator RotationRate;
 
+	/** Yaw tolerance in degrees for bHeavyMove. */
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ClampMax = "45", UIMax = "45"))
+	float OrientTolerance;
+
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
 	FOnMovementBeginEvent OnMovementBeginEvent;
 
@@ -105,6 +109,9 @@ protected:
 	};
 
 	TArray<TPair<EActionType, FVector>> PendingTargets;
+
+	/** Finished action names since OnAction, used by xk.Movement.DebugInfo. */
+	TArray<FString> DebugFinishedActions;
 };
 
 
@@ -139,6 +146,10 @@ public:
 	/** Move to target very fast mode.*/
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	bool bBlinkMode;
+
+	/** Finish orienting toward move direction before translating. */
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	bool bHeavyMove;
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	bool bFailToGround;
