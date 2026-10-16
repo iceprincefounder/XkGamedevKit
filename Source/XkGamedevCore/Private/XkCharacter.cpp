@@ -61,6 +61,7 @@ UXkTargetMovementComponent::UXkTargetMovementComponent(const FObjectInitializer&
 	FlyArc = -0.1;
 	CapsuleRadius = 55.0f;
 	CapsuleHalfHeight = 96.0f;
+	GroundMinHeight = 0.0f;
 
 	// Set default values
 	ActionPoint = 0;
@@ -507,9 +508,14 @@ FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, c
 	CollisionParams.AddIgnoredActor(GetMovementActor());
 	CollisionParams.bTraceComplex = bTraceComplex;
 	float TraceRadius = CapsuleRadius * 0.25f;
+	// GroundMinHeight is interpreted as the minimum FOOT (capsule bottom) world Z.
+	// Convert it to the equivalent actor-origin minimum by adding CapsuleHalfHeight.
+	const float MinOriginZ = GroundMinHeight + CapsuleHalfHeight;
 	if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
 	{
 		float HeightZ = HitResult.ImpactPoint.Z + CapsuleHalfHeight;
+		// Clamp so the capsule bottom stays at or above GroundMinHeight (e.g. water surface).
+		HeightZ = FMath::Max(HeightZ, MinOriginZ);
 		return FVector(Input.X, Input.Y, HeightZ);
 	}
 	int32 LoopIndex = 1;
@@ -519,11 +525,16 @@ FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, c
 		if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
 		{
 			float HeightZ = HitResult.ImpactPoint.Z + CapsuleHalfHeight;
+			// Clamp so the capsule bottom stays at or above GroundMinHeight (e.g. water surface).
+			HeightZ = FMath::Max(HeightZ, MinOriginZ);
 			return FVector(Input.X, Input.Y, HeightZ);
 		}
 		LoopIndex++;
 	}
-	return Input;
+	// No hit at all: still honor GroundMinHeight so Input is not left below the configured floor.
+	FVector Result = Input;
+	Result.Z = FMath::Max(Result.Z, MinOriginZ);
+	return Result;
 }
 
 AActor* UXkTargetMovementComponent::GetLineTraceActor(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderInput)

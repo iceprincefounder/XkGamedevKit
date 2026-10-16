@@ -35,6 +35,11 @@ AXkSphericalWorldWithOceanActor::AXkSphericalWorldWithOceanActor(const FObjectIn
 
 	CanvasRendererComponent = CreateDefaultSubobject<UXkCanvasRendererComponent>(TEXT("CanvasRenderer"));
 
+	// Wire the landscape -> renderer relationship at construction time so it survives
+	// both editor placement (OnConstruction) and PIE startup (BeginPlay) without any
+	// duplicated setter call sites.
+	SphericalLandscapeComponent->SetCanvasRenderer(CanvasRendererComponent);
+
 	static ConstructorHelpers::FObjectFinder<UMaterialParameterCollection> ObjectFinder2(TEXT("/XkGamedevKit/Materials/MPC_HexagonalWorld"));
 	HexagonMPC = ObjectFinder2.Object;
 
@@ -209,7 +214,9 @@ void AXkSphericalWorldWithOceanActor::GenerateCanvas()
 	CanvasExtent.Y = FullUnscaledWorldSize.Y;
 	CanvasRendererComponent->SetCanvasExtent(CanvasExtent);
 	CanvasRendererComponent->CreateBuffers(OutVertices, OutIndices, InstancePositionData, InstanceWeightData);
-	CanvasRendererComponent->DrawHeightWeightCanvas_MultiFrame();
+	// RebuildCPUHeightField is now appended as the final step inside the multi-frame task queue,
+	// so collision data is only (re)built after the GPU heightmap draw has fully completed.
+	CanvasRendererComponent->DrawHeightWeightCanvas_MultiFrame(OutVertices, OutIndices, InstancePositionData);
 }
 
 void AXkSphericalWorldWithOceanActor::RegenerateWorld()

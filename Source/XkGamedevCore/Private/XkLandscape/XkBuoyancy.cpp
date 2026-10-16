@@ -87,7 +87,11 @@ void UXkBuoyancyComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 	{
 		SkeletalComp = SpecifiedSkeletalMesh.Get();
 	}
-	if (SkeletalComp && SkeletalComp->IsSimulatingPhysics() && bEnableForceToBones)
+	// NOTE: USkeletalMeshComponent::IsSimulatingPhysics() only reflects the ROOT BodyInstance,
+	// so partial ragdolls (e.g. only a few bones simulating via SetAllBodiesBelowSimulatePhysics)
+	// would be rejected here. Instead, accept the skeletal path as long as the component is
+	// enabled for per-bone buoyancy; the inner per-bone loop will skip bodies that aren't valid.
+	if (SkeletalComp && bEnableForceToBones)
 	{
 		//Get gravity
 		float Gravity = SkeletalComp->GetPhysicsVolume()->GetGravityZ();
@@ -98,6 +102,7 @@ void UXkBuoyancyComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 		{
 			FBodyInstance* BI = SkeletalComp->GetBodyInstance(BoneNames[Itr], false);
 			if (BI && BI->IsValidBodyInstance()
+				&& BI->bSimulatePhysics // partial ragdoll: skip bones still kinematically following the Actor
 				&& BI->bEnableGravity) //Buoyancy doesn't exist without gravity
 			{
 				bIsUnderWater = false;
@@ -170,12 +175,13 @@ void UXkBuoyancyComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 #if ENABLE_DRAW_DEBUG
 					FColor DebugColor = FColor::Yellow;
 					if (bIsUnderWater) { DebugColor = FColor::White; }
-					::DrawDebugSphere(GetWorld(), WorldBoneLocation, BoneTestRadius, 12, DebugColor, false, -1.0f, SDPG_World, 3.0f);
+					::DrawDebugSphere(GetWorld(), WorldBoneLocation, BoneTestRadius, 12, DebugColor, false, -1.0f, SDPG_World, 1.0f);
 #endif
 				}
 #endif
 			}
 		}
+
 		return;
 	}
 
@@ -254,7 +260,7 @@ void UXkBuoyancyComponent::TickComponent(float DeltaTime, enum ELevelTick TickTy
 #if ENABLE_DRAW_DEBUG
 				FColor DebugColor = FColor::Yellow;
 				if (bIsUnderWater) { DebugColor = FColor::White; }
-				::DrawDebugSphere(GetWorld(), WorldTestPoint, PontoonRadius, 12, DebugColor, false, -1.0f, SDPG_World, 3.0f);
+				::DrawDebugSphere(GetWorld(), WorldTestPoint, PontoonRadius, 12, DebugColor, false, -1.0f, SDPG_World, 1.0f);
 #endif
 			}
 #endif
@@ -291,19 +297,21 @@ FVector UXkBuoyancyComponent::GetWaveLocation(const FVector& InLocation) const
 		float Height = HorizonHeight;
 		if (bUseSimpleWaveHeight)
 		{
-			Height += SpecifiedWaterWaves->GetWaterWaves()->GetSimpleWaveHeightAtPosition(InLocation, 1000.0f, Time);
+			Height += SpecifiedWaterWaves->GetWaterWaves()->GetSimpleWaveHeightAtPosition(InLocation, 1000.0f, Time) * WaveHeightScale;
 		}
 		else
 		{
 			FVector OutNormal;
-			Height += SpecifiedWaterWaves->GetWaterWaves()->GetWaveHeightAtPosition(InLocation, 1000.0f, Time, OutNormal);
+			Height += SpecifiedWaterWaves->GetWaterWaves()->GetWaveHeightAtPosition(InLocation, 1000.0f, Time, OutNormal) * WaveHeightScale;
 		}
 		return FVector(InLocation.X, InLocation.Y, Height);
 	}
-	float Height = GetWorldPosition().Z;
+	// Fallback: anchor the fake wave on HorizonHeight (world water surface), NOT on the owner actor Z.
+	// Using the actor Z here would make a ragdoll "float" wherever it currently is instead of near the real water.
+	float Height = HorizonHeight;
 	for (int32 Index = 1; Index < 4; Index++)
 	{
-		Height += FMath::Sin((InLocation.X + InLocation.Y) * 0.1f + Time / Index) * 2.5f * Index;
+		Height += FMath::Sin((InLocation.X + InLocation.Y) * 0.1f + Time / Index) * 2.5f * Index * WaveHeightScale;
 	}
 	return FVector(InLocation.X, InLocation.Y, Height);
 }

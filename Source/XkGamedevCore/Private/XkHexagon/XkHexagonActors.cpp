@@ -260,7 +260,9 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 
 	InstancedHexagonComponent = CreateDefaultSubobject<UXkInstancedHexagonComponent>(TEXT("InstancedHexagons"));
 	InstancedHexagonComponent->SetupAttachment(RootComponent);
-	InstancedHexagonComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	// Physics is handled by UXkLandscapeComponent's internal tile DMCs (CPU heightfield trimesh).
+	// Keep this component as a cheap query-only pick proxy; it does not participate in physics.
+	InstancedHexagonComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	InstancedHexagonComponent->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
 	InstancedHexagonComponent->SetVisibility(false);
 	InstancedHexagonComponent->bRenderInMainPass = false;
@@ -268,11 +270,6 @@ AXkHexagonalWorldActor::AXkHexagonalWorldActor(const FObjectInitializer& ObjectI
 	InstancedHexagonComponent->CastShadow = false;
 	InstancedHexagonComponent->bCastDynamicShadow = false;
 	InstancedHexagonComponent->bCastStaticShadow = false;
-
-	//static ConstructorHelpers::FObjectFinder<URuntimeVirtualTexture> ObjectFinder(TEXT("/XkGamedevKit/Textures/RVT_InstancedHexagons"));
-	//URuntimeVirtualTexture* RVT = ObjectFinder.Object;
-	//InstancedHexagonComponent->RuntimeVirtualTextures.Empty();
-	//InstancedHexagonComponent->RuntimeVirtualTextures.Add(RVT);
 
 	BaseColor = FLinearColor(1.0, 1.0, 1.0, 0.0);
 	EdgeColor = FLinearColor(1.0, 1.0, 1.0, 0.0);

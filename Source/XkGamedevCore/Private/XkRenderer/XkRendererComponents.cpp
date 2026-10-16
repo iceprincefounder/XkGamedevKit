@@ -64,10 +64,23 @@ UXkCanvasRendererComponent::~UXkCanvasRendererComponent()
 void UXkCanvasRendererComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (IsRenderDataValid() && PendingMultiFrameTasks.Num() > 0)
+	ProcessPendingDrawTasks();
+}
+
+
+void UXkCanvasRendererComponent::ProcessPendingDrawTasks()
+{
+	if (!IsRenderDataValid() || PendingDrawTasks.IsEmpty())
 	{
-		PendingMultiFrameTasks[0]();
-		PendingMultiFrameTasks.RemoveAt(0);
+		return;
+	}
+
+	// One task per frame: each step enqueues a render command that must complete
+	// before the next step runs. Pacing by frame also gives the RHI time to flush.
+	TFunction<void()> Task;
+	if (PendingDrawTasks.Dequeue(Task))
+	{
+		Task();
 	}
 }
 
@@ -190,51 +203,249 @@ void UXkCanvasRendererComponent::UpdateBuffers(const TArray<FVector4f> Positions
 		});
 }
 
+void UXkCanvasRendererComponent::RebuildCPUHeightField(
+	const TArray<FVector4f>& Vertices,
+	const TArray<uint32>& Indices,
+	const TArray<FVector4f>& InstancePositions)
+{
+	TRACE_CPUPROFILER_EVENT_SCOPE(UXkCanvasRendererComponent_RebuildCPUHeightField);
+	// Owner's actor transform (match GPU vertex shader: TranslatedWorldPosition = Position + InstancePos, then LocalToWorld).
+	FMatrix44f LocalToWorld = FMatrix44f::Identity;
+	if (AActor* Owner = GetOwner())
+	{
+		LocalToWorld = FMatrix44f(Owner->GetTransform().ToMatrixWithScale());
+	}
 
-void UXkCanvasRendererComponent::DrawHeightWeightCanvas_MultiFrame()
+	// World-space canvas footprint, same convention as CanvasExtent.xy (full world size centered at CanvasCenter.xy).
+	const FVector2D WorldSize(CanvasExtent.X, CanvasExtent.Y);
+	const FVector2D WorldMin(CanvasCenter.X - WorldSize.X * 0.5, CanvasCenter.Y - WorldSize.Y * 0.5);
+
+	const FIntPoint Size = CPUHeightFieldResolution;
+	if (Size.X <= 0 || Size.Y <= 0 || WorldSize.X <= 0.0 || WorldSize.Y <= 0.0)
+	{
+		CPUHeightFieldWorldZ.Reset();
+		CPUHeightFieldSize = FIntPoint(0, 0);
+		return;
+	}
+
+	const FVector2D PixelSize(WorldSize.X / (double)Size.X, WorldSize.Y / (double)Size.Y);
+	CPUHeightFieldSize = Size;
+	CPUHeightFieldWorldMin = WorldMin;
+	CPUHeightFieldWorldSize = WorldSize;
+	CPUHeightFieldPixelSize = PixelSize;
+
+	const int32 NumPixels = Size.X * Size.Y;
+	TArray<float> Raw;
+	Raw.SetNumUninitialized(NumPixels);
+	for (int32 i = 0; i < NumPixels; ++i)
+	{
+		Raw[i] = CPUHeightFieldDefaultWorldZ;
+	}
+
+	// 2D bounding box of hex local vertices in XY (BuildHexagon generates hexagon prism around origin).
+	FVector2f HexLocalMin(FLT_MAX, FLT_MAX);
+	FVector2f HexLocalMax(-FLT_MAX, -FLT_MAX);
+	float HexLocalMaxZ = -FLT_MAX;
+	for (const FVector4f& V : Vertices)
+	{
+		HexLocalMin.X = FMath::Min(HexLocalMin.X, V.X);
+		HexLocalMin.Y = FMath::Min(HexLocalMin.Y, V.Y);
+		HexLocalMax.X = FMath::Max(HexLocalMax.X, V.X);
+		HexLocalMax.Y = FMath::Max(HexLocalMax.Y, V.Y);
+		HexLocalMaxZ = FMath::Max(HexLocalMaxZ, V.Z); // top face Z
+	}
+	if (HexLocalMin.X >= HexLocalMax.X || HexLocalMin.Y >= HexLocalMax.Y)
+	{
+		// Fall back to a plain hex radius if BuildHexagonData returned empty.
+		HexLocalMin = FVector2f(-100.f, -100.f);
+		HexLocalMax = FVector2f(100.f, 100.f);
+		HexLocalMaxZ = 0.f;
+	}
+
+	// Rasterize each instance: write max world Z into pixels whose XY lies inside the hex bbox.
+	// (Hex interior is approximated by its bbox; the box blur step smooths the edge rings afterwards.)
+	for (const FVector4f& Inst : InstancePositions)
+	{
+		// Convert local-space hex AABB top-face corners to world-space to account for LocalToWorld rotation/scale.
+		const FVector3f LocalCorners[4] =
+		{
+			FVector3f(Inst.X + HexLocalMin.X, Inst.Y + HexLocalMin.Y, Inst.Z + HexLocalMaxZ),
+			FVector3f(Inst.X + HexLocalMax.X, Inst.Y + HexLocalMin.Y, Inst.Z + HexLocalMaxZ),
+			FVector3f(Inst.X + HexLocalMin.X, Inst.Y + HexLocalMax.Y, Inst.Z + HexLocalMaxZ),
+			FVector3f(Inst.X + HexLocalMax.X, Inst.Y + HexLocalMax.Y, Inst.Z + HexLocalMaxZ)
+		};
+		FVector3f WorldMinC(FLT_MAX, FLT_MAX, FLT_MAX);
+		FVector3f WorldMaxC(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+		for (int32 c = 0; c < 4; ++c)
+		{
+			const FVector4f W4 = LocalToWorld.TransformPosition(FVector3f(LocalCorners[c]));
+			WorldMinC.X = FMath::Min(WorldMinC.X, W4.X);
+			WorldMinC.Y = FMath::Min(WorldMinC.Y, W4.Y);
+			WorldMinC.Z = FMath::Min(WorldMinC.Z, W4.Z);
+			WorldMaxC.X = FMath::Max(WorldMaxC.X, W4.X);
+			WorldMaxC.Y = FMath::Max(WorldMaxC.Y, W4.Y);
+			WorldMaxC.Z = FMath::Max(WorldMaxC.Z, W4.Z);
+		}
+		const float HexTopZ = WorldMaxC.Z;
+
+		// Pixel index range (inclusive-exclusive).
+		const int32 PxMin = FMath::Clamp((int32)FMath::FloorToFloat((WorldMinC.X - WorldMin.X) / PixelSize.X), 0, Size.X - 1);
+		const int32 PxMax = FMath::Clamp((int32)FMath::CeilToFloat((WorldMaxC.X - WorldMin.X) / PixelSize.X), 0, Size.X - 1);
+		const int32 PyMin = FMath::Clamp((int32)FMath::FloorToFloat((WorldMinC.Y - WorldMin.Y) / PixelSize.Y), 0, Size.Y - 1);
+		const int32 PyMax = FMath::Clamp((int32)FMath::CeilToFloat((WorldMaxC.Y - WorldMin.Y) / PixelSize.Y), 0, Size.Y - 1);
+
+		for (int32 py = PyMin; py <= PyMax; ++py)
+		{
+			float* RowPtr = Raw.GetData() + py * Size.X;
+			for (int32 px = PxMin; px <= PxMax; ++px)
+			{
+				if (HexTopZ > RowPtr[px])
+				{
+					RowPtr[px] = HexTopZ;
+				}
+			}
+		}
+	}
+
+	// Box blur, same kernel as HEIGHT_FILTER branch in XkRendererCS.usf (square window of radius ConvolutionRangeX, mean filter).
+	TArray<float> Blurred;
+	Blurred.SetNumUninitialized(NumPixels);
+	const int32 Range = FMath::Max((int32)ConvolutionRangeX, 0);
+	if (Range == 0)
+	{
+		Blurred = Raw;
+	}
+	else
+	{
+		// Separable 2-pass box blur for performance (two 1D passes = one 2D box blur).
+		TArray<float> Temp;
+		Temp.SetNumUninitialized(NumPixels);
+		// Horizontal pass: Raw -> Temp.
+		for (int32 y = 0; y < Size.Y; ++y)
+		{
+			const float* Src = Raw.GetData() + y * Size.X;
+			float* Dst = Temp.GetData() + y * Size.X;
+			for (int32 x = 0; x < Size.X; ++x)
+			{
+				const int32 X0 = FMath::Max(x - Range, 0);
+				const int32 X1 = FMath::Min(x + Range, Size.X - 1);
+				double Sum = 0.0;
+				for (int32 xi = X0; xi <= X1; ++xi)
+				{
+					Sum += Src[xi];
+				}
+				Dst[x] = (float)(Sum / (double)(X1 - X0 + 1));
+			}
+		}
+		// Vertical pass: Temp -> Blurred.
+		for (int32 x = 0; x < Size.X; ++x)
+		{
+			for (int32 y = 0; y < Size.Y; ++y)
+			{
+				const int32 Y0 = FMath::Max(y - Range, 0);
+				const int32 Y1 = FMath::Min(y + Range, Size.Y - 1);
+				double Sum = 0.0;
+				for (int32 yi = Y0; yi <= Y1; ++yi)
+				{
+					Sum += Temp[yi * Size.X + x];
+				}
+				Blurred[y * Size.X + x] = (float)(Sum / (double)(Y1 - Y0 + 1));
+			}
+		}
+	}
+
+	CPUHeightFieldWorldZ = MoveTemp(Blurred);
+}
+
+
+float UXkCanvasRendererComponent::SampleWorldZCPU(const FVector2D& WorldXY) const
+{
+	if (CPUHeightFieldWorldZ.Num() == 0 || CPUHeightFieldSize.X <= 0 || CPUHeightFieldSize.Y <= 0)
+	{
+		return CPUHeightFieldDefaultWorldZ;
+	}
+
+	// Pixel-space coord, pixel center at (i+0.5, j+0.5).
+	const double Fx = (WorldXY.X - CPUHeightFieldWorldMin.X) / CPUHeightFieldPixelSize.X - 0.5;
+	const double Fy = (WorldXY.Y - CPUHeightFieldWorldMin.Y) / CPUHeightFieldPixelSize.Y - 0.5;
+
+	const int32 X0 = FMath::Clamp((int32)FMath::FloorToDouble(Fx), 0, CPUHeightFieldSize.X - 1);
+	const int32 X1 = FMath::Clamp(X0 + 1, 0, CPUHeightFieldSize.X - 1);
+	const int32 Y0 = FMath::Clamp((int32)FMath::FloorToDouble(Fy), 0, CPUHeightFieldSize.Y - 1);
+	const int32 Y1 = FMath::Clamp(Y0 + 1, 0, CPUHeightFieldSize.Y - 1);
+
+	const float Tx = (float)FMath::Clamp(Fx - (double)X0, 0.0, 1.0);
+	const float Ty = (float)FMath::Clamp(Fy - (double)Y0, 0.0, 1.0);
+
+	const float V00 = CPUHeightFieldWorldZ[Y0 * CPUHeightFieldSize.X + X0];
+	const float V10 = CPUHeightFieldWorldZ[Y0 * CPUHeightFieldSize.X + X1];
+	const float V01 = CPUHeightFieldWorldZ[Y1 * CPUHeightFieldSize.X + X0];
+	const float V11 = CPUHeightFieldWorldZ[Y1 * CPUHeightFieldSize.X + X1];
+
+	const float V0 = FMath::Lerp(V00, V10, Tx);
+	const float V1 = FMath::Lerp(V01, V11, Tx);
+	return FMath::Lerp(V0, V1, Ty);
+}
+
+
+void UXkCanvasRendererComponent::DrawHeightWeightCanvas_MultiFrame(
+	const TArray<FVector4f>& Vertices,
+	const TArray<uint32>& Indices,
+	const TArray<FVector4f>& InstancePositions)
 {
 	if (!IsRenderDataValid())
 	{
 		return;
 	}
 
-	PendingMultiFrameTasks.Empty();
-	PendingMultiFrameTasks.Add([this]()
+	// Reset the queue (drop any stale pipeline from a previous call).
+	PendingDrawTasks.Empty();
+	PendingDrawTasks.Enqueue([this]()
 		{
 			InitCanvasRTCached_Internal();
 		});
-	PendingMultiFrameTasks.Add([this]()
+	PendingDrawTasks.Enqueue([this]()
 		{
 			DrawPrimaryCanvas_Internal(CanvasRT0_Cached, CanvasRT1_Cached);
 		});
-	PendingMultiFrameTasks.Add([this]()
+	PendingDrawTasks.Enqueue([this]()
 		{
 			DrawFilteringCanvas_Internal<FXkCanvasRenderHeightCS>(CanvasRT0_Cached, CanvasRT1_Cached, CanvasRT0_Cached);
 		});
-	PendingMultiFrameTasks.Add([this]()
+	PendingDrawTasks.Enqueue([this]()
 		{
 			DrawFilteringCanvas_Internal<FXkCanvasRenderNormalCS>(CanvasRT0_Cached, CanvasRT1_Cached, CanvasRT0_Cached);
 		});
-	PendingMultiFrameTasks.Add([this]()
+	PendingDrawTasks.Enqueue([this]()
 		{
 			DrawFilteringCanvas_Internal<FXkCanvasRenderSdfCS>(CanvasRT0_Cached, CanvasRT1_Cached, CanvasRT0_Cached);
 		});
-	PendingMultiFrameTasks.Add([this]()
+	PendingDrawTasks.Enqueue([this]()
 		{
 			DrawFilteringCanvas_Internal<FXkCanvasRenderWeightCS>(CanvasRT0_Cached, CanvasRT1_Cached, CanvasRT1_Cached);
 		});
-	PendingMultiFrameTasks.Add([this]()
+	PendingDrawTasks.Enqueue([this]()
 		{
 			CopyCanvasRT_Internal(CanvasRT0_Cached, CanvasRT0);
 			CopyCanvasRT_Internal(CanvasRT1_Cached, CanvasRT1);
 		});
-	PendingMultiFrameTasks.Add([this]()
+	PendingDrawTasks.Enqueue([this]()
 		{
 			// Do nothing, wait for a frame to ensure RT copy finished
 		});
-	PendingMultiFrameTasks.Add([this]()
+	PendingDrawTasks.Enqueue([this]()
 		{
 			ReleaseCanvasRTCached_Internal();
+		});
+
+	// Final step: build the CPU heightfield from the SAME source data used for the GPU draw.
+	// Capture arrays by value so the lambda owns its data regardless of caller lifetime.
+	PendingDrawTasks.Enqueue([this, Vertices, Indices, InstancePositions]()
+		{
+			RebuildCPUHeightField(Vertices, Indices, InstancePositions);
+			// Pure data-ready notification. Subscribers (e.g. collision component) own their
+			// own schedulers and run in parallel with this renderer's GPU workload.
+			OnCPUHeightFieldRebuilt.Broadcast();
 		});
 }
 

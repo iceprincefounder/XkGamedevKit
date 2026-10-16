@@ -174,6 +174,7 @@ public:
 	virtual void ResetCameraZoom();
 	virtual void AddMoveTarget(const FVector& InTarget);
 	virtual void AddMoveTarget(const FVector& InTarget, const float InStayDuration);
+
 	virtual FRotator GetForwardRotator() const;
 	virtual bool IsTravelingMode() const { return bTravelingMode; }
 	virtual float GetTravelingSpeed() const { return TravelingSpeed; }

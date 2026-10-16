@@ -178,6 +178,13 @@ public:
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float CapsuleHalfHeight;
 
+	/** Minimum foot (capsule bottom) world Z used by GetLineTraceLocation. If the trace ground
+	 * is lower than this value, the returned Actor Z is clamped so the capsule bottom stays
+	 * at GroundMinHeight. Set to the water horizon height (e.g. HORIZION_HEIGHT) while the
+	 * character floats on water. Default 0. */
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	float GroundMinHeight;
+
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
 	FOnMovementReachTargetEvent OnMovementReachTargetEvent;
 
