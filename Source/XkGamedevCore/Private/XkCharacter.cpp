@@ -16,6 +16,7 @@
 #include "Materials/Material.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
+#include "EngineUtils.h"
 
 static TAutoConsoleVariable<bool> CVarXkMovementDebugInfo(
 	TEXT("r.xk.Movement.DebugInfo"),
@@ -33,6 +34,7 @@ UXkMovement::UXkMovement(const FObjectInitializer& ObjectInitializer)
 	bIsRotating = false;
 	MaxVelocity = 500.0;
 	MaxAcceleration = 2048.0;
+	MaxDeceleration = 2048.0;
 	RotationRate = FRotator(0.0, 500.0, 0.0);
 }
 
@@ -53,6 +55,7 @@ UXkTargetMovementComponent::UXkTargetMovementComponent(const FObjectInitializer&
 	bHeavyMove = false;
 	OrientTolerance = 5.0f;
 	bFailToGround = false;
+	bIgnoreOnlyPawn = false;
 	MoveAcceler = 1.0f;
 	JumpAcceler = 1.0f;
 	FlyAcceler = 1.0f;
@@ -60,6 +63,10 @@ UXkTargetMovementComponent::UXkTargetMovementComponent(const FObjectInitializer&
 	JumpArc = -0.5;
 	FlyArc = -0.1;
 	CapsuleRadius = 55.0f;
+	// Z distance from the Pivot (actor origin) DOWN to the foot (bottom contact).
+	// Default assumes an ACharacter-style capsule where the pivot sits at the
+	// capsule center, so pivot-to-foot equals the historical "half height" (96).
+	// Non-character actors with a bottom pivot should set this to 0 in BP / child class.
 	CapsuleHalfHeight = 96.0f;
 	GroundMinHeight = 0.0f;
 
@@ -130,12 +137,22 @@ void UXkTargetMovementComponent::TickComponent(float DeltaTime, enum ELevelTick 
 		MoveAcceler = JumpAcceler = FlyAcceler = SlideAcceler = 1.0f;
 		OnMovementFinishEvent.Broadcast();
 		OnMovementReachTargetEvent.Broadcast(ActionPoint);
+		// Fire and consume the one-shot C++-only finish callback supplied
+		// through OnAction's optional parameter. Move it to a local first
+		// so a re-entrant OnAction(nextCallback) call from inside the
+		// callback (chaining the next movement) is preserved.
+		if (PendingFinishCallback)
+		{
+			TFunction<void()> LocalCallback = MoveTemp(PendingFinishCallback);
+			PendingFinishCallback = nullptr;
+			LocalCallback();
+		}
 		ClearActionPoint();
 		ClearActionTargets();
 	}
 }
 
-void UXkTargetMovementComponent::OnAction()
+void UXkTargetMovementComponent::OnAction(TFunction<void()> InFinishCallback)
 {
 	if (AActor* MovingActor = GetMovementActor())
 	{
@@ -143,6 +160,7 @@ void UXkTargetMovementComponent::OnAction()
 		DebugFinishedActions.Reset();
 		LastTarget = MovingActor->GetActorLocation();
 		bIsMoving = bIsRotating = bIsJumping = bIsSliding = bIsFalling = bIsFlying = false;
+		PendingFinishCallback = MoveTemp(InFinishCallback);
 		OnMovementBeginEvent.Broadcast();
 	}
 }
@@ -230,7 +248,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				//GEngine->AddOnScreenDebugMessage(-1, 1.0, FColor::Red, *Message);
 
 				// Snap to ground
-				NewLocation = GetLineTraceLocation(NewLocation);
+				NewLocation = GetSnapLocation(NewLocation);
 				Velocity = CurrentVelocity * MovingDir;
 				Acceleration = CurrentAcceleration * MovingDir;
 				LastLocation = GetMovementActor()->GetActorLocation();
@@ -282,7 +300,8 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 		}
 		else if (CurrentTarget.Key == EActionType::Jump)
 		{
-			TargetLocation = GetLineTraceLocation(TargetLocation, ECollisionChannel::ECC_Pawn, true, false);
+			// Target is already in actor-origin space (same as GetActorLocation()).
+			// Callers must pass the actor-origin Z directly (e.g. via GetSnapLocation).
 			if (CheckDistance2DSafely(Location, TargetLocation))
 			{
 				bIsJumping = false;
@@ -339,6 +358,8 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 		}
 		else if (CurrentTarget.Key == EActionType::Slide)
 		{
+			// Target is already in actor-origin space (same as GetActorLocation()).
+			// Callers must pass the actor-origin Z directly (e.g. via GetSnapLocation).
 			if (CheckDistanceSafely(Location, TargetLocation))
 			{
 				// Closed enough, stop moving
@@ -361,41 +382,97 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 				// decrease ActionPoint count
 				ActionPoint -= SlideCostPoint;
 				OnMovementReachTargetEvent.Broadcast(ActionPoint);
+
+				// Uniform deceleration: initial speed v0 = sqrt(2 * a * D) so the
+				// actor comes to a stop exactly at the target. Horizontal slide uses
+				// MaxDeceleration; a pure vertical slide uses gravity (980 cm/s^2)
+				// so the fall feels natural. Both are allowed to exceed MaxVelocity.
+				// If the slide starts already aligned on XY (pure vertical slide),
+				// seed the initial velocity along Z using the Z distance; otherwise
+				// seed it along the horizontal direction using the 2D distance.
+				if (CheckDistance2DSafely(Location, TargetLocation))
+				{
+					// Vertical slide: SlideAcceler scales the initial speed so a
+					// high value produces a strong impact feel (e.g. blown upward).
+					// The per-frame speed is still capped to sqrt(2*a*D_left) so
+					// the actor always stops exactly at the target.
+					FVector SlideDir(0.0f, 0.0f, FMath::Sign(TargetLocation.Z - Location.Z));
+					const float DistLeft = FMath::Abs(TargetLocation.Z - Location.Z);
+					const float InitialSpeed = FMath::Sqrt(2.0f * MaxDeceleration * SlideAcceler * DistLeft);
+					Velocity = SlideDir * InitialSpeed;
+				}
+				else
+				{
+					FVector SlideDir = (TargetLocation - Location);
+					SlideDir.Z = 0.0f;
+					SlideDir.Normalize();
+					const float DistLeft = FVector::Dist(FVector(Location.X, Location.Y, 0.0f), FVector(TargetLocation.X, TargetLocation.Y, 0.0f));
+					const float InitialSpeed = FMath::Sqrt(2.0f * MaxDeceleration * DistLeft);
+					Velocity = SlideDir * InitialSpeed;
+				}
 			}
 			else if (bIsSliding)
 			{
 				FVector TargetVector = TargetLocation;
 				FVector StartVector = Location;
 
-				// Vertical slide to target
+				// Vertical slide to target: uses GRAVITY (980 cm/s^2) as the
+				// deceleration so the vertical fall feels natural, independent
+				// from the horizontal MaxDeceleration tuning. Each frame the
+				// speed is capped to the exact stopping speed for the remaining
+				// Z distance (v = sqrt(2*g*D_left)), so velocity reaches zero
+				// right at the target without overshoot. After the slide pops,
+				// the end-of-tick FallToGround fallback picks up and drives the
+				// actor back to real ground via gravity if the target was airborne.
 				if (CheckDistance2DSafely(Location, TargetVector))
 				{
-					FVector NewLocation = FMath::VInterpTo(StartVector, TargetVector, DeltaTime, 9.80f);
-					if (NewLocation.Z > TargetVector.Z)
+					const float DzSigned = TargetVector.Z - StartVector.Z;
+					const float RemainingDist = FMath::Abs(DzSigned);
+					FVector MovingDir(0.0f, 0.0f, FMath::Sign(DzSigned));
+					const float CurrentVelocity = FMath::Sqrt(2.0f * MaxDeceleration * SlideAcceler * RemainingDist);
+
+					FVector NewLocation = bBlinkMode ? FMath::VInterpTo(StartVector, TargetVector, DeltaTime, CurrentVelocity) :
+						FMath::VInterpConstantTo(StartVector, TargetVector, DeltaTime, CurrentVelocity);
+					// Clamp if we overshoot past the target along the move direction.
+					if ((DzSigned > 0.0f && NewLocation.Z > TargetVector.Z) ||
+						(DzSigned < 0.0f && NewLocation.Z < TargetVector.Z))
 					{
 						NewLocation = TargetVector;
 					}
 					Velocity = (NewLocation - Location) / DeltaTime;
-					Acceleration = MaxAcceleration * (TargetVector - StartVector).GetSafeNormal();
+					Acceleration = -MaxDeceleration * MovingDir;
 					LastLocation = GetMovementActor()->GetActorLocation();
 					GetMovementActor()->SetActorLocation(NewLocation);
-					// Slide vertically is another type of falling
-					bIsFalling = true;
 				}
-				// Horizontal slide to target
+				// Horizontal slide to target: ramps down to zero speed exactly at
+				// the target. Each frame the speed is capped to the exact stopping
+				// speed for the remaining distance, so it never overshoots and the
+				// velocity reaches zero right at the target (no snap, no jump).
 				else
 				{
 					TargetVector.Z = Location.Z;
-					FVector MovingDir = (TargetVector - StartVector);
-					MovingDir.Normalize();
-					float CurrentVelocity = Velocity.Size();
-					float CurrentAcceleration = MaxAcceleration;
-					CurrentVelocity += CurrentAcceleration * DeltaTime;
-					CurrentVelocity = FMath::Clamp(CurrentVelocity, 0.0, MaxVelocity * SlideAcceler);
+					FVector MovingDir = (TargetVector - StartVector).GetSafeNormal();
+					const float RemainingDist = FVector::Dist(StartVector, TargetVector);
+					// Exact speed that decelerates to zero over RemainingDist using
+					// MaxDeceleration. v = sqrt(2*a*D_left) makes velocity reach
+					// zero right at the target, so the slide eases in and stops smoothly.
+					const float CurrentVelocity = FMath::Sqrt(2.0f * MaxDeceleration * RemainingDist);
+
 					FVector NewLocation = bBlinkMode ? FMath::VInterpTo(StartVector, TargetVector, DeltaTime, CurrentVelocity) :
 						FMath::VInterpConstantTo(StartVector, TargetVector, DeltaTime, CurrentVelocity);
+					// Hug the ground every frame so the FallToGround post-step
+					// below has nothing to snap, which avoids the ragdoll twitch
+					// at the end of a slide. Trace from well above the actor
+					// (bTraceUnderInput = false) so the sweep never starts inside
+					// nearby geometry; GetSnapLocation already adds
+					// OriginToFoot so the returned Z is the correct actor
+					// origin that sits on the ground.
+					if (bFailToGround)
+					{
+						NewLocation = GetSnapLocation(NewLocation, ECollisionChannel::ECC_Pawn, true, false);
+					}
 					Velocity = (NewLocation - Location) / DeltaTime;
-					Acceleration = CurrentAcceleration * MovingDir;
+					Acceleration = -MaxDeceleration * MovingDir;
 					LastLocation = GetMovementActor()->GetActorLocation();
 					GetMovementActor()->SetActorLocation(NewLocation);
 				}
@@ -466,7 +543,7 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 	{
 		// Snap to ground
 		FVector ActorLocation = GetMovementActor()->GetActorLocation();
-		FVector TargetLocation = GetLineTraceLocation(ActorLocation, ECollisionChannel::ECC_Pawn, true);
+		FVector TargetLocation = GetSnapLocation(ActorLocation, ECollisionChannel::ECC_Pawn, true);
 		FVector NewLocation = ActorLocation;
 		if (CheckHeightSafely(ActorLocation, TargetLocation))
 		{
@@ -495,37 +572,80 @@ void UXkTargetMovementComponent::DoActionTick(const float DeltaTime)
 	}
 }
 
-FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderInput)
+FVector UXkTargetMovementComponent::GetSnapLocation(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderInput)
 {
+	// bTraceUnderInput=true (default): foot-down sweep, finds the ground directly
+	// below the actor. Retries upward up to 10 times if the foot is embedded.
+	// bTraceUnderInput=false: MAX_Z-down sweep, returns the HIGHEST surface at
+	// this XY (e.g. for floating a popup above stacked geometry).
 	FHitResult HitResult;
-	FVector Start = Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
-	if (bTraceUnderInput)
-	{
-		Start = Input;
-	}
-	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
+	// Optionally ignore every pawn so prop-like actors do not snap onto a
+	// character capsule that happens to stand on the same hex.
+	if (bIgnoreOnlyPawn)
+	{
+		for (TActorIterator<APawn> It(GetWorld()); It; ++It)
+		{
+			CollisionParams.AddIgnoredActor(*It);
+		}
+	}
 	CollisionParams.bTraceComplex = bTraceComplex;
-	float TraceRadius = CapsuleRadius * 0.25f;
-	// GroundMinHeight is interpreted as the minimum FOOT (capsule bottom) world Z.
+	const float TraceRadius = CapsuleRadius * 0.25f;
+	// GroundMinHeight is interpreted as the minimum FOOT (bottom contact) world Z.
 	// Convert it to the equivalent actor-origin minimum by adding CapsuleHalfHeight.
 	const float MinOriginZ = GroundMinHeight + CapsuleHalfHeight;
-	if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
+
+	if (!bTraceUnderInput)
 	{
-		float HeightZ = HitResult.ImpactPoint.Z + CapsuleHalfHeight;
-		// Clamp so the capsule bottom stays at or above GroundMinHeight (e.g. water surface).
-		HeightZ = FMath::Max(HeightZ, MinOriginZ);
-		return FVector(Input.X, Input.Y, HeightZ);
-	}
-	int32 LoopIndex = 1;
-	while (LoopIndex <= 10)
-	{
-		Start = Input + FVector(0.0, 0.0, 25.0 * LoopIndex);
+		// MAX_Z sweep: find the topmost surface at this XY position.
+		const FVector Start = FVector(Input.X, Input.Y, UE_FLOAT_HUGE_DISTANCE);
+		const FVector End   = FVector(Input.X, Input.Y, -UE_FLOAT_HUGE_DISTANCE);
 		if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
 		{
 			float HeightZ = HitResult.ImpactPoint.Z + CapsuleHalfHeight;
-			// Clamp so the capsule bottom stays at or above GroundMinHeight (e.g. water surface).
+			HeightZ = FMath::Max(HeightZ, MinOriginZ);
+			return FVector(Input.X, Input.Y, HeightZ);
+		}
+		FVector Result = Input;
+		Result.Z = FMath::Max(Result.Z, MinOriginZ);
+		return Result;
+	}
+
+	// bTraceUnderInput=true: foot-down sweep.
+	// CapsuleHalfHeight is the Z distance from the actor origin down to the foot:
+	//   - ACharacter (pivot at capsule center): equal to the scaled capsule half height (e.g. 96).
+	//   - Mesh with pivot at the bottom (foot): 0.
+	//   - Mesh with pivot at model center of height H: H/2.
+	// If the first sweep misses, retry up to 10 times, lifting the start by
+	// (EffectiveRescue / 10) each iteration, where EffectiveRescue falls back
+	// to CapsuleRadius when CapsuleHalfHeight is 0 (bottom-pivot meshes like a
+	// Cube have zero pivot->foot distance and would otherwise get a zero-length
+	// rescue range). The 10th retry starts exactly at FootStart + EffectiveRescue.
+	const FVector FootStart = Input - FVector(0.0, 0.0, CapsuleHalfHeight);
+	// Fallback to CapsuleRadius when pivot==foot (CapsuleHalfHeight == 0) so
+	// bottom-pivot actors still get a usable upward rescue range.
+	const float EffectiveRescue = FMath::IsNearlyZero(CapsuleHalfHeight) ? CapsuleRadius : CapsuleHalfHeight;
+	const float StepSize = EffectiveRescue / 10.0f;
+	FVector Start = FootStart;
+	const FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
+	if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
+	{
+		float HeightZ = HitResult.ImpactPoint.Z + CapsuleHalfHeight;
+		// Clamp so the foot stays at or above GroundMinHeight (e.g. water surface).
+		HeightZ = FMath::Max(HeightZ, MinOriginZ);
+		return FVector(Input.X, Input.Y, HeightZ);
+	}
+	// Rescue retries: lift the start by StepSize each iteration. After 10
+	// retries the start reaches the actor origin exactly.
+	int32 LoopIndex = 1;
+	while (LoopIndex <= 10)
+	{
+		Start = FootStart + FVector(0.0, 0.0, StepSize * LoopIndex);
+		if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
+		{
+			float HeightZ = HitResult.ImpactPoint.Z + CapsuleHalfHeight;
+			// Clamp so the foot stays at or above GroundMinHeight (e.g. water surface).
 			HeightZ = FMath::Max(HeightZ, MinOriginZ);
 			return FVector(Input.X, Input.Y, HeightZ);
 		}
@@ -537,22 +657,61 @@ FVector UXkTargetMovementComponent::GetLineTraceLocation(const FVector& Input, c
 	return Result;
 }
 
-AActor* UXkTargetMovementComponent::GetLineTraceActor(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderInput)
+AActor* UXkTargetMovementComponent::GetSnapActor(const FVector& Input, const ECollisionChannel Channel, const bool bTraceComplex, const bool bTraceUnderInput)
 {
+	// bTraceUnderInput=true (default): foot-down sweep, mirrors GetSnapLocation.
+	// bTraceUnderInput=false: MAX_Z-down sweep, returns actor on the highest surface.
 	FHitResult HitResult;
-	FVector Start = Input + FVector(0.0, 0.0, UE_FLOAT_HUGE_DISTANCE);
-	if (bTraceUnderInput)
-	{
-		Start = Input + FVector(0.0, 0.0, 25.0f); // Offset
-	}
-	FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(GetMovementActor());
+	// Optionally ignore every pawn so prop-like actors do not snap onto a
+	// character capsule that happens to stand on the same hex.
+	if (bIgnoreOnlyPawn)
+	{
+		for (TActorIterator<APawn> It(GetWorld()); It; ++It)
+		{
+			CollisionParams.AddIgnoredActor(*It);
+		}
+	}
 	CollisionParams.bTraceComplex = bTraceComplex;
-	float TraceRadius = CapsuleRadius * 0.25f;
+	const float TraceRadius = CapsuleRadius * 0.25f;
+
+	if (!bTraceUnderInput)
+	{
+		// MAX_Z sweep: find the actor on the topmost surface at this XY.
+		const FVector Start = FVector(Input.X, Input.Y, UE_FLOAT_HUGE_DISTANCE);
+		const FVector End   = FVector(Input.X, Input.Y, -UE_FLOAT_HUGE_DISTANCE);
+		if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
+		{
+			return HitResult.GetActor();
+		}
+		return nullptr;
+	}
+
+	// bTraceUnderInput=true: foot-down sweep.
+	// Mirror GetSnapLocation: sweep down starting from the foot
+	// (Input.Z - CapsuleHalfHeight) and retry by lifting the start in
+	// (EffectiveRescue / 10) steps, up to 10 times. EffectiveRescue falls back
+	// to CapsuleRadius when CapsuleHalfHeight is 0 so bottom-pivot actors still
+	// get a usable upward rescue range.
+	const FVector FootStart = Input - FVector(0.0, 0.0, CapsuleHalfHeight);
+	const float EffectiveRescue = FMath::IsNearlyZero(CapsuleHalfHeight) ? CapsuleRadius : CapsuleHalfHeight;
+	const float StepSize = EffectiveRescue / 10.0f;
+	FVector Start = FootStart;
+	const FVector End = Input + FVector(0.0, 0.0, -UE_FLOAT_HUGE_DISTANCE);
 	if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
 	{
 		return HitResult.GetActor();
+	}
+	int32 LoopIndex = 1;
+	while (LoopIndex <= 10)
+	{
+		Start = FootStart + FVector(0.0, 0.0, StepSize * LoopIndex);
+		if (GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, Channel, FCollisionShape::MakeSphere(TraceRadius), CollisionParams))
+		{
+			return HitResult.GetActor();
+		}
+		LoopIndex++;
 	}
 	return nullptr;
 }
@@ -562,7 +721,7 @@ void UXkTargetMovementComponent::ValidateOnGround()
 	if (bFailToGround)
 	{
 		FVector ActorLocation = GetMovementActor()->GetActorLocation();
-		FVector TargetLocation = GetLineTraceLocation(ActorLocation, ECollisionChannel::ECC_Pawn, false /*Not bTraceUnderInput*/);
+		FVector TargetLocation = GetSnapLocation(ActorLocation, ECollisionChannel::ECC_Pawn, true);
 		GetMovementActor()->SetActorLocation(TargetLocation);
 	}
 }
@@ -709,6 +868,7 @@ AXkCharacter::AXkCharacter(const FObjectInitializer& ObjectInitializer)
 	TargetMovement = CreateDefaultSubobject<UXkTargetMovementComponent>(TEXT("Target Movement"));
 	TargetMovement->bFailToGround = true;
 	TargetMovement->CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
+	// ACharacter: pivot sits at capsule center, so pivot-to-foot == scaled capsule half height.
 	TargetMovement->CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	TargetMovement->SetActive(true);
 	TargetMovement->SetAutoActivate(true);
@@ -724,6 +884,7 @@ AXkCharacter::AXkCharacter(const FObjectInitializer& ObjectInitializer)
 void AXkCharacter::OnConstruction(const FTransform& Transform)
 {
 	TargetMovement->CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
+	// Keep pivot-to-foot in sync for character-shaped actors: pivot at capsule center.
 	TargetMovement->CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 
 	Super::OnConstruction(Transform);

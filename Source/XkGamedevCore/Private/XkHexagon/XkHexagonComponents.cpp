@@ -515,6 +515,7 @@ UXkHexagonBasedFortressComponent::UXkHexagonBasedFortressComponent(const FObject
 
 	bEnableFlatShading = true;
 	bEnableComplexCollision = true;
+	bUseAsyncCooking = true;
 	bDeferCollisionUpdates = true;
 	CollisionType = ECollisionTraceFlag::CTF_UseComplexAsSimple;
     TrapezoidWallMaterial = UMaterial::GetDefaultMaterial(MD_Surface);
@@ -1721,13 +1722,8 @@ void UXkHexagonBasedFortressComponent::UpdateHexagonBasedTrapezoidGate()
 
 void UXkHexagonBasedFortressComponent::UpdateHexagonBasedFortressPhysics()
 {
-	UBodySetup* BodySetup = GetBodySetup();
-	if (BodySetup)
-	{
-		BodySetup->CollisionTraceFlag = CTF_UseComplexAsSimple;
-		BodySetup->bMeshCollideAll = true;
-	}
-	UpdateCollision();
+	// No-op: collision is now applied inside UpdateDynamicMeshInternal
+	// after every mesh rebuild, consistent with XkLandscapeComponent tiles.
 }
 
 TArray<FXkGeomEdge> UXkHexagonBasedFortressComponent::GetPalisadeBaseCenterLines() const
@@ -1824,7 +1820,11 @@ void UXkHexagonBasedFortressComponent::UpdateDynamicMeshInternal(const FDynamicM
 		DynamicMesh = NewObject<UDynamicMesh>(this);
 	}
 
+	// Use a scale-free transform so that mesh vertex positions in local space
+	// are independent of the component's RelativeScale3D. This allows
+	// AnimationScale to drive the visual size without corrupting the geometry.
 	FTransform Transform = GetComponentTransform();
+	FTransform TransformNoScale(Transform.GetRotation(), Transform.GetLocation(), FVector::OneVector);
 	DynamicMesh->EditMesh([&](FDynamicMesh3& EditMesh)
 		{
 			if (bForceUpdate)
@@ -1833,7 +1833,7 @@ void UXkHexagonBasedFortressComponent::UpdateDynamicMeshInternal(const FDynamicM
 				for (int32 vid : EditMesh.VertexIndicesItr())
 				{
 					FVector3d Vertex = EditMesh.GetVertex(vid);
-					EditMesh.SetVertex(vid, Transform.InverseTransformPosition(Vertex));
+					EditMesh.SetVertex(vid, TransformNoScale.InverseTransformPosition(Vertex));
 				}
 			}
 			else
@@ -1859,7 +1859,7 @@ void UXkHexagonBasedFortressComponent::UpdateDynamicMeshInternal(const FDynamicM
 				for (int32 vid : InDynamicMesh.VertexIndicesItr())
 				{
 					FVector3d Vertex = InDynamicMesh.GetVertex(vid);
-					Vertex = (FVector3d)Transform.InverseTransformPosition((FVector)Vertex);
+					Vertex = (FVector3d)TransformNoScale.InverseTransformPosition((FVector)Vertex);
 					int32 NewVid = EditMesh.AppendVertex(Vertex);
 					VerticesMap.Add(vid, NewVid);
 				}
@@ -1878,6 +1878,17 @@ void UXkHexagonBasedFortressComponent::UpdateDynamicMeshInternal(const FDynamicM
 			// Skip Normals, use flat shading
 		});
 	SetDynamicMesh(DynamicMesh);
+
+	// Mirror RebuildTileMesh: re-apply CTF_UseComplexAsSimple after every mesh
+	// rebuild, because SetDynamicMesh resets the BodySetup internally.
+	if (UBodySetup* BodySetup = GetBodySetup())
+	{
+		BodySetup->CollisionTraceFlag = CTF_UseComplexAsSimple;
+		BodySetup->bMeshCollideAll = true;
+	}
+	// bOnlyIfPending pairs with bDeferCollisionUpdates + bUseAsyncCooking:
+	// the trimesh cook runs on a worker thread and reports back when ready.
+	UpdateCollision(/*bOnlyIfPending=*/true);
 }
 
 FVector UXkHexagonBasedFortressComponent::CalcDynamicMeshCenterPivotInternal(const FDynamicMesh3& InDynamicMesh, const FTransformSRT3d& InTransform) const

@@ -31,6 +31,11 @@ class XKGAMEDEVCORE_API UXkMovement : public UActorComponent
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
 	float MaxAcceleration;
 
+	/** Max deceleration used when braking to a target (e.g. Slide).
+	 * Stop time T = sqrt(2*D / MaxDeceleration). Smaller value means longer brake. */
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true", ClampMin = "0", UIMin = "0", ForceUnits = "cm/s"))
+	float MaxDeceleration;
+
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	FRotator RotationRate;
 
@@ -43,11 +48,26 @@ class XKGAMEDEVCORE_API UXkMovement : public UActorComponent
 
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", BlueprintAssignable, meta = (AllowPrivateAccess = "true"))
 	FOnMovementFinishEvent OnMovementFinishEvent;
+
+	/** One-shot C++-only finish callback. Supplied via OnAction's optional
+	 *  parameter and fires exactly once when IsActionFinished() turns true
+	 *  (same tick OnMovementFinishEvent broadcasts), then cleared.
+	 *  Not UPROPERTY on purpose: TFunction cannot be reflected and this
+	 *  slot is intentionally C++-only. */
+	TFunction<void()> PendingFinishCallback;
 public:
 	FORCEINLINE virtual bool ShouldDoAction() const { return bShouldDoAction; }
 	FORCEINLINE virtual bool IsOnAction() const { return bIsMoving || bIsRotating || bIsJumping || bIsFlying || bIsSliding || bIsFalling || PendingTargets.Num() > 0; }
 	FORCEINLINE virtual bool IsActionFinished() const { return PendingTargets.IsEmpty() && !IsOnAction() && bShouldDoAction; }
-	FORCEINLINE virtual void OnAction() { bShouldDoAction = true; bIsMoving = bIsRotating = bIsJumping = bIsFlying = bIsSliding = false; };
+	/** Start executing queued targets. The optional InFinishCallback (default empty)
+	 *  is invoked exactly once when all pending targets complete, right after
+	 *  OnMovementFinishEvent broadcasts, then cleared. Supports lambdas. */
+	FORCEINLINE virtual void OnAction(TFunction<void()> InFinishCallback = TFunction<void()>())
+	{
+		bShouldDoAction = true;
+		bIsMoving = bIsRotating = bIsJumping = bIsFlying = bIsSliding = false;
+		PendingFinishCallback = MoveTemp(InFinishCallback);
+	};
 	FORCEINLINE virtual void DoActionTick(const float DeltaTime) { bShouldDoAction = false; };
 	FORCEINLINE virtual bool IsMoving() const { return bIsMoving; };
 	FORCEINLINE virtual bool IsRotating() const { return bIsRotating; };
@@ -154,6 +174,13 @@ public:
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	bool bFailToGround;
 
+	/** If true, GetSnapLocation / GetSnapActor ignore every APawn in
+	 *  the world during the downward sweep. Useful for non-pawn actors
+	 *  (e.g. props, resources, fortresses) that must snap to the real ground
+	 *  under them, not to a character capsule standing on the same hex. */
+	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	bool bIgnoreOnlyPawn;
+
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float MoveAcceler;
 
@@ -175,6 +202,21 @@ public:
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float CapsuleRadius;
 
+	/** Z distance from the Pivot (actor origin) DOWN to the foot (bottom
+	 * contact point) of the owning actor. Used directly by GetLineTraceLocation
+	 * to convert ground impact Z into actor-origin Z:
+	 *     ReturnZ = GroundImpact.Z + CapsuleHalfHeight
+	 * so ground snapping works for ANY actor, not just characters whose
+	 * capsule center == actor origin. Despite the historical name, this field
+	 * is semantically "pivot-to-foot distance", not strictly a capsule
+	 * dimension. It also controls the sweep sphere context used by Snap.
+	 * Typical values:
+	 *   - ACharacter-style capsule (pivot at capsule center): scaled capsule half height (e.g. 96).
+	 *   - Mesh with pivot at the bottom (foot): 0.
+	 *   - Mesh with pivot at the model center of height H: H/2.
+	 *   - Pivot above the model top: negative value.
+	 * AXkCharacter auto-syncs this to GetScaledCapsuleHalfHeight() in its
+	 * constructor / OnConstruction. */
 	UPROPERTY(Category = "Movement [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float CapsuleHalfHeight;
 
@@ -196,7 +238,7 @@ public:
 	//~ End ActorComponent Interface
 
 	//~ Begin UXkMovement Interface
-	virtual void OnAction() override;
+	virtual void OnAction(TFunction<void()> InFinishCallback = TFunction<void()>()) override;
 	virtual void DoActionTick(const float DeltaTime) override;
 	//~ End UXkMovement Interface
 	
@@ -215,6 +257,9 @@ public:
 	FORCEINLINE virtual void AddRotateTarget(const FVector& Target) { PendingTargets.Insert(TPair<EActionType, FVector>(EActionType::Rotate, Target), 0); };
 	FORCEINLINE virtual void SetRotateCost(const int32 Cost) { RotateCostPoint = Cost; };
 	//~ Jumping
+	/** Target must be the actor-origin world position (same space as GetActorLocation()).
+	 *  Use GetSnapLocation() to convert a ground/surface Z to actor-origin Z
+	 *  before passing it here. */
 	FORCEINLINE virtual void AddJumpTarget(const FVector& Target) { PendingTargets.Insert(TPair<EActionType, FVector>(EActionType::Jump, Target), 0); };
 	FORCEINLINE virtual void SetJumpCost(const int32 Cost) { JumpCostPoint = Cost; };
 	FORCEINLINE virtual void SetJumpArc(const float Arc) { JumpArc = Arc; };
@@ -225,12 +270,84 @@ public:
 	FORCEINLINE virtual void SetFlyArc(const float Arc) { FlyArc = Arc; };
 	FORCEINLINE virtual void SetFlyAcceler(const float Acceler) { FlyAcceler = Acceler; };
 	//~ Sliding
+	/** Target must be the actor-origin world position (same space as GetActorLocation()).
+	 *  Use GetSnapLocation() to convert a ground/surface Z to actor-origin Z
+	 *  before passing it here. */
 	FORCEINLINE virtual void AddSlideTarget(const FVector& Target) { PendingTargets.Insert(TPair<EActionType, FVector>(EActionType::Slide, Target), 0); };
 	FORCEINLINE virtual void SetSlideCost(const int32 Cost) { SlideCostPoint = Cost; };
 	FORCEINLINE virtual void SetSlideAcceler(const float Acceler) { SlideAcceler = Acceler; };
+	FORCEINLINE virtual void SetMaxDeceleration(const float Deceler) { MaxDeceleration = Deceler; };
 
-	virtual FVector GetLineTraceLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false, const bool bTraceUnderInput = true);
-	virtual AActor* GetLineTraceActor(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = false, const bool bTraceUnderInput = true);
+	/**
+	 * Sphere-sweeps straight down from Input and returns a position that
+	 * places the ACTOR ORIGIN on the detected ground, i.e.
+	 *     Return.Z == GroundImpact.Z + CapsuleHalfHeight
+	 * where CapsuleHalfHeight is the vertical distance from the actor origin down
+	 * to the foot (bottom contact point).
+	 *
+	 * SWEEP SHAPE (current behavior):
+	 *  - The sweep ALWAYS starts at the FOOT position
+	 *        FootStart.Z = Input.Z - CapsuleHalfHeight
+	 *    and goes straight down. It never starts from a huge Z above the
+	 *    world, so a ceiling / overhanging platform above the actor can
+	 *    never be chosen as the ground.
+	 *  - If the first sweep misses (e.g. the foot is embedded in geometry),
+	 *    the implementation retries up to 10 times, each time lifting the
+	 *    start by (EffectiveRescue / 10). EffectiveRescue equals
+	 *    CapsuleHalfHeight when it is non-zero; otherwise (pivot already at
+	 *    the foot, e.g. a Cube) it falls back to CapsuleRadius so bottom-pivot
+	 *    actors still get a usable upward rescue range. The 10th retry starts
+	 *    at FootStart + EffectiveRescue (actor origin for ACharacter,
+	 *    foot + CapsuleRadius for a bottom-pivot Cube).
+	 *  - This matches the "stand on whatever is directly below me" intent
+	 *    used by Move / Jump / Slide snaps.
+	 *
+	 * COORDINATE SPACE (critical, has caused ragdoll jitter bugs):
+	 *  - Input is treated as an ACTOR-ORIGIN world position (same space as
+	 *    GetActorLocation()), NOT a foot/surface position.
+	 *  - Return value is also in ACTOR-ORIGIN space, ready to pass directly to
+	 *    SetActorLocation(). Do NOT subtract CapsuleHalfHeight again.
+	 *  - If a caller stores "target points" as foot/surface Z (e.g. a hex-tile
+	 *    center on the ground), you MUST normalize them through GetSnapLocation()
+	 *    once before using them as a destination, otherwise vertical interpolation
+	 *    will drag the actor origin down to foot height and the next ground-snap
+	 *    tick will SnapUp by ~CapsuleHalfHeight, violently jolting any active
+	 *    ragdoll. See the Slide/Jump branches for the normalization pattern.
+	 *
+	 * NON-CHARACTER ACTORS:
+	 *  - CapsuleHalfHeight is the single knob that controls origin-vs-foot conversion.
+	 *    Despite the name, treat it as "pivot-to-foot distance" and set it
+	 *    according to the mesh pivot placement:
+	 *      - Capsule-centered pivot (ACharacter default):  scaled capsule half height (e.g. 96).
+	 *      - Pivot at the mesh bottom (foot):              0.
+	 *      - Pivot at the model center of height H:        H/2.
+	 *      - Pivot above the model top:                    negative value.
+	 *
+	 * PARAMETERS:
+	 *  @param Input              Query position in ACTOR-ORIGIN space.
+	 *  @param Channel            Collision channel to sweep against (default ECC_Pawn).
+	 *  @param bTraceComplex      Use per-poly collision. Keep false for cheap/stable
+	 *                            ground snapping; set true only when you really need
+	 *                            precise contact with complex meshes.
+	 *  @param bTraceUnderInput   Controls the sweep start point:
+	 *                            - true  (default): sweep starts at the FOOT position
+	 *                              (Input.Z - CapsuleHalfHeight) and retries upward.
+	 *                              Use this for normal ground-snapping (Move/Jump/Slide).
+	 *                            - false: sweep starts from MAX_Z straight down and
+	 *                              returns the HIGHEST surface hit at this XY.
+	 *                              Use this when you need the topmost geometry
+	 *                              (e.g. floating a popup above stacked objects).
+	 *
+	 * EDGE CASES:
+	 *  - If no hit is found, the function returns an Input-based fallback (see cpp).
+	 *  - The return Z is clamped so capsule-bottom >= GroundMinHeight (e.g. water
+	 *    surface), so sliding over gaps / water will "float" at GroundMinHeight
+	 *    instead of falling through.
+	 */
+	/** @see full doc above. bTraceUnderInput=true: foot-down sweep (normal snap).
+	 *  bTraceUnderInput=false: MAX_Z-down sweep, returns highest surface. */
+	virtual FVector GetSnapLocation(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = true, const bool bTraceUnderInput = true);
+	virtual AActor* GetSnapActor(const FVector& Input, const ECollisionChannel Channel = ECC_Pawn, const bool bTraceComplex = true, const bool bTraceUnderInput = true);
 	virtual void ValidateOnGround();
 	//~ End UXkTargetMovementComponent Interface
 
