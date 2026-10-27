@@ -9,6 +9,8 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/Character.h"
 #include "Framework/Application/SlateApplication.h"
+#include "Widgets/SViewport.h"
+#include "Engine/GameViewportClient.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -21,7 +23,6 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputMappingContext.h"
-
 
 
 AXkParabolaCurve::AXkParabolaCurve(const FObjectInitializer& ObjectInitializer)
@@ -66,7 +67,6 @@ AXkParabolaCurve::AXkParabolaCurve(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bStartWithTickEnabled = false;
 }
 
-
 void AXkParabolaCurve::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
@@ -76,7 +76,6 @@ void AXkParabolaCurve::OnConstruction(const FTransform& Transform)
 		ParabolaMeshMaterialDyn = UMaterialInstanceDynamic::Create(ParabolaMeshMaterial, this);
 	}
 }
-
 
 bool AXkParabolaCurve::IsParabolaCurveIntersecting(const ECollisionChannel TraceChannel, const TArray<AActor*>& IgnoreActors) const
 {
@@ -183,13 +182,11 @@ void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& 
 	ParabolaEndMeshComponent->SetWorldScale3D(ParabolaEndMeshScale);
 }
 
-
 void AXkParabolaCurve::SetParabolaStartEndVisibility(const bool StartVisible, const bool EndVisible)
 {
 	ParabolaStartMeshComponent->SetVisibility(StartVisible);
 	ParabolaEndMeshComponent->SetVisibility(EndVisible);
 }
-
 
 void AXkParabolaCurve::SetParabolaCurveColor(const FLinearColor& Color)
 {
@@ -198,7 +195,6 @@ void AXkParabolaCurve::SetParabolaCurveColor(const FLinearColor& Color)
 		ParabolaMeshMaterialDyn->SetVectorParameterValue(FName(TEXT("Color")), Color);
 	}
 }
-
 
 AXkGamepadCursor::AXkGamepadCursor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -215,13 +211,11 @@ AXkGamepadCursor::AXkGamepadCursor(const FObjectInitializer& ObjectInitializer)
 	Radius = 50.0;
 }
 
-
 void AXkGamepadCursor::AddMovement(const FVector2D& InputValue, const FRotator& ForwardRotator, const float Speed)
 {
 	FVector MovementVector = FVector(InputValue.Y, InputValue.X, 0.0);
 	AddMovement(MovementVector, ForwardRotator, Speed);
 }
-
 
 void AXkGamepadCursor::AddMovement(const FVector& InputValue, const FRotator& ForwardRotator, const float Speed)
 {
@@ -284,7 +278,6 @@ void AXkGamepadCursor::AddMovement(const FVector& InputValue, const FRotator& Fo
 	}
 }
 
-
 bool AXkGamepadCursor::GetHitResultUnderGamepadCursor(const ECollisionChannel TraceChannel, const bool bTraceComplex, FHitResult& HitResult) const
 {
 	if (!ensure(GetWorld()))
@@ -296,13 +289,11 @@ bool AXkGamepadCursor::GetHitResultUnderGamepadCursor(const ECollisionChannel Tr
 	return GetWorld()->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, TraceChannel, FCollisionShape::MakeSphere(Radius));
 }
 
-
 void AXkGamepadCursor::SetVisibility(const bool Input)
 {
 	GetDecal()->SetVisibility(Input);
 	WidgetComponent->SetVisibility(Input);
 }
-
 
 AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -311,8 +302,9 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	bShowMouseCursor = true;
 	DefaultMouseCursor = EMouseCursor::Default;
 	ShortPressThreshold = 0.1;
-	ScreenBorderThreshold = 0.01;
+	LongPressThreshold = 0.5f;
 	MaxHoveringThreshold = 0.35;
+	ScreenBorderThreshold = 0.01;
 	CameraScrollingSpeed = 1000.0;
 	CameraDraggingSpeed = 1500;
 	CameraRotatingSpeed = 120.0;
@@ -322,8 +314,9 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	GamepadCursorMovingSpeed = 1000.0;
 
 	FollowTime = 0.f;
-	bIsCameraDraggingButtonPressing = false;
-	bIsCameraRotatingButtonPressing = false;
+	LongPressTime = 0.f;
+	bIsCameraDragging = false;
+	bIsCameraRotating = false;
 
 	static ConstructorHelpers::FObjectFinder<UInputMappingContext> XkControllerRealTime(TEXT("/XkGamedevKit/Inputs/IMC_XkControllerRealTime"));
 	DefaultRealTimeMappingContext = XkControllerRealTime.Object;
@@ -364,7 +357,6 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bStartWithTickEnabled = true;
 }
 
-
 void AXkController::SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor)
 {
 	if (ControlsFlavor != NewControlsFlavor)
@@ -393,8 +385,8 @@ void AXkController::SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor)
 		else if (NewControlsFlavor == EXkControlsFlavor::Keyboard)
 		{
 			FollowTime = 0.f;
-			bIsCameraDraggingButtonPressing = false;
-			bIsCameraRotatingButtonPressing = false;
+			bIsCameraDragging = false;
+			bIsCameraRotating = false;
 			if (GamepadCursor.IsValid())
 			{
 				GamepadCursor->Destroy();
@@ -410,7 +402,6 @@ void AXkController::SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor)
 	}
 }
 
-
 EMouseCursor::Type AXkController::GetMouseCursorType() const
 {
 	if (ControlsFlavor == EXkControlsFlavor::Keyboard)
@@ -419,7 +410,6 @@ EMouseCursor::Type AXkController::GetMouseCursorType() const
 	}
 	return EMouseCursor::None;
 }
-
 
 void AXkController::SetMouseCursorType(const EMouseCursor::Type MouseCursor, const bool bRestorePos)
 {
@@ -446,20 +436,30 @@ void AXkController::SetMouseCursorType(const EMouseCursor::Type MouseCursor, con
 	}
 }
 
-
-bool AXkController::IsShortPress()
+FVector2D AXkController::GetControlsCursorPositionOnScreen() const
 {
-	if (FollowTime > ShortPressThreshold)
+	if (ControlsFlavor == EXkControlsFlavor::Keyboard)
 	{
-		FollowTime = 0.0f;
+		FVector2D MousePosition;
+		if (GetMousePosition(MousePosition.X, MousePosition.Y))
+		{
+			return MousePosition;
+		}
 	}
-	if (FollowTime == 0.0f)
+	else if (ControlsFlavor == EXkControlsFlavor::Gamepad)
 	{
-		return true;
+		if (GamepadCursor.IsValid())
+		{
+			FVector2D ScreenSpaceLocation;
+			FVector Location = GamepadCursor->GetActorLocation();
+			if (ProjectWorldLocationToScreen(Location, ScreenSpaceLocation))
+			{
+				return ScreenSpaceLocation;
+			}
+		}
 	}
-	return false;
+	return FVector2D(1, 1);
 }
-
 
 void AXkController::SetupInputComponent()
 {
@@ -535,7 +535,6 @@ void AXkController::SetupInputComponent()
 	}
 }
 
-
 void AXkController::BeginPlay()
 {
 	SCOPED_NAMED_EVENT(AXkController_BeginPlay, FColor::Red);
@@ -554,16 +553,8 @@ void AXkController::BeginPlay()
 	ControlsMode = EXkControlsMode::TurnBased;
 	ControlsFlavor = EXkControlsFlavor::None;
 
-	ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
-	if (LocalPlayer)
-	{
-		LocalPlayer->ViewportClient->SetMouseCaptureMode(EMouseCaptureMode::CaptureDuringMouseDown);
-		LocalPlayer->ViewportClient->SetMouseLockMode(EMouseLockMode::LockAlways);
-		// when SetHideCursorDuringCapture, mouse capture UseHighPrecisionMouseMovement(ViewportWidgetRef), and it got a smooth movement.
-		LocalPlayer->ViewportClient->SetHideCursorDuringCapture(true);
-	}
+	SetHideCursorDuringCapture();
 }
-
 
 void AXkController::TickActor(float DeltaTime, enum ELevelTick TickType, FActorTickFunction& ThisTickFunction)
 {
@@ -583,7 +574,7 @@ void AXkController::TickActor(float DeltaTime, enum ELevelTick TickType, FActorT
 		//		 |                   |
 		//  (1, Y)---------X---------(X, Y)
 		if (GetMousePosition(MouseLocation.X, MouseLocation.Y)
-			&& !bIsCameraDraggingButtonPressing && !bIsCameraRotatingButtonPressing)
+			&& !bIsCameraDragging && !bIsCameraRotating)
 		{
 			// Mouse move screen
 			int32 ViewportSizeX, ViewportSizeY;
@@ -641,45 +632,156 @@ void AXkController::TickActor(float DeltaTime, enum ELevelTick TickType, FActorT
 	Super::TickActor(DeltaTime, TickType, ThisTickFunction);
 }
 
-
-FVector2D AXkController::GetControlsCursorPositionOnScreen() const
-{
-	if (ControlsFlavor == EXkControlsFlavor::Keyboard)
-	{
-		FVector2D MousePosition;
-		if (GetMousePosition(MousePosition.X, MousePosition.Y))
-		{
-			return MousePosition;
-		}
-	}
-	else if (ControlsFlavor == EXkControlsFlavor::Gamepad)
-	{
-		if (GamepadCursor.IsValid())
-		{
-			FVector2D ScreenSpaceLocation;
-			FVector Location = GamepadCursor->GetActorLocation();
-			if (ProjectWorldLocationToScreen(Location, ScreenSpaceLocation))
-			{
-				return ScreenSpaceLocation;
-			}
-		}
-	}
-	return FVector2D(1, 1);
-}
-
-
 void AXkController::OnInputStarted()
 {
 	StopMovement();
 	FollowTime = 0.f;
 }
 
-
 void AXkController::OnInputPressing()
 {
 	FollowTime += GetWorld()->GetDeltaSeconds();
 }
 
+void AXkController::OnInputReleased()
+{
+	FollowTime = 0.f;
+	HoveringTime = 0.f;
+}
+
+void AXkController::OnSetSelectionStarted()
+{
+	SetShowCursorDuringCapture();
+
+	LongPressTime = 0.f;
+	OnInputStarted();
+}
+
+void AXkController::OnSetSelectionPressing()
+{	
+	SetShowCursorDuringCapture();
+
+	LongPressTime += GetWorld()->GetDeltaSeconds();
+	if (!IsHoveringMotionless())
+	{
+		LongPressTime = 0.f;
+	}
+	OnInputPressing();
+}
+
+void AXkController::OnSetSelectionReleased()
+{
+	const bool bLongPressReached = (LongPressTime >= LongPressThreshold);
+	if (bLongPressReached)
+	{
+		OnSetSelectionLongPressed();
+	}
+	// Reset so IsLongPress() returns false once the button is released
+	LongPressTime = 0.f;
+
+	SetHideCursorDuringCapture();
+
+	OnInputReleased();
+}
+
+float AXkController::GetLongPressProgress() const
+{
+	if (LongPressTime <= 0.f || LongPressThreshold <= 0.f)
+	{
+		return 0.f;
+	}
+	return FMath::Clamp(LongPressTime / LongPressThreshold, 0.f, 1.f);
+}
+
+void AXkController::SetHideCursorDuringCapture()
+{
+	// Default gameplay capture mode: hide cursor, lock to viewport, and let
+	// Slate use high-precision (raw) mouse input while the button is held.
+	//
+	// Mirror of SetShowCursorDuringCapture(): we must act on BOTH the pending
+	// FReply (fix THIS frame) AND the ViewportClient flags (fix FUTURE frames).
+	//
+	// Without the FReply op, the mouse-lock would stay released until the
+	// NEXT button-down event re-reads the ViewportClient flags -- which is
+	// why previously, after releasing a Selection press, the cursor could
+	// leave the window until any other button was pressed.
+	ULocalPlayer* LocalPlayer = GetLocalPlayer();
+	if (!LocalPlayer || !LocalPlayer->ViewportClient)
+	{
+		return;
+	}
+
+	UGameViewportClient* GameViewportClient = LocalPlayer->ViewportClient;
+	TSharedPtr<SViewport> ViewportWidget = GameViewportClient->GetGameViewportWidget();
+	if (ViewportWidget.IsValid())
+	{
+		// Re-lock the mouse to the viewport on the current frame's FReply.
+		// (We intentionally do NOT re-enable UseHighPrecisionMouseMovement
+		//  here: it implies capture + hidden-mouse and would be visually
+		//  jarring on the mouse-UP frame. The next mouse-DOWN will pick up
+		//  high-precision via the ViewportClient flags set below.)
+		LocalPlayer->GetSlateOperations().LockMouseToWidget(ViewportWidget.ToSharedRef());
+	}
+
+	// Persist the "hide cursor during capture" policy for subsequent frames.
+	GameViewportClient->SetMouseCaptureMode(EMouseCaptureMode::CaptureDuringMouseDown);
+	GameViewportClient->SetMouseLockMode(EMouseLockMode::LockAlways);
+	GameViewportClient->SetHideCursorDuringCapture(true);
+}
+
+void AXkController::SetShowCursorDuringCapture()
+{
+	// Force cursor visible immediately; this flag may be overridden elsewhere
+	// so we re-assert it every time this is called.
+	if (!bShowMouseCursor)
+	{
+		bShowMouseCursor = true;
+	}
+
+	ULocalPlayer* LocalPlayer = GetLocalPlayer();
+	if (!LocalPlayer || !LocalPlayer->ViewportClient)
+	{
+		return;
+	}
+
+	// -------------------------------------------------------------------------
+	// Why both FReply ops AND ViewportClient flags are required:
+	//
+	// This function is typically called from a mouse-button-down handler.
+	// By the time our handler runs, Slate has ALREADY constructed an FReply
+	// for the current mouse-down event using the PREVIOUS viewport config
+	// (Hide + LockAlways). That reply carries CaptureMouse +
+	// UseHighPrecisionMouseInput + LockMouseToWidget and will be applied at
+	// the end of this frame -> cursor hides, mouse locks, raw input kicks in.
+	//
+	// Simply flipping the UGameViewportClient flags (SetHideCursorDuringCapture
+	// (false), etc.) does NOT fix the current frame -- those flags are only
+	// re-read on the NEXT Slate event, which is why the old code required a
+	// second click before the cursor would stay visible.
+	//
+	// The ONLY way to cancel the current frame's capture is to mutate the
+	// pending FReply itself via LocalPlayer->GetSlateOperations(). This is
+	// exactly what UE's own FInputModeGameAndUI::ApplyInputMode does; see
+	// Engine/Private/PlayerController.cpp.
+	//
+	// Step 1: fix THIS frame via FReply.
+	// Step 2: fix FUTURE frames via ViewportClient flags.
+	// -------------------------------------------------------------------------
+	UGameViewportClient* GameViewportClient = LocalPlayer->ViewportClient;
+	TSharedPtr<SViewport> ViewportWidget = GameViewportClient->GetGameViewportWidget();
+	if (ViewportWidget.IsValid())
+	{
+		FReply& SlateOperations = LocalPlayer->GetSlateOperations();
+		SlateOperations.ReleaseMouseLock();    // cancel LockMouseToWidget on this frame's reply
+		SlateOperations.ReleaseMouseCapture(); // cancel CaptureMouse + UseHighPrecisionMouseInput on this frame's reply
+	}
+
+	// Persist the "show cursor" policy for subsequent frames / future clicks.
+	// Keep CaptureDuringMouseDown so single-click input events still fire.
+	GameViewportClient->SetMouseLockMode(EMouseLockMode::DoNotLock);
+	GameViewportClient->SetHideCursorDuringCapture(false);
+	GameViewportClient->SetMouseCaptureMode(EMouseCaptureMode::CaptureDuringMouseDown);
+}
 
 void AXkController::OnSetCharacterMoveTriggered(const FInputActionValue& Value)
 {
@@ -707,7 +809,6 @@ void AXkController::OnSetCharacterMoveTriggered(const FInputActionValue& Value)
 	}
 }
 
-
 void AXkController::OnSetCharacterJumpTriggered(const FInputActionValue& Value)
 {
 	if (AXkCharacter* ControlledCharacter = GetControlledCharacter())
@@ -716,7 +817,6 @@ void AXkController::OnSetCharacterJumpTriggered(const FInputActionValue& Value)
 	}
 }
 
-
 void AXkController::OnSetCharacterJumpCompleted(const FInputActionValue& Value)
 {
 	if (AXkCharacter* ControlledCharacter = GetControlledCharacter())
@@ -724,7 +824,6 @@ void AXkController::OnSetCharacterJumpCompleted(const FInputActionValue& Value)
 		ControlledCharacter->StopJumping();
 	}
 }
-
 
 void AXkController::OnSetCameraDraggingTriggered(const FInputActionValue& Value)
 {
@@ -738,7 +837,7 @@ void AXkController::OnSetCameraDraggingTriggered(const FInputActionValue& Value)
 		return;
 	}
 
-	if (bIsCameraDraggingButtonPressing)
+	if (bIsCameraDragging)
 	{
 		// input is a Vector2D
 		FVector2D MovementVector = Value.Get<FVector2D>();
@@ -758,7 +857,6 @@ void AXkController::OnSetCameraDraggingTriggered(const FInputActionValue& Value)
 		}
 	}
 }
-
 
 void AXkController::OnSetCameraDraggingPressing(const FInputActionValue& Value)
 {
@@ -784,9 +882,9 @@ void AXkController::OnSetCameraDraggingPressing(const FInputActionValue& Value)
 	//FString Message = FString::Printf(TEXT("OnSetCameraDraggingPressing[%0.02f, %0.02f]"), MovementValue.X, MovementValue.Y);
 	//GEngine->AddOnScreenDebugMessage(-1, 0.1, FColor::Green, *Message);
 
-	if (!bIsCameraRotatingButtonPressing)
+	if (!bIsCameraRotating)
 	{
-		bIsCameraDraggingButtonPressing = true;
+		bIsCameraDragging = true;
 
 		// Move towards mouse pointer
 		APawn* ControlledPawn = GetPawn();
@@ -795,8 +893,9 @@ void AXkController::OnSetCameraDraggingPressing(const FInputActionValue& Value)
 			SetMouseCursorType(EMouseCursor::Default);
 		}
 	}
-}
 
+	OnInputPressing();
+}
 
 void AXkController::OnSetCameraDraggingReleased()
 {
@@ -810,10 +909,11 @@ void AXkController::OnSetCameraDraggingReleased()
 		return;
 	}
 
-	bIsCameraDraggingButtonPressing = false;
+	bIsCameraDragging = false;
 	SetMouseCursorType(EMouseCursor::Default);
-}
 
+	OnInputReleased();
+}
 
 void AXkController::OnSetCameraRotatingTriggered(const FInputActionValue& Value)
 {
@@ -834,7 +934,7 @@ void AXkController::OnSetCameraRotatingTriggered(const FInputActionValue& Value)
 	{
 		MovementVector *= MouseRotatingSensibility;
 	}
-	if (bIsCameraRotatingButtonPressing)
+	if (bIsCameraRotating)
 	{
 		// Move towards mouse pointer
 		if (AXkTopDownCamera* TopDownCamera = GetTopDownCamera())
@@ -843,7 +943,6 @@ void AXkController::OnSetCameraRotatingTriggered(const FInputActionValue& Value)
 		}
 	}
 }
-
 
 void AXkController::OnSetCameraRotatingPressing(const FInputActionValue& Value)
 {
@@ -857,16 +956,17 @@ void AXkController::OnSetCameraRotatingPressing(const FInputActionValue& Value)
 		return;
 	}
 
-	bIsCameraRotatingButtonPressing = true;
-	bIsCameraDraggingButtonPressing = false;
+	bIsCameraRotating = true;
+	bIsCameraDragging = false;
 	// Move towards mouse pointer
 	APawn* ControlledPawn = GetPawn();
 	if (ControlledPawn != nullptr)
 	{
 		SetMouseCursorType(EMouseCursor::None);
 	}
-}
 
+	OnInputPressing();
+}
 
 void AXkController::OnSetCameraRotatingReleased()
 {
@@ -880,15 +980,16 @@ void AXkController::OnSetCameraRotatingReleased()
 		return;
 	}
 
-	bIsCameraRotatingButtonPressing = false;
+	bIsCameraRotating = false;
 
 	if (GetMouseCursor() == EMouseCursor::None)
 	{
 		SetMouseLocation(CachedMouseCursorLocation.X, CachedMouseCursorLocation.Y);
 	}
 	SetMouseCursorType(EMouseCursor::Default);
-}
 
+	OnInputReleased();
+}
 
 void AXkController::OnSetCameraZoomingTriggered(const FInputActionValue& Value)
 {
@@ -908,7 +1009,6 @@ void AXkController::OnSetCameraZoomingTriggered(const FInputActionValue& Value)
 		TopDownCamera->AddCameraZoom(ZoomingValue, CameraZoomingSpeed);
 	}
 }
-
 
 void AXkController::OnSetGamepadCursorMovementTriggered(const FInputActionValue& Value)
 {
@@ -930,7 +1030,6 @@ void AXkController::OnSetGamepadCursorMovementTriggered(const FInputActionValue&
 	}
 }
 
-
 void AXkController::OnSetGamepadCursorMovementPressing(const FInputActionValue& Value)
 {
 	if (IsOnUI())
@@ -939,7 +1038,6 @@ void AXkController::OnSetGamepadCursorMovementPressing(const FInputActionValue& 
 		return;
 	}
 }
-
 
 void AXkController::OnSetGamepadCursorMovementReleased()
 {
@@ -953,8 +1051,9 @@ void AXkController::OnSetGamepadCursorMovementReleased()
 	{
 		GamepadCursor->MovementFinished();
 	}
-}
 
+	OnInputReleased();
+}
 
 // Triggered every frame when the input is held down
 void AXkController::OnTouchTriggered()
@@ -962,12 +1061,25 @@ void AXkController::OnTouchTriggered()
 	OnSetSelectionTriggered();
 }
 
-
 void AXkController::OnTouchReleased()
 {
 	OnSetSelectionReleased();
 }
 
+bool AXkController::IsPressing() const
+{
+	return FollowTime > 0.f;
+}
+
+bool AXkController::IsShortPress() const
+{
+	return FollowTime <= ShortPressThreshold;
+}
+
+bool AXkController::IsLongPress() const
+{
+	return LongPressTime > ShortPressThreshold;
+}
 
 bool AXkController::ControllerSelect() const
 {
@@ -976,12 +1088,10 @@ bool AXkController::ControllerSelect() const
 	return ControllerSelect(HitResult);
 }
 
-
 bool AXkController::ControllerSelect(FHitResult& Hit) const
 {
 	return ControllerSelect(Hit, ECollisionChannel::ECC_Visibility);
 }
-
 
 bool AXkController::ControllerSelect(FHitResult& Hit, const ECollisionChannel Channel) const
 {
@@ -1013,12 +1123,10 @@ bool AXkController::ControllerSelect(FHitResult& Hit, const ECollisionChannel Ch
 	return bHitSuccessful;
 }
 
-
 bool AXkController::ControllerSelect(FVector& HitLocation, FVector& WorldPosition, FVector& WorldDirection) const
 {
 	return ControllerSelect(HitLocation, WorldPosition, WorldDirection, ECollisionChannel::ECC_Visibility);
 }
-
 
 bool AXkController::ControllerSelect(FVector& HitLocation, FVector& WorldPosition, FVector& WorldDirection, const ECollisionChannel Channel) const
 {
@@ -1034,13 +1142,12 @@ bool AXkController::ControllerSelect(FVector& HitLocation, FVector& WorldPositio
 	return false;
 }
 
-
 bool AXkController::IsMouseCursorMoving() const
 {
 	if (ControlsFlavor == EXkControlsFlavor::Keyboard)
 	{
 		// if camera dragging move or rotating, stop Hovered detected
-		if (!bIsCameraDraggingButtonPressing && !bIsCameraRotatingButtonPressing)
+		if (!bIsCameraDragging && !bIsCameraRotating)
 		{
 			FVector2D MouseLocation;
 			return (GetMousePosition(MouseLocation.X, MouseLocation.Y) && FVector2D::Distance(MouseLocation, CachedMouseCursorLocation) >= 3.0);
@@ -1048,7 +1155,6 @@ bool AXkController::IsMouseCursorMoving() const
 	}
 	return false;
 }
-
 
 bool AXkController::IsGamepadCursorMoving() const
 {
@@ -1063,7 +1169,6 @@ bool AXkController::IsGamepadCursorMoving() const
 	return false;
 }
 
-
 void AXkController::SetGamepadCursorVisibility(const bool Input)
 {
 	if (GamepadCursor.IsValid())
@@ -1071,7 +1176,6 @@ void AXkController::SetGamepadCursorVisibility(const bool Input)
 		GamepadCursor->SetVisibility(Input);
 	}
 }
-
 
 class AXkGameState* AXkController::GetGameState() const
 {
@@ -1081,7 +1185,6 @@ class AXkGameState* AXkController::GetGameState() const
 	}
 	return nullptr;
 }
-
 
 class AXkTopDownCamera* AXkController::GetTopDownCamera() const
 {
@@ -1093,7 +1196,6 @@ class AXkTopDownCamera* AXkController::GetTopDownCamera() const
 	}
 	return nullptr;
 }
-
 
 AXkCharacter* AXkController::GetControlledCharacter() const
 {

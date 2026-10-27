@@ -172,11 +172,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float ShortPressThreshold;
 
+	/** Hold duration threshold (seconds) to trigger long press action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
-	float ScreenBorderThreshold; // Between 0 and 1, so 0.1 means 10% of the screen
+	float LongPressThreshold;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float MaxHoveringThreshold;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
+	float ScreenBorderThreshold; // Between 0 and 1, so 0.1 means 10% of the screen
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input [KEVINTSUIXUGAMEDEV]")
 	float CameraScrollingSpeed;
@@ -286,6 +290,7 @@ protected:
 	/** Input handlers for SetDestination action. */
 	virtual void OnInputStarted();
 	virtual void OnInputPressing();
+	virtual void OnInputReleased();
 	virtual void OnSetCharacterMoveTriggered(const FInputActionValue& Value);
 	virtual void OnSetCharacterJumpTriggered(const FInputActionValue& Value);
 	virtual void OnSetCharacterJumpCompleted(const FInputActionValue& Value);
@@ -296,19 +301,21 @@ protected:
 	virtual void OnSetCameraRotatingPressing(const FInputActionValue& Value);
 	virtual void OnSetCameraRotatingReleased();
 	virtual void OnSetCameraZoomingTriggered(const FInputActionValue& Value);
-	virtual void OnSetCameraZoomingPressing(const FInputActionValue& Value) {};
-	virtual void OnSetCameraZoomingReleased() {};
-	virtual void OnSetSelectionStarted() { OnInputStarted(); };
+	virtual void OnSetCameraZoomingPressing(const FInputActionValue& Value) { OnInputPressing(); };
+	virtual void OnSetCameraZoomingReleased() { OnInputReleased(); };
+	virtual void OnSetSelectionStarted();
 	virtual void OnSetSelectionTriggered() {};
-	virtual void OnSetSelectionPressing() { OnInputPressing(); };
-	virtual void OnSetSelectionReleased() {};
+	virtual void OnSetSelectionPressing();
+	virtual void OnSetSelectionReleased();
+	/** Called when selection button is released after being held longer than LongPressThreshold. */
+	virtual void OnSetSelectionLongPressed() {};
 	virtual void OnSetDeselectionStarted() { OnInputStarted(); };
 	virtual void OnSetDeselectionTriggered() {};
 	virtual void OnSetDeselectionPressing() { OnInputPressing(); };
-	virtual void OnSetDeselectionReleased() {};
+	virtual void OnSetDeselectionReleased() { OnInputReleased(); };
 	virtual void OnSetNavigationTriggered(const FInputActionValue& Value) {};
 	virtual void OnSetNavigationPressing(const FInputActionValue& Value) { OnInputPressing(); };
-	virtual void OnSetNavigationReleased() {};
+	virtual void OnSetNavigationReleased() { OnInputReleased(); };
 	virtual void OnSetGamepadCursorMovementTriggered(const FInputActionValue& Value);
 	virtual void OnSetGamepadCursorMovementPressing(const FInputActionValue& Value);
 	virtual void OnSetGamepadCursorMovementReleased();
@@ -337,16 +344,25 @@ protected:
 	UPROPERTY(Transient)
 	TWeakObjectPtr<class AXkGamepadCursor> GamepadCursor;
 
-	bool bIsCameraDraggingButtonPressing;
-	bool bIsCameraRotatingButtonPressing;
-	float FollowTime; // For how long it has been pressed
+	float FollowTime;
+	// Dedicated timer for long-press detection; accumulated in OnSetSelectionPressing, reset on start/release
+	float LongPressTime;
+	bool bIsCameraDragging;
+	bool bIsCameraRotating;
 
 public:
-	virtual bool IsShortPress();
+	virtual bool IsPressing() const;
+	virtual bool IsShortPress() const;
+	virtual bool IsLongPress() const;
+	virtual bool IsLongPressReady() const { return LongPressTime >= LongPressThreshold; };
+	/** Returns [0,1] hold progress toward LongPressThreshold; 0 when not pressing. */
+	virtual float GetLongPressProgress() const;
+	virtual void SetHideCursorDuringCapture();
+	virtual void SetShowCursorDuringCapture();
 	virtual bool IsHoveringMotionless() const { return HoveringTime > MaxHoveringThreshold; };
 	virtual bool IsOnUI() const { return false; };
-	virtual bool IsCameraDragging() const { return bIsCameraDraggingButtonPressing; };
-	virtual bool IsCameraRotating() const { return bIsCameraRotatingButtonPressing; };
+	virtual bool IsCameraDragging() const { return bIsCameraDragging; };
+	virtual bool IsCameraRotating() const { return bIsCameraRotating; };
 	virtual bool IsGamepadController() const { return ControlsFlavor == EXkControlsFlavor::Gamepad; };
 	virtual bool IsKeyboardController() const { return ControlsFlavor == EXkControlsFlavor::Keyboard; };
 	virtual bool ControllerSelect() const;
