@@ -39,26 +39,9 @@ AXkParabolaCurve::AXkParabolaCurve(const FObjectInitializer& ObjectInitializer)
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SplineMeshTube(TEXT("/XkGamedevKit/Meshes/SM_SplineMeshTube.SM_SplineMeshTube"));
 	ParabolaMesh = SplineMeshTube.Object;
 
-	ParabolaStartMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ParabolaStartMesh"));
-	ParabolaStartMeshComponent->SetupAttachment(ParabolaSpline);
-	ParabolaStartMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	ParabolaStartMeshComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> SplineMeshSphere(TEXT("/XkGamedevKit/Meshes/SM_SplineMeshSphere.SM_SplineMeshSphere"));
-	ParabolaStartMesh = SplineMeshSphere.Object;
-	ParabolaStartMeshComponent->SetStaticMesh(ParabolaStartMesh);
-	ParabolaEndMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ParabolaEndMesh"));
-	ParabolaEndMeshComponent->SetupAttachment(ParabolaSpline);
-	ParabolaEndMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	ParabolaEndMeshComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> SplineMeshCylinder(TEXT("/XkGamedevKit/Meshes/SM_SplineMeshSphere.SM_SplineMeshSphere"));
-	ParabolaEndMesh = SplineMeshCylinder.Object;
-	ParabolaEndMeshComponent->SetStaticMesh(ParabolaEndMesh);
-
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> ObjectFinder2(TEXT("/XkGamedevKit/Materials/M_GuidelineParabolaMesh.M_GuidelineParabolaMesh"));
 	ParabolaMeshMaterial = ObjectFinder2.Object;
 
-	ParabolaStartMeshScale = FVector(0.05);
-	ParabolaEndMeshScale = FVector(0.05);
 	ParabolaStartScale = 0.05;
 	ParabolaEndScale = 0.05;
 	ParabolaPointsNum = 10;
@@ -172,20 +155,6 @@ void AXkParabolaCurve::UpdateParabolaCurve(const FVector& Start, const FVector& 
 		}
 	}
 	ParabolaSplineMeshComponents = TempSplineMeshes;
-
-	ParabolaStartMeshComponent->SetStaticMesh(ParabolaStartMesh);
-	ParabolaStartMeshComponent->SetWorldLocation(Start);
-	ParabolaStartMeshComponent->SetWorldScale3D(ParabolaStartMeshScale);
-
-	ParabolaEndMeshComponent->SetStaticMesh(ParabolaEndMesh);
-	ParabolaEndMeshComponent->SetWorldLocation(End);
-	ParabolaEndMeshComponent->SetWorldScale3D(ParabolaEndMeshScale);
-}
-
-void AXkParabolaCurve::SetParabolaStartEndVisibility(const bool StartVisible, const bool EndVisible)
-{
-	ParabolaStartMeshComponent->SetVisibility(StartVisible);
-	ParabolaEndMeshComponent->SetVisibility(EndVisible);
 }
 
 void AXkParabolaCurve::SetParabolaCurveColor(const FLinearColor& Color)
@@ -314,6 +283,7 @@ AXkController::AXkController(const FObjectInitializer& ObjectInitializer)
 	GamepadCursorMovingSpeed = 1000.0;
 
 	FollowTime = 0.f;
+	ShortPressTime = 0.f;
 	LongPressTime = 0.f;
 	bIsCameraDragging = false;
 	bIsCameraRotating = false;
@@ -385,6 +355,7 @@ void AXkController::SetControlsFlavor(const EXkControlsFlavor NewControlsFlavor)
 		else if (NewControlsFlavor == EXkControlsFlavor::Keyboard)
 		{
 			FollowTime = 0.f;
+			ShortPressTime = 0.f;
 			bIsCameraDragging = false;
 			bIsCameraRotating = false;
 			if (GamepadCursor.IsValid())
@@ -636,16 +607,23 @@ void AXkController::OnInputStarted()
 {
 	StopMovement();
 	FollowTime = 0.f;
+	ShortPressTime = 0.f;
 }
 
 void AXkController::OnInputPressing()
 {
 	FollowTime += GetWorld()->GetDeltaSeconds();
+	ShortPressTime += GetWorld()->GetDeltaSeconds();
+	if (ShortPressTime >= ShortPressThreshold)
+	{
+		ShortPressTime = 0.0f;
+	}
 }
 
 void AXkController::OnInputReleased()
 {
 	FollowTime = 0.f;
+	ShortPressTime = 0.f;
 	HoveringTime = 0.f;
 }
 
@@ -1068,12 +1046,12 @@ void AXkController::OnTouchReleased()
 
 bool AXkController::IsPressing() const
 {
-	return FollowTime > 0.f;
+    return FollowTime > 0.f || ShortPressTime > 0.f || LongPressTime > 0.f;
 }
 
 bool AXkController::IsShortPress() const
 {
-	return FollowTime <= ShortPressThreshold;
+	return ShortPressTime == 0.0f;
 }
 
 bool AXkController::IsLongPress() const

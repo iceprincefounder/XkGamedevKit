@@ -50,34 +50,16 @@ class XKGAMEDEVCORE_API AXkParabolaCurve : public AActor
 	TObjectPtr<class USplineComponent> ParabolaSpline;
 
 	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class UStaticMeshComponent> ParabolaStartMeshComponent;
-
-	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class UStaticMeshComponent> ParabolaEndMeshComponent;
-
-	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	TArray<class USplineMeshComponent*> ParabolaSplineMeshComponents;
 
 	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UStaticMesh* ParabolaMesh;
 
 	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	class UStaticMesh* ParabolaStartMesh;
-
-	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-	class UStaticMesh* ParabolaEndMesh;
-
-	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UMaterialInterface* ParabolaMeshMaterial;
 
 	UPROPERTY(Transient)
 	class UMaterialInstanceDynamic* ParabolaMeshMaterialDyn;
-
-	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-	FVector ParabolaStartMeshScale;
-
-	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-	FVector ParabolaEndMeshScale;
 
 	UPROPERTY(Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]", EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	float ParabolaStartScale;
@@ -108,9 +90,6 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]")
 	virtual void UpdateParabolaCurve(const FVector& Start, const FVector& End, const float ParaCurveArc);
-
-	UFUNCTION(BlueprintCallable, Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]")
-	void SetParabolaStartEndVisibility(const bool StartVisible, const bool EndVisible);
 
 	UFUNCTION(BlueprintCallable, Category = "ParabolaCurve [KEVINTSUIXUGAMEDEV]")
 	void SetParabolaCurveColor(const FLinearColor& Color);
@@ -313,7 +292,7 @@ protected:
 	virtual void OnSetDeselectionTriggered() {};
 	virtual void OnSetDeselectionPressing() { OnInputPressing(); };
 	virtual void OnSetDeselectionReleased() { OnInputReleased(); };
-	virtual void OnSetNavigationTriggered(const FInputActionValue& Value) {};
+	virtual void OnSetNavigationTriggered(const FInputActionValue& Value) { OnInputStarted(); };
 	virtual void OnSetNavigationPressing(const FInputActionValue& Value) { OnInputPressing(); };
 	virtual void OnSetNavigationReleased() { OnInputReleased(); };
 	virtual void OnSetGamepadCursorMovementTriggered(const FInputActionValue& Value);
@@ -345,6 +324,7 @@ protected:
 	TWeakObjectPtr<class AXkGamepadCursor> GamepadCursor;
 
 	float FollowTime;
+	float ShortPressTime;
 	// Dedicated timer for long-press detection; accumulated in OnSetSelectionPressing, reset on start/release
 	float LongPressTime;
 	bool bIsCameraDragging;
