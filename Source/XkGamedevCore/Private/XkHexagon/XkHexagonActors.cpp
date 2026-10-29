@@ -428,15 +428,37 @@ TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeSurrounders(const 
 
 TArray<FXkHexagonNode*> AXkHexagonalWorldActor::GetHexagonNodeCoverages(const FIntVector& InCoord, const int32 InRange) const
 {
+	// Enumerate cube-coordinate hex disk of radius <= InRange around InCoord
+	// and look each candidate up in the node table in O(1). This is O(R^2)
+	// in the query radius instead of O(N) over the whole world, which is a
+	// huge win when the map is large and the query range is small (e.g. a
+	// 2-hex attack preview on a 32-radius board).
+	//
+	// Precondition: every key stored in HexagonalWorldTable.Nodes is a valid
+	// cube coordinate satisfying x + y + z == 0. This holds for all coords
+	// produced by CalcHexagonCoord and CalcHexagonNeighboringCoord, so it is
+	// true for any node reachable through the normal node-construction path.
+	// Any key violating this invariant would be silently skipped (which is
+	// arguably more correct than the previous full-scan behavior).
 	TArray<FXkHexagonNode*> Results;
-	for (TPair<FIntVector, FXkHexagonNode>& NodePair : HexagonalWorldTable.Nodes)
+	if (InRange < 0)
 	{
-		if (FXkHexagonAStarPathfinding::CalcManhattanDistance(InCoord, NodePair.Key) <= InRange)
+		return Results;
+	}
+	const int32 R = InRange;
+	// Hex count within radius R is 3R(R+1)+1.
+	Results.Reserve(3 * R * (R + 1) + 1);
+	for (int32 dx = -R; dx <= R; ++dx)
+	{
+		const int32 dyMin = FMath::Max(-R, -dx - R);
+		const int32 dyMax = FMath::Min(R, -dx + R);
+		for (int32 dy = dyMin; dy <= dyMax; ++dy)
 		{
-			FXkHexagonNode* HexagonNode = &NodePair.Value;
-			if (HexagonNode)
+			const int32 dz = -dx - dy;
+			const FIntVector Candidate(InCoord.X + dx, InCoord.Y + dy, InCoord.Z + dz);
+			if (FXkHexagonNode* HexagonNode = HexagonalWorldTable.Nodes.Find(Candidate))
 			{
-				Results.AddUnique(HexagonNode);
+				Results.Add(HexagonNode);
 			}
 		}
 	}
